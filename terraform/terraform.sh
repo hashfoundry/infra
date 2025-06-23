@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Load environment variables from .env file
-if [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
+# Load environment variables from config/.env file
+if [ -f config/.env ]; then
+  export $(grep -v '^#' config/.env | xargs)
 else
-  echo "Error: .env file not found"
+  echo "Error: config/.env file not found"
   exit 1
 fi
 

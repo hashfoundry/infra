@@ -2,6 +2,17 @@
 
 This directory contains Terraform configuration to create a minimal Kubernetes cluster in Digital Ocean's Frankfurt region.
 
+## Directory Structure
+
+- `config/` - Configuration files (.env, .env.example)
+- `modules/` - Reusable Terraform modules
+  - `kubernetes/` - Kubernetes cluster module
+- `providers/` - Provider configurations
+- `variables/` - Variable definitions
+- `outputs/` - Output definitions
+- `main.tf` - Main Terraform configuration file
+- `terraform.sh` - Helper script to load environment variables and run Terraform commands
+
 ## Prerequisites
 
 - [Terraform](https://www.terraform.io/downloads.html) >= 1.0.0
@@ -9,17 +20,17 @@ This directory contains Terraform configuration to create a minimal Kubernetes c
 
 ## Configuration
 
-1. Copy `.env.example` to `.env` if you haven't already:
+1. Copy `config/.env.example` to `config/.env` if you haven't already:
    ```
-   cp .env.example .env
+   cp config/.env.example config/.env
    ```
 
-2. Edit the `.env` file and set your Digital Ocean API token:
+2. Edit the `config/.env` file and set your Digital Ocean API token:
    ```
    DO_TOKEN=your_digitalocean_api_token
    ```
 
-3. You can also customize other variables in the `.env` file if needed.
+3. You can also customize other variables in the `config/.env` file if needed.
 
 ## Usage
 
