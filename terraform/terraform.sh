@@ -17,5 +17,15 @@ export TF_VAR_node_pool_name=$NODE_POOL_NAME
 export TF_VAR_node_size=$NODE_SIZE
 export TF_VAR_node_count=$NODE_COUNT
 
+# Load Balancer variables
+export TF_VAR_create_global_lb=$CREATE_GLOBAL_LB
+export TF_VAR_create_standard_lb=$CREATE_STANDARD_LB
+export TF_VAR_origin_endpoint=$ORIGIN_ENDPOINT
+export TF_VAR_custom_domain=$CUSTOM_DOMAIN
+export TF_VAR_lb_name=$LB_NAME
+export TF_VAR_create_k8s_service=$CREATE_K8S_SERVICE
+export TF_VAR_k8s_service_name=$K8S_SERVICE_NAME
+export TF_VAR_k8s_namespace=$K8S_NAMESPACE
+
 # Run Terraform command
 terraform $@

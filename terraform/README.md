@@ -7,6 +7,7 @@ This directory contains Terraform configuration to create a minimal Kubernetes c
 - `config/` - Configuration files (.env, .env.example)
 - `modules/` - Reusable Terraform modules
   - `kubernetes/` - Kubernetes cluster module with its own variables, outputs, and main configuration
+  - `loadbalancer/` - Load balancer module for creating global and standard load balancers
 - `main.tf` - Single configuration file that includes all provider settings, variables, module references, and outputs
 - `terraform.sh` - Helper script to load environment variables and run Terraform commands
 
@@ -27,7 +28,7 @@ This directory contains Terraform configuration to create a minimal Kubernetes c
    DO_TOKEN=your_digitalocean_api_token
    ```
 
-3. You can also customize other variables in the `config/.env` file if needed.
+3. You can also customize other variables in the `config/.env` file if needed, including load balancer configurations.
 
 ## Usage
 
@@ -89,6 +90,10 @@ The Terraform configuration outputs the following information:
 - `cluster_status`: Status of the Kubernetes cluster
 - `kubeconfig_path`: Path to the kubeconfig file
 - `node_pool`: Details of the node pool (ID, name, size, node count)
+- `standard_lb_ip`: IP address of the standard load balancer
+- `global_lb_endpoint`: Endpoint of the global load balancer (CDN) if enabled
+- `k8s_service_name`: Name of the Kubernetes service
+- `k8s_service_load_balancer_ingress`: Load balancer ingress details for the Kubernetes service
 
 ## Common Kubernetes Operations
 
@@ -139,3 +144,61 @@ kubectl proxy
 ```
 
 Then access the dashboard at: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+
+## Load Balancer Configuration
+
+This Terraform configuration includes two types of load balancers:
+
+1. **Global Load Balancer**: Uses DigitalOcean's CDN to provide global content delivery with caching capabilities.
+2. **Standard Load Balancer**: A regular load balancer without caching, suitable for dynamic content.
+
+### Global Load Balancer
+
+The global load balancer uses DigitalOcean's CDN service to distribute content globally with edge caching. This is ideal for static content like images, CSS, and JavaScript files.
+
+To configure the global load balancer, set the following variables in your `config/.env` file:
+
+```
+CREATE_GLOBAL_LB=true
+ORIGIN_ENDPOINT=your_origin_endpoint  # Optional, defaults to cluster endpoint
+```
+
+### Standard Load Balancer
+
+The standard load balancer is a regular DigitalOcean load balancer without caching. This is suitable for dynamic content and API endpoints.
+
+To configure the standard load balancer, set the following variables in your `config/.env` file:
+
+```
+CREATE_STANDARD_LB=true
+LB_NAME=your_lb_name
+```
+
+### Kubernetes Service
+
+The configuration also includes a Kubernetes service that can be used to expose your applications through the load balancers.
+
+To configure the Kubernetes service, set the following variables in your `config/.env` file:
+
+```
+CREATE_K8S_SERVICE=true
+K8S_SERVICE_NAME=your_service_name
+K8S_NAMESPACE=your_namespace
+```
+
+### Accessing Your Applications
+
+Once the load balancers are created, you can access your applications using:
+
+- Global Load Balancer: Use the `global_lb_endpoint` output
+- Standard Load Balancer: Use the `standard_lb_ip` output
+
+For example:
+
+```bash
+# Get the global load balancer endpoint
+./terraform.sh output global_lb_endpoint
+
+# Get the standard load balancer IP
+./terraform.sh output standard_lb_ip
+```
