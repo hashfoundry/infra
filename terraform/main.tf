@@ -73,6 +73,11 @@ module "kubernetes_cluster" {
   node_pool_name  = var.node_pool_name
   node_size       = var.node_size
   node_count      = var.node_count
+
+  # Explicitly specify providers
+  providers = {
+    digitalocean = digitalocean
+  }
 }
 
 # Outputs
