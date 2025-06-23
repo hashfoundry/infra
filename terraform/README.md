@@ -7,7 +7,7 @@ This directory contains Terraform configuration to create a minimal Kubernetes c
 - `config/` - Configuration files (.env, .env.example)
 - `modules/` - Reusable Terraform modules
   - `kubernetes/` - Kubernetes cluster module with its own variables, outputs, and main configuration
-- `main.tf` - Main Terraform configuration file that includes all provider settings, variables, module references, and outputs
+- `main.tf` - Single configuration file that includes all provider settings, variables, module references, and outputs
 - `terraform.sh` - Helper script to load environment variables and run Terraform commands
 
 ## Prerequisites
