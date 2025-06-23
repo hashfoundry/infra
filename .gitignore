@@ -99,6 +99,7 @@ docker-compose.override.yml
 # Kubernetes
 kubeconfig
 *.kubeconfig
+terraform/modules/kubernetes/kubeconfig.yaml
 
 # Certificates
 *.crt
