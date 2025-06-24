@@ -1,0 +1,62 @@
+nginx:
+  # Development environment specific configuration
+  replicaCount: 1
+  
+  # Service configuration for dev
+  service:
+    type: LoadBalancer
+    port: 80
+    annotations:
+      service.beta.kubernetes.io/do-loadbalancer-algorithm: round_robin
+      service.beta.kubernetes.io/do-loadbalancer-protocol: http
+      service.beta.kubernetes.io/do-loadbalancer-redirect-http-to-https: "false"
+      service.beta.kubernetes.io/do-loadbalancer-sticky-sessions-type: none
+      service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL_NETWORK
+  
+  # Configure Nginx to expose the status endpoint
+  serverBlock: |-
+    server {
+      listen 0.0.0.0:8080;
+      server_name localhost;
+      
+      location /status {
+        stub_status on;
+        access_log off;
+        allow 127.0.0.1;
+        deny all;
+      }
+      
+      location / {
+        root /app;
+        index index.html;
+      }
+    }
+  
+  # Resource limits and requests for dev
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+      
+  # Autoscaling configuration for dev
+  autoscaling:
+    enabled: false
+    
+  # Ingress configuration for dev
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    hosts:
+      - host: nginx-dev.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+            
+  # Monitoring configuration for dev
+  metrics:
+    enabled: false

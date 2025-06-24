@@ -1,0 +1,14 @@
+apiVersion: v2
+name: nginx
+description: Helm chart for Nginx web server
+type: application
+appVersion: 1.25.3
+version: 1.0.0
+home: https://nginx.org/
+sources:
+  - https://github.com/bitnami/containers/tree/main/bitnami/nginx
+icon: https://bitnami.com/assets/stacks/nginx/img/nginx-stack-220x234.png
+dependencies:
+  - name: nginx
+    version: 15.4.2
+    repository: https://charts.bitnami.com/bitnami
