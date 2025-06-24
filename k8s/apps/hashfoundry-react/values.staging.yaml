@@ -1,0 +1,83 @@
+nginx:
+  # Staging environment specific configuration
+  replicaCount: 2
+  
+  # Image configuration
+  image:
+    registry: docker.io
+    repository: alexhashfoundry/hashfoundry-react
+    tag: a2a2679b096d59206a2c24e53d2c815a25cde7c8
+    pullPolicy: IfNotPresent
+  
+  # Security context for the container to fix permission issues
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+  
+  # Pod security context
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+  
+  # Service configuration for staging
+  service:
+    type: LoadBalancer
+    port: 80
+    annotations:
+      service.beta.kubernetes.io/do-loadbalancer-algorithm: round_robin
+      service.beta.kubernetes.io/do-loadbalancer-protocol: http
+      service.beta.kubernetes.io/do-loadbalancer-redirect-http-to-https: "false"
+      service.beta.kubernetes.io/do-loadbalancer-sticky-sessions-type: none
+      service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL_NETWORK
+  
+  # Configure Nginx to serve the React application
+  serverBlock: |-
+    server {
+      listen 0.0.0.0:8080;
+      server_name localhost;
+      
+      location /status {
+        stub_status on;
+        access_log off;
+        allow 127.0.0.1;
+        deny all;
+      }
+      
+      location / {
+        root /app;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+      }
+    }
+  
+  # Resource limits and requests for staging
+  resources:
+    limits:
+      cpu: 300m
+      memory: 384Mi
+    requests:
+      cpu: 75m
+      memory: 96Mi
+      
+  # Autoscaling configuration for staging
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+    targetCPUUtilizationPercentage: 75
+    
+  # Ingress configuration for staging
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    hosts:
+      - host: hashfoundry-react-staging.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+            
+  # Monitoring configuration for staging
+  metrics:
+    enabled: true

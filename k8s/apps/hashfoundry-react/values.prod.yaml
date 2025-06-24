@@ -1,0 +1,88 @@
+nginx:
+  # Production environment specific configuration
+  replicaCount: 3
+  
+  # Image configuration
+  image:
+    registry: docker.io
+    repository: alexhashfoundry/hashfoundry-react
+    tag: a2a2679b096d59206a2c24e53d2c815a25cde7c8
+    pullPolicy: IfNotPresent
+  
+  # Security context for the container to fix permission issues
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+  
+  # Pod security context
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+  
+  # Service configuration for production
+  service:
+    type: LoadBalancer
+    port: 80
+    annotations:
+      service.beta.kubernetes.io/do-loadbalancer-algorithm: round_robin
+      service.beta.kubernetes.io/do-loadbalancer-protocol: https
+      service.beta.kubernetes.io/do-loadbalancer-redirect-http-to-https: "true"
+      service.beta.kubernetes.io/do-loadbalancer-sticky-sessions-type: none
+      service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL_NETWORK
+  
+  # Configure Nginx to serve the React application
+  serverBlock: |-
+    server {
+      listen 0.0.0.0:8080;
+      server_name localhost;
+      
+      location /status {
+        stub_status on;
+        access_log off;
+        allow 127.0.0.1;
+        deny all;
+      }
+      
+      location / {
+        root /app;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+      }
+    }
+  
+  # Resource limits and requests for production
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+      
+  # Autoscaling configuration for production
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    
+  # Ingress configuration for production
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    hosts:
+      - host: hashfoundry-react.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: hashfoundry-react-tls
+        hosts:
+          - hashfoundry-react.example.com
+            
+  # Monitoring configuration for production
+  metrics:
+    enabled: true

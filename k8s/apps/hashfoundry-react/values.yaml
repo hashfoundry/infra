@@ -1,0 +1,92 @@
+# Default values for HashFoundry React
+nginx:
+  # Common configuration
+  replicaCount: 2
+  
+  # Image configuration
+  image:
+    registry: docker.io
+    repository: alexhashfoundry/hashfoundry-react
+    tag: a2a2679b096d59206a2c24e53d2c815a25cde7c8
+    pullPolicy: IfNotPresent
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 80
+    
+  # Resource limits and requests
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+      
+  # Autoscaling configuration
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    
+  # Ingress configuration
+  ingress:
+    enabled: false
+    className: nginx
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: Prefix
+            
+  # Pod configuration
+  podAnnotations: {}
+  podLabels: {}
+  
+  # Liveness and readiness probes
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+    
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+    successThreshold: 1
+    
+  # Monitoring configuration
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+      labels:
+        release: kube-prometheus-stack
+        
+  # Configure Nginx to serve the React application
+  serverBlock: |-
+    server {
+      listen 0.0.0.0:8080;
+      server_name localhost;
+      
+      location /status {
+        stub_status on;
+        access_log off;
+        allow 127.0.0.1;
+        deny all;
+      }
+      
+      location / {
+        root /app;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+      }
+    }
