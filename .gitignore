@@ -117,3 +117,7 @@ terraform/modules/kubernetes/kubeconfig.yaml
 *secret*
 *password*
 *credential*
+
+
+## Examples
+example
