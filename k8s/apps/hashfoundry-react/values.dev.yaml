@@ -107,9 +107,8 @@ nginx:
     timeoutSeconds: 5
     failureThreshold: 6
     successThreshold: 1
-    httpGet:
-      path: /status
-      port: 80
+    tcpSocket:
+      port: http
     
   readinessProbe:
     enabled: true
@@ -118,6 +117,5 @@ nginx:
     timeoutSeconds: 3
     failureThreshold: 3
     successThreshold: 1
-    httpGet:
-      path: /status
-      port: 80
+    tcpSocket:
+      port: http
