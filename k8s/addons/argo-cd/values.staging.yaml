@@ -5,10 +5,13 @@ argo-cd:
       controller.diff.server.side: true
 
   server:
+    service:
+      type: LoadBalancer
+      annotations:
+        service.beta.kubernetes.io/do-loadbalancer-algorithm: round_robin
+        service.beta.kubernetes.io/do-loadbalancer-protocol: http
+        service.beta.kubernetes.io/do-loadbalancer-redirect-http-to-https: "false"
+        service.beta.kubernetes.io/do-loadbalancer-sticky-sessions-type: none
+        service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL_NETWORK
     ingress:
-      enabled: true
-      annotations: {}
-      controller: generic
-      ingressClassName: ingress-nginx-internal
-      hostname: argocd.staging.hashfoundry.com
-      tls: false
+      enabled: false
