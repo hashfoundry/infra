@@ -12,12 +12,14 @@ nginx:
   # Security context for the container to fix permission issues
   containerSecurityContext:
     enabled: true
-    runAsUser: 1001
+    runAsUser: 101
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
   
   # Pod security context
   podSecurityContext:
     enabled: true
-    fsGroup: 1001
+    fsGroup: 101
   
   # Service configuration for dev
   service:
