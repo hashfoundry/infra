@@ -43,9 +43,8 @@ jobs:
 
       - name: Update hashfoundry-react image tag
         run: |
-          FILE_NAME=values.${{ inputs.env }}.yaml
+          FILE_NAME=k8s/apps/hashfoundry-react/values.${{ inputs.env }}.yaml
           NEW_TAG=${{ inputs.tag }}
-          cd ./k8s/apps/hashfoundry-react
           export FILE_CONTENT=$(cat ${FILE_NAME})
           export CURRENT_TAG=$(echo "${FILE_CONTENT}" | grep 'tag: ' | sed -n -e '/tag:/ s/.*: *//p' | tr -d '"')
           echo "CURRENT_TAG: ${CURRENT_TAG}"
