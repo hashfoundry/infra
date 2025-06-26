@@ -101,6 +101,10 @@ kubeconfig
 *.kubeconfig
 terraform/modules/kubernetes/kubeconfig.yaml
 
+# Helm
+**/charts/*.tgz
+**/Chart.lock
+
 # Certificates
 *.crt
 *.cert
