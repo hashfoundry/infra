@@ -50,7 +50,7 @@ nginx:
   # Configure Nginx to serve the React application
   serverBlock: |-
     server {
-      listen 0.0.0.0:8080;
+      listen 0.0.0.0:80;
       server_name localhost;
       
       location /status {
@@ -105,7 +105,7 @@ nginx:
     failureThreshold: 6
     successThreshold: 1
     path: /status
-    port: 8080
+    port: 80
     
   readinessProbe:
     enabled: true
@@ -115,4 +115,4 @@ nginx:
     failureThreshold: 3
     successThreshold: 1
     path: /status
-    port: 8080
+    port: 80
