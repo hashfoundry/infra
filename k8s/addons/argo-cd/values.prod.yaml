@@ -1,0 +1,14 @@
+argo-cd:
+  configs:
+    params:
+      server.insecure: true
+      controller.diff.server.side: true
+
+  server:
+    ingress:
+      enabled: true
+      annotations: {}
+      controller: generic
+      ingressClassName: ingress-nginx-internal
+      hostname: argocd.hashfoundry.com
+      tls: false

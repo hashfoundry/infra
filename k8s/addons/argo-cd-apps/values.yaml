@@ -1,0 +1,10 @@
+defaults:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  source:
+    repoURL: git@github.com:hashfoundry/hashfoundry-infra.git
+    targetRevision: HEAD
+
+apps: []
+addons: []

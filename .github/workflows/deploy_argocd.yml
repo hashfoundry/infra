@@ -1,4 +1,4 @@
-name: Deploy HashFoundry React
+name: Deploy Argo CD
 
 on:
   push:
@@ -6,7 +6,8 @@ on:
       - main
       - staging
     paths:
-      - 'k8s/apps/hashfoundry-react/**'
+      - 'k8s/addons/argo-cd/**'
+      - 'k8s/addons/argo-cd-apps/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -20,8 +21,8 @@ on:
           - prod
 
 jobs:
-  deploy:
-    name: Deploy to ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod') || 'dev' }}
+  deploy-argocd:
+    name: Deploy Argo CD to ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod') || 'dev' }}
     runs-on: ubuntu-latest
     env:
       ENVIRONMENT: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod') || (github.ref == 'refs/heads/staging' && 'staging') || 'dev' }}
@@ -57,8 +58,13 @@ jobs:
             aws eks update-kubeconfig --name hashfoundry-dev --region us-east-1
           fi
 
-      - name: Deploy HashFoundry React
+      - name: Deploy Argo CD
         run: |
-          cd k8s/apps/hashfoundry-react
+          cd k8s/addons/argo-cd
           helm dependency update
-          helm upgrade --install --create-namespace -n hashfoundry-react-$ENVIRONMENT hashfoundry-react . -f values.yaml -f values.$ENVIRONMENT.yaml
+          helm upgrade --install --create-namespace -n argocd argocd . -f values.yaml -f values.$ENVIRONMENT.yaml
+
+      - name: Deploy Argo CD Apps
+        run: |
+          cd k8s/addons/argo-cd-apps
+          helm upgrade --install --create-namespace -n argocd argo-cd-apps . -f values.yaml -f values.$ENVIRONMENT.yaml

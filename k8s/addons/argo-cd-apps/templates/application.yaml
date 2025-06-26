@@ -1,0 +1,115 @@
+{{- range .Values.apps }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .name }}{{ if .releaseName }}-{{ .releaseName }}{{ end }}
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ $.Values.defaults.source.repoURL }}
+    {{- if .targetRevision }}
+    targetRevision: {{ .targetRevision }}
+    {{- else if $.Values.defaults.source.targetRevision }}
+    targetRevision: {{ $.Values.defaults.source.targetRevision }}
+    {{- end }}
+    path: k8s/apps/{{ .name }}
+    {{- if .source }}
+    {{- if .source.directory }}
+    directory:
+      recurse: true
+    {{- end }}
+    {{- else }}
+    helm:
+      {{- if .valueFiles }}
+      valueFiles:
+      {{- range .valueFiles }}
+        - {{ . }}
+      {{- end }}
+      {{- else if $.Values.defaults.source.helm.valueFiles }}
+      valueFiles:
+      {{- range $.Values.defaults.source.helm.valueFiles }}
+        - {{ . }}
+      {{- end }}
+      {{- end }}
+      {{- if .releaseName }}
+      releaseName: {{ .releaseName }}
+      {{- end }}
+    {{- end }}
+  destination:
+    server: {{ $.Values.defaults.destination.server }}
+    {{- if .namespace }}
+    namespace: {{ .namespace }}
+    {{- else }}
+    namespace: {{ $.Values.defaults.destination.namespace }}
+    {{- end }}
+  syncPolicy:
+    {{- if .autosync }}
+    automated:
+      prune: true
+      selfHeal: true
+    {{- end }}
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}
+
+{{- range .Values.addons }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .name }}{{ if .releaseName }}-{{ .releaseName }}{{ end }}
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: {{ $.Values.defaults.source.repoURL }}
+    {{- if .targetRevision }}
+    targetRevision: {{ .targetRevision }}
+    {{- else if $.Values.defaults.source.targetRevision }}
+    targetRevision: {{ $.Values.defaults.source.targetRevision }}
+    {{- end }}
+    path: k8s/addons/{{ .name }}
+    {{- if .source }}
+    {{- if .source.directory }}
+    directory:
+      recurse: true
+    {{- end }}
+    {{- else }}
+    helm:
+      {{- if .valueFiles }}
+      valueFiles:
+      {{- range .valueFiles }}
+        - {{ . }}
+      {{- end }}
+      {{- else if $.Values.defaults.source.helm.valueFiles }}
+      valueFiles:
+      {{- range $.Values.defaults.source.helm.valueFiles }}
+        - {{ . }}
+      {{- end }}
+      {{- end }}
+      {{- if .releaseName }}
+      releaseName: {{ .releaseName }}
+      {{- end }}
+    {{- end }}
+  destination:
+    server: {{ $.Values.defaults.destination.server }}
+    {{- if .namespace }}
+    namespace: {{ .namespace }}
+    {{- else }}
+    namespace: {{ $.Values.defaults.destination.namespace }}
+    {{- end }}
+  syncPolicy:
+    {{- if .autosync }}
+    automated:
+      prune: true
+      selfHeal: true
+    {{- end }}
+    syncOptions:
+      - CreateNamespace=true
+{{- end }}

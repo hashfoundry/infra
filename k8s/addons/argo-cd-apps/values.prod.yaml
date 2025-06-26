@@ -1,0 +1,28 @@
+defaults:
+  env: prod
+  source:
+    targetRevision: HEAD
+    helm:
+      valueFiles:
+        - values.yaml
+        - values.prod.yaml
+
+apps:
+  - name: hashfoundry-react
+    namespace: hashfoundry-react-prod
+    autosync: true
+
+addons:
+  - name: argo-cd-apps
+    namespace: argocd
+    autosync: true
+  - name: ingress-nginx
+    namespace: ingress-nginx
+    autosync: false
+  - name: ingress-nginx
+    releaseName: ingress-nginx-internal
+    namespace: ingress-nginx-internal
+    autosync: false
+    valueFiles:
+      - values.yaml
+      - values.prod.internal.yaml

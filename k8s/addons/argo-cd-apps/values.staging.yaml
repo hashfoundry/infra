@@ -1,0 +1,28 @@
+defaults:
+  env: staging
+  source:
+    targetRevision: staging
+    helm:
+      valueFiles:
+        - values.yaml
+        - values.staging.yaml
+
+apps:
+  - name: hashfoundry-react
+    namespace: hashfoundry-react-staging
+    autosync: true
+
+addons:
+  - name: argo-cd-apps
+    namespace: argocd
+    autosync: true
+  - name: ingress-nginx
+    namespace: ingress-nginx
+    autosync: false
+  - name: ingress-nginx
+    releaseName: ingress-nginx-internal
+    namespace: ingress-nginx-internal
+    autosync: false
+    valueFiles:
+      - values.yaml
+      - values.staging.internal.yaml
