@@ -48,6 +48,9 @@ nginx:
       service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL_NETWORK
   
   # Configure Nginx to serve the React application
+  containerPorts:
+    http: 80
+    
   serverBlock: |-
     server {
       listen 0.0.0.0:80;
