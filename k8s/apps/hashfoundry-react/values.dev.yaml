@@ -11,15 +11,30 @@ nginx:
     
   # Security context for the container to fix permission issues
   containerSecurityContext:
-    enabled: true
-    runAsUser: 101
-    runAsNonRoot: true
-    allowPrivilegeEscalation: false
+    enabled: false
   
   # Pod security context
   podSecurityContext:
-    enabled: true
-    fsGroup: 101
+    enabled: false
+    
+  # Init containers to set up permissions
+  extraInitContainers:
+    - name: init-nginx-permissions
+      image: busybox
+      command: ['sh', '-c', 'mkdir -p /bitnami/nginx/tmp && chmod -R 777 /bitnami/nginx']
+      volumeMounts:
+        - name: nginx-data
+          mountPath: /bitnami/nginx
+          
+  # Extra volumes for Nginx
+  extraVolumes:
+    - name: nginx-data
+      emptyDir: {}
+      
+  # Extra volume mounts for Nginx
+  extraVolumeMounts:
+    - name: nginx-data
+      mountPath: /bitnami/nginx
   
   # Service configuration for dev
   service:
