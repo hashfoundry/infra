@@ -85,7 +85,7 @@ nginx:
     
   # Ingress configuration for dev
   ingress:
-    enabled: true
+    enabled: false
     className: nginx
     annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
