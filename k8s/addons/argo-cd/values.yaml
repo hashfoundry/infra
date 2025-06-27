@@ -12,6 +12,32 @@ argo-cd:
     tolerations:
       - key: node-restriction.kubernetes.io/management
         operator: Exists
+    replicas: 1
+    haproxy:
+      replicas: 1
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: redis-ha-haproxy
+                  release: argocd
+              topologyKey: kubernetes.io/hostname
+    redis:
+      config:
+        save: "900 1"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: redis-ha
+                  release: argocd
+              topologyKey: kubernetes.io/hostname
 
   controller:
     replicas: 1
