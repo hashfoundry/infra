@@ -111,7 +111,7 @@ variable "lb_name" {
 variable "create_k8s_service" {
   description = "Whether to create a Kubernetes service for the load balancer"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "k8s_service_name" {
