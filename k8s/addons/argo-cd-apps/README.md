@@ -87,13 +87,9 @@ apps:
 
 ```yaml
 addons:
-  - name: ingress-nginx
-    namespace: ingress-nginx
-    autosync: false
-    # Override default valueFiles
-    valueFiles:
-        - values.yaml
-        - values.override.yaml
+  - name: argo-cd-apps
+    namespace: argocd
+    autosync: true
 ```
 
 ## Default Values
