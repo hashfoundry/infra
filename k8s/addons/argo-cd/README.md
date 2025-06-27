@@ -86,6 +86,7 @@ This will deploy all applications defined in the values.dev.yaml file.
 | `argo-cd.repoServer.replicas` | Number of Argo CD repo server replicas | `2` |
 | `argo-cd.applicationSet.replicas` | Number of Argo CD application set replicas | `2` |
 | `argo-cd.redis-ha.replicas` | Number of Redis HA server replicas | `1` |
+| `argo-cd.redis-ha.servers` | Number of Redis HA servers (StatefulSet) | `1` |
 | `argo-cd.redis-ha.haproxy.replicas` | Number of Redis HA proxy replicas | `1` |
 | `argo-cd.dex.enabled` | Enable Dex for authentication | `true` |
 | `argo-cd.notifications.enabled` | Enable notifications | `true` |

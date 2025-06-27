@@ -13,6 +13,7 @@ argo-cd:
       - key: node-restriction.kubernetes.io/management
         operator: Exists
     replicas: 1
+    servers: 1
     haproxy:
       replicas: 1
       affinity:

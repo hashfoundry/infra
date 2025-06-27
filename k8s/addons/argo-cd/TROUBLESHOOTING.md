@@ -36,7 +36,7 @@ kubectl get replicasets -n argocd | grep redis-ha
 kubectl delete replicaset <old-replicaset-name> -n argocd
 ```
 
-3. **Scale deployment to correct replicas:**
+3. **Scale deployments and statefulsets to correct replicas:**
 ```bash
 # For single-node clusters
 kubectl scale deployment argocd-redis-ha-haproxy -n argocd --replicas=1
