@@ -68,6 +68,25 @@ To uninstall/delete the deployment:
 helm uninstall hashfoundry-react -n hashfoundry-react-<env>
 ```
 
+## Network Configuration
+
+### LoadBalancer Service
+
+The application is exposed via LoadBalancer service type, which provides external access through DigitalOcean Load Balancer:
+
+- **Development**: Accessible via LoadBalancer IP (automatically assigned)
+- **Staging**: Accessible via LoadBalancer IP (automatically assigned)  
+- **Production**: Accessible via LoadBalancer IP (automatically assigned)
+
+### Ingress Configuration
+
+**Note**: Ingress is currently disabled (`ingress.enabled: false`) in all environments because no Ingress Controller is installed in the cluster. The application is accessible through LoadBalancer service instead.
+
+To enable Ingress in the future:
+1. Install an Ingress Controller (e.g., nginx-ingress)
+2. Set `ingress.enabled: true` in the appropriate values file
+3. Configure proper hostnames and TLS certificates
+
 ## About the Application
 
 The HashFoundry React application is a simple React application packaged in an Nginx container and running on port 80. The Docker image is available at `docker.io/alexhashfoundry/hashfoundry-react:a2a2679b096d59206a2c24e53d2c815a25cde7c8`.
