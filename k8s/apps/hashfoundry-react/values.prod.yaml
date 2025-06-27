@@ -21,14 +21,8 @@ nginx:
   
   # Service configuration for production
   service:
-    type: LoadBalancer
+    type: ClusterIP
     port: 80
-    annotations:
-      service.beta.kubernetes.io/do-loadbalancer-algorithm: round_robin
-      service.beta.kubernetes.io/do-loadbalancer-protocol: https
-      service.beta.kubernetes.io/do-loadbalancer-redirect-http-to-https: "true"
-      service.beta.kubernetes.io/do-loadbalancer-sticky-sessions-type: none
-      service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL_NETWORK
   
   # Configure Nginx to serve the React application
   serverBlock: |-
@@ -68,20 +62,15 @@ nginx:
     
   # Ingress configuration for production
   ingress:
-    enabled: false
+    enabled: true
     className: nginx
     annotations:
-      nginx.ingress.kubernetes.io/ssl-redirect: "true"
-      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
     hosts:
-      - host: hashfoundry-react.example.com
+      - host: app.hashfoundry.local
         paths:
           - path: /
             pathType: Prefix
-    tls:
-      - secretName: hashfoundry-react-tls
-        hosts:
-          - hashfoundry-react.example.com
             
   # Monitoring configuration for production
   metrics:

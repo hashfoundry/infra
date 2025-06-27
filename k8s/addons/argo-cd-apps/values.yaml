@@ -7,4 +7,18 @@ defaults:
     targetRevision: HEAD
 
 apps: []
-addons: []
+addons:
+  - name: nginx-ingress
+    namespace: ingress-nginx
+    project: default
+    source:
+      path: k8s/addons/nginx-ingress
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true

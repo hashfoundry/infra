@@ -21,14 +21,8 @@ nginx:
   
   # Service configuration for staging
   service:
-    type: LoadBalancer
+    type: ClusterIP
     port: 80
-    annotations:
-      service.beta.kubernetes.io/do-loadbalancer-algorithm: round_robin
-      service.beta.kubernetes.io/do-loadbalancer-protocol: http
-      service.beta.kubernetes.io/do-loadbalancer-redirect-http-to-https: "false"
-      service.beta.kubernetes.io/do-loadbalancer-sticky-sessions-type: none
-      service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL_NETWORK
   
   # Configure Nginx to serve the React application
   serverBlock: |-
@@ -68,12 +62,12 @@ nginx:
     
   # Ingress configuration for staging
   ingress:
-    enabled: false
+    enabled: true
     className: nginx
     annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
     hosts:
-      - host: hashfoundry-react-staging.example.com
+      - host: app-staging.hashfoundry.local
         paths:
           - path: /
             pathType: Prefix
