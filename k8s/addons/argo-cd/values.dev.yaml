@@ -6,12 +6,9 @@ argo-cd:
 
   server:
     service:
-      type: LoadBalancer
-      annotations:
-        service.beta.kubernetes.io/do-loadbalancer-algorithm: round_robin
-        service.beta.kubernetes.io/do-loadbalancer-protocol: http
-        service.beta.kubernetes.io/do-loadbalancer-redirect-http-to-https: "false"
-        service.beta.kubernetes.io/do-loadbalancer-sticky-sessions-type: none
-        service.beta.kubernetes.io/do-loadbalancer-type: REGIONAL_NETWORK
+      type: ClusterIP
     ingress:
       enabled: false
+    # Run in insecure mode since we use Ingress for TLS termination
+    extraArgs:
+      - --insecure

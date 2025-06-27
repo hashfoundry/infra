@@ -63,14 +63,12 @@ nginx:
   # Ingress configuration for production
   ingress:
     enabled: true
-    className: nginx
+    ingressClassName: nginx
+    hostname: app.hashfoundry.local
+    path: /
+    pathType: Prefix
     annotations:
-      nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    hosts:
-      - host: app.hashfoundry.local
-        paths:
-          - path: /
-            pathType: Prefix
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
             
   # Monitoring configuration for production
   metrics:

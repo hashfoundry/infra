@@ -80,14 +80,12 @@ nginx:
   # Ingress configuration for dev
   ingress:
     enabled: true
-    className: nginx
+    ingressClassName: nginx
+    hostname: app-dev.hashfoundry.local
+    path: /
+    pathType: Prefix
     annotations:
       nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    hosts:
-      - host: app-dev.hashfoundry.local
-        paths:
-          - path: /
-            pathType: Prefix
             
   # Monitoring configuration for dev
   metrics:

@@ -63,14 +63,12 @@ nginx:
   # Ingress configuration for staging
   ingress:
     enabled: true
-    className: nginx
+    ingressClassName: nginx
+    hostname: app-staging.hashfoundry.local
+    path: /
+    pathType: Prefix
     annotations:
-      nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    hosts:
-      - host: app-staging.hashfoundry.local
-        paths:
-          - path: /
-            pathType: Prefix
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
             
   # Monitoring configuration for staging
   metrics:

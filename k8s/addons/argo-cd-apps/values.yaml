@@ -22,3 +22,15 @@ addons:
         selfHeal: true
       syncOptions:
         - CreateNamespace=true
+  - name: argocd-ingress
+    namespace: argocd
+    project: default
+    source:
+      path: k8s/addons/argocd-ingress
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true

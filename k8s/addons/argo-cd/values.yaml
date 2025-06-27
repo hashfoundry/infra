@@ -21,6 +21,11 @@ argo-cd:
 
   server:
     replicas: 2
+    service:
+      type: ClusterIP
+    # Disable insecure mode since we'll use Ingress with TLS termination
+    extraArgs:
+      - --insecure
 
   repoServer:
     replicas: 2

@@ -8,9 +8,11 @@ This repository contains the infrastructure code for HashFoundry, including Kube
 .
 ├── .github/workflows/       # GitHub Actions workflows
 ├── k8s/                     # Kubernetes manifests and Helm charts
-│   ├── addons/              # Kubernetes addons (e.g., Argo CD, Ingress NGINX)
+│   ├── addons/              # Kubernetes addons
 │   │   ├── argo-cd/         # Argo CD Helm chart
-│   │   └── argo-cd-apps/    # Argo CD Applications Helm chart
+│   │   ├── argo-cd-apps/    # Argo CD Applications Helm chart
+│   │   ├── nginx-ingress/   # NGINX Ingress Controller Helm chart
+│   │   └── argocd-ingress/  # ArgoCD Ingress configuration Helm chart
 │   └── apps/                # Application Helm charts
 │       └── hashfoundry-react/ # HashFoundry React application
 └── terraform/               # Terraform code for infrastructure provisioning
@@ -96,6 +98,58 @@ To run a workflow manually:
 4. Click "Run workflow"
 5. Select the environment (dev, staging, or prod)
 6. Click "Run workflow"
+
+## Ingress Architecture
+
+This infrastructure uses NGINX Ingress Controller for external access to applications and services.
+
+### Components
+
+- **NGINX Ingress Controller**: Provides external access to cluster services
+- **ArgoCD Ingress**: Enables web access to ArgoCD UI
+- **Application Ingresses**: Route traffic to applications (e.g., HashFoundry React app)
+
+### Setup
+
+1. Deploy NGINX Ingress Controller:
+
+```bash
+cd k8s/addons/nginx-ingress
+make install
+```
+
+2. Deploy ArgoCD Ingress:
+
+```bash
+cd k8s/addons/argocd-ingress
+make install
+```
+
+### Access URLs
+
+After deployment, services are accessible at:
+
+- **ArgoCD UI**: `https://argocd.hashfoundry.local`
+- **React App (dev)**: `https://app-dev.hashfoundry.local`
+- **React App (staging)**: `https://app-staging.hashfoundry.local`
+- **React App (prod)**: `https://app.hashfoundry.local`
+
+### DNS Configuration
+
+Add to your `/etc/hosts` file (or configure DNS):
+
+```
+<NGINX_INGRESS_IP> argocd.hashfoundry.local
+<NGINX_INGRESS_IP> app-dev.hashfoundry.local
+<NGINX_INGRESS_IP> app-staging.hashfoundry.local
+<NGINX_INGRESS_IP> app.hashfoundry.local
+```
+
+Get the NGINX Ingress IP:
+
+```bash
+kubectl get svc -n ingress-nginx nginx-ingress-ingress-nginx-controller
+```
 
 ## Environments
 
