@@ -102,7 +102,7 @@ defaults:
     server: https://kubernetes.default.svc
     namespace: default
   source:
-    repoURL: git@github.com:hashfoundry/hashfoundry-infra.git
+    repoURL: https://github.com/hashfoundry/infra.git
     targetRevision: HEAD
 ```
 
