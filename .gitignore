@@ -101,6 +101,9 @@ kubeconfig
 *.kubeconfig
 terraform/modules/kubernetes/kubeconfig.yaml
 
+# CLI Tools
+doctl
+
 # Helm
 **/charts/*.tgz
 **/Chart.lock
