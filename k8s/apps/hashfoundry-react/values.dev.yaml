@@ -6,7 +6,7 @@ nginx:
   image:
     registry: docker.io
     repository: alexhashfoundry/hashfoundry-react
-    tag: f464758e133f1aee2c5b0c379c161709406ab029
+    tag: 2b65672d7720ee063b93e3f55e54b418b2ffca71
     pullPolicy: IfNotPresent
     
   # Security context for the container to fix permission issues
