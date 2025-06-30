@@ -25,7 +25,7 @@ This repository uses Argo CD for continuous deployment of applications to Kubern
 ### Deployment Flow
 
 1. Changes are pushed to the repository
-2. GitHub Actions workflow deploys Argo CD and Argo CD Apps to the Kubernetes cluster
+2. Argo CD automatically detects changes and synchronizes applications
 3. Argo CD Apps defines the applications to be deployed
 4. Argo CD continuously monitors the repository for changes and automatically deploys them to the cluster
 
@@ -85,7 +85,6 @@ apps:
 
 This repository includes the following GitHub Actions workflows:
 
-- `deploy_argocd.yml`: Deploys Argo CD and Argo CD Apps to the cluster
 - `deploy_hashfoundry-react.yml`: Deploys the HashFoundry React application to the cluster
 
 ### Running a Workflow Manually
