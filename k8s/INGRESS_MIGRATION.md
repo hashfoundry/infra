@@ -157,8 +157,28 @@ kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
 # Check service endpoints
 kubectl get endpoints -n <namespace>
 
-# Test connectivity
-curl -H "Host: <hostname>" http://<ingress-ip>/
+# Test connectivity (use HTTPS for SSL redirect)
+curl -k -H "Host: <hostname>" https://<ingress-ip>/
+
+# Test specific services
+curl -k -H "Host: argocd.hashfoundry.local" https://134.199.188.21/
+curl -k -H "Host: app-dev.hashfoundry.local" https://134.199.188.21/
+```
+
+### Testing Results ✅
+
+```bash
+# ArgoCD UI - Working
+$ curl -k -H "Host: argocd.hashfoundry.local" https://134.199.188.21/
+<!doctype html><html lang="en"><head><title>Argo CD</title>...
+
+# React App Dev - Working  
+$ curl -k -H "Host: app-dev.hashfoundry.local" https://134.199.188.21/
+<!doctype html><html lang="en"><head><title>HashFoundry | Pioneering Web3 Technology</title>...
+
+# Wrong hostname - 404 (expected)
+$ curl nginx.local
+default backend - 404
 ```
 
 ## Rollback Plan
