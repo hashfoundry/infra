@@ -13,6 +13,12 @@ apps:
     autosync: true
 
 addons:
+  - name: nginx-ingress
+    namespace: ingress-nginx
+    autosync: true
+  - name: argocd-ingress
+    namespace: argocd
+    autosync: true
   - name: argo-cd-apps
     namespace: argocd
     autosync: true

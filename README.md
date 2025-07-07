@@ -150,6 +150,100 @@ Get the NGINX Ingress IP:
 kubectl get svc -n ingress-nginx nginx-ingress-ingress-nginx-controller
 ```
 
+## Complete Infrastructure Deployment
+
+This repository is designed as a complete Infrastructure as Code (IaC) solution that can be deployed with just one or two commands.
+
+### Prerequisites
+
+1. **DigitalOcean API Token**: Set your DO token in `terraform/config/.env`
+2. **Tools Required**:
+   - `terraform` (>= 1.0.0)
+   - `kubectl`
+   - `helm` (>= 3.0)
+   - `doctl` (DigitalOcean CLI)
+
+### Full Infrastructure Deployment (One Command)
+
+To deploy the complete infrastructure from scratch:
+
+```bash
+# 1. Deploy infrastructure with Terraform
+cd terraform
+source config/.env
+terraform init
+terraform apply -var="do_token=$DO_TOKEN" -var="cluster_name=$CLUSTER_NAME" -var="cluster_region=$CLUSTER_REGION" -var="cluster_version=$CLUSTER_VERSION" -var="node_pool_name=$NODE_POOL_NAME" -var="node_size=$NODE_SIZE" -var="node_count=$NODE_COUNT" -var="create_global_lb=$CREATE_GLOBAL_LB" -var="create_standard_lb=$CREATE_STANDARD_LB" -var="lb_name=$LB_NAME" -var="create_k8s_service=$CREATE_K8S_SERVICE" -auto-approve
+
+# 2. Configure kubectl context
+doctl kubernetes cluster kubeconfig save $CLUSTER_NAME
+
+# 3. Deploy ArgoCD and all applications
+cd ../k8s/addons/argo-cd
+helm dependency update
+helm upgrade --install --create-namespace -n argocd argocd . -f values.yaml -f values.dev.yaml
+
+# Wait for ArgoCD to be ready
+kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
+
+# 4. Deploy ArgoCD Apps (this will deploy all other applications automatically)
+cd ../argo-cd-apps
+helm upgrade --install -n argocd argo-cd-apps . -f values.yaml -f values.dev.yaml
+```
+
+### Quick Deployment Script
+
+For convenience, you can use the provided script:
+
+```bash
+./terraform/terraform.sh
+```
+
+### Infrastructure Components
+
+The complete deployment includes:
+
+1. **DigitalOcean Kubernetes Cluster** (via Terraform)
+   - 1 node with s-1vcpu-2gb
+   - Kubernetes v1.33.1
+   - Located in fra1 region
+
+2. **Load Balancer** (via Terraform)
+   - Standard DigitalOcean Load Balancer
+   - Kubernetes service integration
+
+3. **Core Applications** (via ArgoCD)
+   - NGINX Ingress Controller
+   - ArgoCD Ingress
+   - HashFoundry React Application
+
+### Verification
+
+After deployment, verify everything is working:
+
+```bash
+# Check cluster status
+kubectl get nodes
+
+# Check all applications
+kubectl get applications -n argocd
+
+# Check ingress
+kubectl get ingress -A
+
+# Get external IP
+kubectl get svc -n ingress-nginx nginx-ingress-ingress-nginx-controller
+```
+
+### Cleanup
+
+To destroy the entire infrastructure:
+
+```bash
+cd terraform
+source config/.env
+terraform destroy -var="do_token=$DO_TOKEN" -auto-approve
+```
+
 ## Environments
 
 This repository supports the following environments:
