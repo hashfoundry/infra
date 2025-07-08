@@ -44,6 +44,3 @@ addons:
         prune: true
         selfHeal: true
     autosync: true
-  - name: argo-cd-apps
-    namespace: argocd
-    autosync: true
