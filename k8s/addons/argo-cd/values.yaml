@@ -41,8 +41,11 @@ argo-cd:
   notifications:
     enabled: true
 
-  # Configure parameters
+  # Configure parameters and admin password
   configs:
+    secret:
+      # Admin password (bcrypt hash of "newpassword123")
+      argocdServerAdminPassword: "$2a$10$mivhwttXM0VwgSLKqBGBx.SZTJZt8VROv6.SjGBwdJBwQOYgJqPZG"
     params:
       server.insecure: true
       controller.diff.server.side: true
