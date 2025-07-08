@@ -4,7 +4,6 @@ This directory contains Terraform configuration to create a minimal Kubernetes c
 
 ## Directory Structure
 
-- `config/` - Configuration files (.env, .env.example)
 - `modules/` - Reusable Terraform modules
   - `kubernetes/` - Kubernetes cluster module with its own variables, outputs, and main configuration
   - `loadbalancer/` - Load balancer module for creating global and standard load balancers
@@ -18,17 +17,15 @@ This directory contains Terraform configuration to create a minimal Kubernetes c
 
 ## Configuration
 
-1. Copy `config/.env.example` to `config/.env` if you haven't already:
-   ```
-   cp config/.env.example config/.env
-   ```
-
-2. Edit the `config/.env` file and set your Digital Ocean API token:
+1. Create a `.env` file in the project root (one level up from terraform/) with your Digital Ocean API token:
    ```
    DO_TOKEN=your_digitalocean_api_token
+   CLUSTER_NAME=hashfoundry
+   CLUSTER_REGION=fra1
+   # ... other variables
    ```
 
-3. You can also customize other variables in the `config/.env` file if needed, including load balancer configurations.
+2. You can customize other variables in the `.env` file if needed, including load balancer configurations.
 
 ## Usage
 
@@ -156,7 +153,7 @@ This Terraform configuration includes two types of load balancers:
 
 The global load balancer uses DigitalOcean's CDN service to distribute content globally with edge caching. This is ideal for static content like images, CSS, and JavaScript files.
 
-To configure the global load balancer, set the following variables in your `config/.env` file:
+To configure the global load balancer, set the following variables in your `.env` file:
 
 ```
 CREATE_GLOBAL_LB=true
@@ -167,7 +164,7 @@ ORIGIN_ENDPOINT=your_origin_endpoint  # Optional, defaults to cluster endpoint
 
 The standard load balancer is a regular DigitalOcean load balancer without caching. This is suitable for dynamic content and API endpoints.
 
-To configure the standard load balancer, set the following variables in your `config/.env` file:
+To configure the standard load balancer, set the following variables in your `.env` file:
 
 ```
 CREATE_STANDARD_LB=true
@@ -178,7 +175,7 @@ LB_NAME=your_lb_name
 
 The configuration also includes a Kubernetes service that can be used to expose your applications through the load balancers.
 
-To configure the Kubernetes service, set the following variables in your `config/.env` file:
+To configure the Kubernetes service, set the following variables in your `.env` file:
 
 ```
 CREATE_K8S_SERVICE=true

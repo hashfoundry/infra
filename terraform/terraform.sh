@@ -1,10 +1,13 @@
 #!/bin/bash
 
-# Load environment variables from config/.env file
-if [ -f config/.env ]; then
+# Load environment variables from main .env file (one level up)
+if [ -f ../.env ]; then
+  export $(grep -v '^#' ../.env | xargs)
+elif [ -f config/.env ]; then
+  # Fallback to local config/.env for backward compatibility
   export $(grep -v '^#' config/.env | xargs)
 else
-  echo "Error: config/.env file not found"
+  echo "Error: .env file not found (checked ../.env and config/.env)"
   exit 1
 fi
 

@@ -152,50 +152,81 @@ kubectl get svc -n ingress-nginx nginx-ingress-ingress-nginx-controller
 
 ## Complete Infrastructure Deployment
 
-This repository is designed as a complete Infrastructure as Code (IaC) solution that can be deployed with just one or two commands.
+This repository is designed as a complete Infrastructure as Code (IaC) solution that can be deployed with just two commands.
 
 ### Prerequisites
 
-1. **DigitalOcean API Token**: Set your DO token in `terraform/config/.env`
-2. **Tools Required**:
+1. **Tools Required**:
    - `terraform` (>= 1.0.0)
    - `kubectl`
    - `helm` (>= 3.0)
    - `doctl` (DigitalOcean CLI)
+   - `envsubst` (usually included with gettext)
 
-### Full Infrastructure Deployment (One Command)
+### Quick Start (Two Commands)
 
 To deploy the complete infrastructure from scratch:
 
 ```bash
-# 1. Deploy infrastructure with Terraform
-cd terraform
-source config/.env
-terraform init
-terraform apply -var="do_token=$DO_TOKEN" -var="cluster_name=$CLUSTER_NAME" -var="cluster_region=$CLUSTER_REGION" -var="cluster_version=$CLUSTER_VERSION" -var="node_pool_name=$NODE_POOL_NAME" -var="node_size=$NODE_SIZE" -var="node_count=$NODE_COUNT" -var="create_global_lb=$CREATE_GLOBAL_LB" -var="create_standard_lb=$CREATE_STANDARD_LB" -var="lb_name=$LB_NAME" -var="create_k8s_service=$CREATE_K8S_SERVICE" -auto-approve
+# 1. Initialize configuration files
+./init.sh
 
-# 2. Configure kubectl context
-doctl kubernetes cluster kubeconfig save $CLUSTER_NAME
-
-# 3. Deploy ArgoCD and all applications
-cd ../k8s/addons/argo-cd
-helm dependency update
-helm upgrade --install --create-namespace -n argocd argocd . -f values.yaml -f values.dev.yaml
-
-# Wait for ArgoCD to be ready
-kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
-
-# 4. Deploy ArgoCD Apps (this will deploy all other applications automatically)
-cd ../argo-cd-apps
-helm upgrade --install -n argocd argo-cd-apps . -f values.yaml -f values.dev.yaml
+# 2. Edit .env file with your DigitalOcean API token, then deploy
+./deploy.sh
 ```
 
-### Quick Deployment Script
+### Detailed Setup
 
-For convenience, you can use the provided script:
+1. **Initialize the project**:
+   ```bash
+   ./init.sh
+   ```
+   This creates `.env` file from the `.env.example` template.
+
+2. **Configure your environment**:
+   Edit the `.env` file and set your DigitalOcean API token:
+   ```bash
+   # Edit the .env file
+   nano .env
+   
+   # Set your DO_TOKEN
+   DO_TOKEN=your_actual_digitalocean_api_token
+   ```
+
+3. **Deploy everything**:
+   ```bash
+   ./deploy.sh
+   ```
+
+### ArgoCD Password Configuration
+
+The system now uses a predefined password for ArgoCD admin user:
+- **Username**: `admin`
+- **Password**: `hashfoundry123` (configurable in `.env` file)
+
+You can change the password by editing the `ARGOCD_ADMIN_PASSWORD` variable in `.env` file before deployment.
+
+### Manual Deployment (Advanced)
+
+If you prefer manual control, you can still deploy step by step:
 
 ```bash
-./terraform/terraform.sh
+# 1. Deploy infrastructure with Terraform
+cd terraform
+./terraform.sh init
+./terraform.sh apply -auto-approve
+
+# 2. Configure kubectl context
+doctl kubernetes cluster kubeconfig save hashfoundry
+
+# 3. Deploy ArgoCD with custom password
+cd ../k8s/addons/argo-cd
+export ARGOCD_ADMIN_PASSWORD=hashfoundry123
+envsubst < values.yaml | helm upgrade --install --create-namespace -n argocd argocd . -f - -f values.dev.yaml
+
+# 4. Deploy ArgoCD Apps
+cd ../argo-cd-apps
+helm upgrade --install -n argocd argo-cd-apps . -f values.yaml -f values.dev.yaml
 ```
 
 ### Infrastructure Components
