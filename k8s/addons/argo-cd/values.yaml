@@ -43,3 +43,6 @@ argo-cd:
   configs:
     secret:
       argocdServerAdminPassword: "${ARGOCD_ADMIN_PASSWORD}"
+    params:
+      server.insecure: true
+      controller.diff.server.side: true

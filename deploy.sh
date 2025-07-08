@@ -42,7 +42,7 @@ cd k8s/addons/argo-cd
 helm dependency update
 
 # Deploy ArgoCD with environment variables
-envsubst < values.yaml | helm upgrade --install --create-namespace -n argocd argocd . -f - -f values.dev.yaml
+envsubst < values.yaml | helm upgrade --install --create-namespace -n argocd argocd . -f -
 
 echo "⏳ Waiting for ArgoCD to be ready..."
 export KUBECONFIG=$(pwd)/../../../terraform/modules/kubernetes/kubeconfig.yaml
@@ -50,7 +50,7 @@ kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -
 
 echo "📱 Step 4: Deploying ArgoCD Apps..."
 cd ../argo-cd-apps
-helm upgrade --install -n argocd argo-cd-apps . -f values.yaml -f values.dev.yaml
+helm upgrade --install -n argocd argo-cd-apps . -f values.yaml
 
 echo "⏳ Waiting for all applications to sync..."
 sleep 30

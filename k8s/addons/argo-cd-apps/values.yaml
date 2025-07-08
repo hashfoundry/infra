@@ -5,8 +5,16 @@ defaults:
   source:
     repoURL: https://github.com/hashfoundry/infra.git
     targetRevision: HEAD
+    helm:
+      valueFiles:
+        - values.yaml
+  env: dev
 
-apps: []
+apps:
+  - name: hashfoundry-react
+    namespace: hashfoundry-react-dev
+    autosync: true
+
 addons:
   - name: nginx-ingress
     namespace: ingress-nginx
@@ -22,6 +30,7 @@ addons:
         selfHeal: true
       syncOptions:
         - CreateNamespace=true
+    autosync: true
   - name: argocd-ingress
     namespace: argocd
     project: default
@@ -34,3 +43,7 @@ addons:
       automated:
         prune: true
         selfHeal: true
+    autosync: true
+  - name: argo-cd-apps
+    namespace: argocd
+    autosync: true
