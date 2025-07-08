@@ -4,7 +4,80 @@
 
 set -e
 
+# Function to check if a command exists
+check_command() {
+    if ! command -v "$1" &> /dev/null; then
+        echo "❌ $1 is not installed"
+        return 1
+    else
+        echo "✅ $1 is installed"
+        return 0
+    fi
+}
+
+# Function to display installation instructions
+show_installation_instructions() {
+    echo ""
+    echo "📋 Installation Instructions:"
+    echo ""
+    echo "🍺 For macOS (using Homebrew):"
+    echo "  brew install terraform kubectl helm doctl"
+    echo "  # envsubst is part of gettext package"
+    echo "  brew install gettext"
+    echo ""
+    echo "🐧 For Ubuntu/Debian:"
+    echo "  # Terraform"
+    echo "  wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg"
+    echo "  echo \"deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com focal main\" | sudo tee /etc/apt/sources.list.d/hashicorp.list"
+    echo "  sudo apt update && sudo apt install terraform"
+    echo ""
+    echo "  # kubectl"
+    echo "  curl -LO \"https://dl.k8s.io/release/\$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl\""
+    echo "  sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl"
+    echo ""
+    echo "  # Helm"
+    echo "  curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null"
+    echo "  echo \"deb [arch=\$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main\" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list"
+    echo "  sudo apt-get update && sudo apt-get install helm"
+    echo ""
+    echo "  # doctl"
+    echo "  cd ~ && wget https://github.com/digitalocean/doctl/releases/download/v1.104.0/doctl-1.104.0-linux-amd64.tar.gz"
+    echo "  tar xf ~/doctl-1.104.0-linux-amd64.tar.gz && sudo mv ~/doctl /usr/local/bin"
+    echo ""
+    echo "  # envsubst (gettext-base)"
+    echo "  sudo apt-get install gettext-base"
+    echo ""
+    echo "🪟 For Windows:"
+    echo "  # Use Chocolatey or download binaries manually"
+    echo "  choco install terraform kubernetes-cli kubernetes-helm"
+    echo "  # For doctl and envsubst, download from official releases"
+    echo ""
+}
+
 echo "🚀 Deploying HashFoundry Infrastructure..."
+
+# Check required CLI tools
+echo "🔍 Checking required CLI tools..."
+missing_tools=0
+
+required_tools=("terraform" "kubectl" "helm" "doctl" "envsubst")
+
+for tool in "${required_tools[@]}"; do
+    if ! check_command "$tool"; then
+        missing_tools=$((missing_tools + 1))
+    fi
+done
+
+if [ $missing_tools -gt 0 ]; then
+    echo ""
+    echo "❌ $missing_tools required tool(s) are missing!"
+    show_installation_instructions
+    echo "Please install the missing tools and run this script again."
+    exit 1
+fi
+
+echo "✅ All required CLI tools are installed!"
+echo ""
 
 # Load environment variables
 if [ -f .env ]; then

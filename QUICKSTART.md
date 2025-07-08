@@ -5,7 +5,9 @@ Quick deployment of Kubernetes cluster in Digital Ocean with ArgoCD.
 ## Requirements
 
 - DigitalOcean API Token
-- Installed tools: `terraform`, `kubectl`, `helm`, `doctl`, `envsubst`
+- CLI tools: `terraform`, `kubectl`, `helm`, `doctl`, `envsubst`
+
+**Note**: All scripts now automatically check for required CLI tools and provide installation instructions if any are missing.
 
 ## Deployment (2 commands)
 
