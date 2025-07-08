@@ -44,8 +44,8 @@ argo-cd:
   # Configure parameters and admin password
   configs:
     secret:
-      # Admin password (bcrypt hash of "newpassword123")
-      argocdServerAdminPassword: "$2a$10$mivhwttXM0VwgSLKqBGBx.SZTJZt8VROv6.SjGBwdJBwQOYgJqPZG"
+      # Admin password from environment variable (should be bcrypt hash)
+      argocdServerAdminPassword: "${ARGOCD_ADMIN_PASSWORD_HASH}"
     params:
       server.insecure: true
       controller.diff.server.side: true

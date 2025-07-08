@@ -26,6 +26,11 @@ if [ -z "$ARGOCD_ADMIN_PASSWORD" ]; then
     exit 1
 fi
 
+if [ -z "$ARGOCD_ADMIN_PASSWORD_HASH" ]; then
+    echo "❌ ARGOCD_ADMIN_PASSWORD_HASH not set in .env file"
+    exit 1
+fi
+
 echo "🏗️  Step 1: Deploying infrastructure with Terraform..."
 cd terraform
 
@@ -41,8 +46,8 @@ echo "🎯 Step 3: Deploying ArgoCD..."
 cd k8s/addons/argo-cd
 helm dependency update
 
-# Deploy ArgoCD
-helm upgrade --install --create-namespace -n argocd argocd . -f values.yaml
+# Deploy ArgoCD with environment variables
+envsubst < values.yaml | helm upgrade --install --create-namespace -n argocd argocd . -f -
 
 echo "⏳ Waiting for ArgoCD to be ready..."
 export KUBECONFIG=$(pwd)/../../../terraform/modules/kubernetes/kubeconfig.yaml
