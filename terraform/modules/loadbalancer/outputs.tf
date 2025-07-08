@@ -3,22 +3,22 @@
 # Global Load Balancer (CDN) outputs
 output "global_lb_id" {
   description = "The ID of the global load balancer (CDN)"
-  value       = var.create_global_lb ? digitalocean_cdn.global_lb[0].id : null
+  value       = var.create_global_lb && length(digitalocean_cdn.global_lb) > 0 ? digitalocean_cdn.global_lb[0].id : null
 }
 
 output "global_lb_endpoint" {
   description = "The endpoint of the global load balancer (CDN)"
-  value       = var.create_global_lb ? digitalocean_cdn.global_lb[0].endpoint : null
+  value       = var.create_global_lb && length(digitalocean_cdn.global_lb) > 0 ? digitalocean_cdn.global_lb[0].endpoint : null
 }
 
 output "global_lb_created_at" {
   description = "The creation timestamp of the global load balancer (CDN)"
-  value       = var.create_global_lb ? digitalocean_cdn.global_lb[0].created_at : null
+  value       = var.create_global_lb && length(digitalocean_cdn.global_lb) > 0 ? digitalocean_cdn.global_lb[0].created_at : null
 }
 
 output "global_lb_ttl" {
   description = "The TTL of the global load balancer (CDN)"
-  value       = var.create_global_lb ? digitalocean_cdn.global_lb[0].ttl : null
+  value       = var.create_global_lb && length(digitalocean_cdn.global_lb) > 0 ? digitalocean_cdn.global_lb[0].ttl : null
 }
 
 # Standard Load Balancer outputs
