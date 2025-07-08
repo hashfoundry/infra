@@ -106,7 +106,6 @@ doctl
 
 # Helm
 **/charts/*.tgz
-**/Chart.lock
 
 # Certificates
 *.crt
