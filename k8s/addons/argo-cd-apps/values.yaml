@@ -44,3 +44,16 @@ addons:
         prune: true
         selfHeal: true
     autosync: true
+  - name: argo-cd-apps
+    namespace: argocd
+    project: default
+    source:
+      path: k8s/addons/argo-cd-apps
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+    autosync: true
