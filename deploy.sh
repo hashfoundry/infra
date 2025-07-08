@@ -41,8 +41,8 @@ echo "🎯 Step 3: Deploying ArgoCD..."
 cd k8s/addons/argo-cd
 helm dependency update
 
-# Deploy ArgoCD with environment variables
-envsubst < values.yaml | helm upgrade --install --create-namespace -n argocd argocd . -f -
+# Deploy ArgoCD
+helm upgrade --install --create-namespace -n argocd argocd . -f values.yaml
 
 echo "⏳ Waiting for ArgoCD to be ready..."
 export KUBECONFIG=$(pwd)/../../../terraform/modules/kubernetes/kubeconfig.yaml
