@@ -30,7 +30,7 @@ kubectl port-forward svc/argocd-server -n argocd 8080:80
 
 # Open in browser: http://localhost:8080
 # Login: admin
-# Password: hashfoundry123 (or value from .env file)
+# Password: admin (or value from .env file)
 ```
 
 ## Status Check
