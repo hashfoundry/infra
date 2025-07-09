@@ -120,7 +120,12 @@ cd terraform
 
 echo "⚙️  Step 2: Configuring kubectl context..."
 cd ..
-doctl kubernetes cluster kubeconfig save $CLUSTER_NAME
+# Clean up any existing contexts for this cluster to avoid conflicts
+kubectl config delete-context do-$CLUSTER_REGION-$CLUSTER_NAME 2>/dev/null || true
+kubectl config delete-cluster do-$CLUSTER_REGION-$CLUSTER_NAME 2>/dev/null || true
+# Force overwrite existing kubeconfig to avoid conflicts
+doctl kubernetes cluster kubeconfig save $CLUSTER_NAME --set-current-context
+kubectl config use-context do-$CLUSTER_REGION-$CLUSTER_NAME
 
 echo "🎯 Step 3: Deploying ArgoCD..."
 cd k8s/addons/argo-cd
