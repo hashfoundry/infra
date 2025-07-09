@@ -26,7 +26,7 @@ variable "cluster_region" {
 variable "cluster_version" {
   description = "Version of Kubernetes to use for the cluster"
   type        = string
-  default     = "latest"
+  default     = "1.31.1-do.4"
 }
 
 variable "node_pool_name" {
