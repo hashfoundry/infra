@@ -1,3 +1,10 @@
+# Data source to get the existing cluster details
+data "digitalocean_kubernetes_cluster" "cluster" {
+  name       = var.cluster_name
+  depends_on = [digitalocean_kubernetes_cluster.kubernetes_cluster]
+}
+
+# Kubernetes cluster
 resource "digitalocean_kubernetes_cluster" "kubernetes_cluster" {
   name    = var.cluster_name
   region  = var.cluster_region
@@ -9,6 +16,8 @@ resource "digitalocean_kubernetes_cluster" "kubernetes_cluster" {
     node_count = var.node_count
     auto_scale = false
   }
+
+  depends_on = [digitalocean_project.hashfoundry]
 }
 
 # Save kubeconfig to a file

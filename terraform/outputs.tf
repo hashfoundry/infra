@@ -1,3 +1,9 @@
+# Outputs
+output "project_id" {
+  description = "ID of the DigitalOcean project"
+  value       = local.project_id
+}
+
 output "cluster_id" {
   description = "ID of the Kubernetes cluster"
   value       = digitalocean_kubernetes_cluster.kubernetes_cluster.id
@@ -26,9 +32,4 @@ output "node_pool" {
     size       = digitalocean_kubernetes_cluster.kubernetes_cluster.node_pool[0].size
     node_count = digitalocean_kubernetes_cluster.kubernetes_cluster.node_pool[0].node_count
   }
-}
-
-output "cluster_urn" {
-  description = "URN of the Kubernetes cluster for project assignment"
-  value       = digitalocean_kubernetes_cluster.kubernetes_cluster.urn
 }
