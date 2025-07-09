@@ -58,7 +58,7 @@ cd ..
 
 # Step 2: Clean up any remaining load balancers manually (if any)
 echo "🔍 Step 2: Checking for remaining load balancers..."
-remaining_lbs=$(doctl compute load-balancer list --format Name,ID --no-header | grep -i "$LB_NAME" || true)
+remaining_lbs=$(doctl compute load-balancer list --format Name,ID --no-header | grep -E "(hashfoundry|$LB_NAME)" || true)
 
 if [ -n "$remaining_lbs" ]; then
     echo "🗑️  Found remaining load balancers, deleting..."

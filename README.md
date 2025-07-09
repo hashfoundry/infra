@@ -103,9 +103,17 @@ This infrastructure uses NGINX Ingress Controller for external access to applica
 
 ### Components
 
-- **NGINX Ingress Controller**: Provides external access to cluster services
+- **NGINX Ingress Controller**: Provides external access to cluster services and automatically creates a DigitalOcean Load Balancer
 - **ArgoCD Ingress**: Enables web access to ArgoCD UI
 - **Application Ingresses**: Route traffic to applications (e.g., HashFoundry React app)
+
+### Load Balancer Strategy
+
+The infrastructure uses a single load balancer approach:
+- **NGINX Ingress Load Balancer**: Automatically created by Kubernetes when NGINX Ingress Controller is deployed
+- **Terraform Load Balancer**: Disabled by default to avoid duplication (can be enabled via .env configuration)
+
+This approach is more efficient and follows Kubernetes best practices.
 
 ### Setup
 
