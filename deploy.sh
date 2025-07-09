@@ -22,8 +22,8 @@ show_installation_instructions() {
     echo ""
     echo "🍺 For macOS (using Homebrew):"
     echo "  brew install terraform kubectl helm doctl"
-    echo "  # envsubst is part of gettext package"
-    echo "  brew install gettext"
+    echo "  # envsubst is part of gettext package, htpasswd is part of httpd"
+    echo "  brew install gettext httpd"
     echo ""
     echo "🐧 For Ubuntu/Debian:"
     echo "  # Terraform"
@@ -44,8 +44,8 @@ show_installation_instructions() {
     echo "  cd ~ && wget https://github.com/digitalocean/doctl/releases/download/v1.104.0/doctl-1.104.0-linux-amd64.tar.gz"
     echo "  tar xf ~/doctl-1.104.0-linux-amd64.tar.gz && sudo mv ~/doctl /usr/local/bin"
     echo ""
-    echo "  # envsubst (gettext-base)"
-    echo "  sudo apt-get install gettext-base"
+    echo "  # envsubst (gettext-base) and htpasswd (apache2-utils)"
+    echo "  sudo apt-get install gettext-base apache2-utils"
     echo ""
     echo "🪟 For Windows:"
     echo "  # Use Chocolatey or download binaries manually"
@@ -60,7 +60,7 @@ echo "🚀 Deploying HashFoundry Infrastructure..."
 echo "🔍 Checking required CLI tools..."
 missing_tools=0
 
-required_tools=("terraform" "kubectl" "helm" "doctl" "envsubst")
+required_tools=("terraform" "kubectl" "helm" "doctl" "envsubst" "htpasswd")
 
 for tool in "${required_tools[@]}"; do
     if ! check_command "$tool"; then
@@ -83,7 +83,13 @@ echo ""
 if [ -f .env ]; then
     echo "📖 Loading environment variables from .env..."
     source .env
-    export ARGOCD_ADMIN_PASSWORD_HASH
+    
+    # Generate ArgoCD admin password hash if not already set
+    if [ -n "$ARGOCD_ADMIN_PASSWORD" ]; then
+        echo "🔐 Generating ArgoCD admin password hash..."
+        export ARGOCD_ADMIN_PASSWORD_HASH=$(htpasswd -bnBC 10 "" "$ARGOCD_ADMIN_PASSWORD" | tr -d ':\n')
+        echo "✅ ArgoCD admin password hash generated"
+    fi
 else
     echo "❌ .env file not found! Please run ./init.sh first."
     exit 1

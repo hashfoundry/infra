@@ -22,8 +22,8 @@ show_installation_instructions() {
     echo ""
     echo "🍺 For macOS (using Homebrew):"
     echo "  brew install terraform kubectl helm doctl"
-    echo "  # envsubst is part of gettext package"
-    echo "  brew install gettext"
+    echo "  # envsubst is part of gettext package, htpasswd is part of httpd"
+    echo "  brew install gettext httpd"
     echo ""
     echo "🐧 For Ubuntu/Debian:"
     echo "  # Terraform"
@@ -44,8 +44,8 @@ show_installation_instructions() {
     echo "  cd ~ && wget https://github.com/digitalocean/doctl/releases/download/v1.104.0/doctl-1.104.0-linux-amd64.tar.gz"
     echo "  tar xf ~/doctl-1.104.0-linux-amd64.tar.gz && sudo mv ~/doctl /usr/local/bin"
     echo ""
-    echo "  # envsubst (gettext-base)"
-    echo "  sudo apt-get install gettext-base"
+    echo "  # envsubst (gettext-base) and htpasswd (apache2-utils)"
+    echo "  sudo apt-get install gettext-base apache2-utils"
     echo ""
     echo "🪟 For Windows:"
     echo "  # Use Chocolatey or download binaries manually"
@@ -61,7 +61,7 @@ echo "🔍 Checking required CLI tools..."
 missing_tools=0
 
 # Note: envsubst check is basic as it might be part of different packages
-required_tools=("terraform" "kubectl" "helm" "doctl" "envsubst")
+required_tools=("terraform" "kubectl" "helm" "doctl" "envsubst" "htpasswd")
 
 for tool in "${required_tools[@]}"; do
     if ! check_command "$tool"; then
