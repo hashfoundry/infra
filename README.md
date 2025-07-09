@@ -38,15 +38,14 @@ To set up Argo CD, follow these steps:
 ```bash
 cd k8s/addons/argo-cd
 helm dep up
-kubectl config use-context hashfoundry-dev
-helm upgrade --install --create-namespace -n argocd argocd . -f values.yaml -f values.dev.yaml
+helm upgrade --install --create-namespace -n argocd argocd . -f values.yaml
 ```
 
 2. Deploy Argo CD Apps to the cluster:
 
 ```bash
 cd k8s/addons/argo-cd-apps
-helm upgrade --install --create-namespace -n argocd argo-cd-apps . -f values.yaml -f values.dev.yaml
+helm upgrade --install --create-namespace -n argocd argo-cd-apps . -f values.yaml
 ```
 
 3. Access the Argo CD UI:
@@ -95,7 +94,7 @@ To run a workflow manually:
 2. Navigate to Actions
 3. Select the workflow you want to run
 4. Click "Run workflow"
-5. Select the environment (dev, staging, or prod)
+5. Enter the image tag to deploy
 6. Click "Run workflow"
 
 ## Ingress Architecture
@@ -129,9 +128,7 @@ make install
 After deployment, services are accessible at:
 
 - **ArgoCD UI**: `https://argocd.hashfoundry.local`
-- **React App (dev)**: `https://app-dev.hashfoundry.local`
-- **React App (staging)**: `https://app-staging.hashfoundry.local`
-- **React App (prod)**: `https://app.hashfoundry.local`
+- **React App**: `https://app.hashfoundry.local`
 
 ### DNS Configuration
 
@@ -139,8 +136,6 @@ Add to your `/etc/hosts` file (or configure DNS):
 
 ```
 <NGINX_INGRESS_IP> argocd.hashfoundry.local
-<NGINX_INGRESS_IP> app-dev.hashfoundry.local
-<NGINX_INGRESS_IP> app-staging.hashfoundry.local
 <NGINX_INGRESS_IP> app.hashfoundry.local
 ```
 
@@ -202,7 +197,7 @@ To deploy the complete infrastructure from scratch:
 
 The system now uses a predefined password for ArgoCD admin user:
 - **Username**: `admin`
-- **Password**: `hashfoundry123` (configurable in `.env` file)
+- **Password**: `admin` (configurable in `.env` file)
 
 You can change the password by editing the `ARGOCD_ADMIN_PASSWORD` variable in `.env` file before deployment.
 
@@ -221,12 +216,13 @@ doctl kubernetes cluster kubeconfig save hashfoundry
 
 # 3. Deploy ArgoCD with custom password
 cd ../k8s/addons/argo-cd
-export ARGOCD_ADMIN_PASSWORD=hashfoundry123
-envsubst < values.yaml | helm upgrade --install --create-namespace -n argocd argocd . -f - -f values.dev.yaml
+export ARGOCD_ADMIN_PASSWORD=admin
+export ARGOCD_ADMIN_PASSWORD_HASH='$2y$10$scg/i8rGtlstEcSyZTr0Nelkr1S29UJA5gyMZ5YfBaDiqtNNYm.M.'
+envsubst < values.yaml | helm upgrade --install --create-namespace -n argocd argocd . -f -
 
 # 4. Deploy ArgoCD Apps
 cd ../argo-cd-apps
-helm upgrade --install -n argocd argo-cd-apps . -f values.yaml -f values.dev.yaml
+helm upgrade --install -n argocd argo-cd-apps . -f values.yaml
 ```
 
 ### Infrastructure Components
@@ -274,13 +270,3 @@ cd terraform
 source config/.env
 terraform destroy -var="do_token=$DO_TOKEN" -auto-approve
 ```
-
-## Environments
-
-This repository supports the following environments:
-
-- `dev`: Development environment
-- `staging`: Staging environment
-- `prod`: Production environment
-
-Each environment has its own values file for each Helm chart.

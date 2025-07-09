@@ -8,21 +8,11 @@ on:
         description: 'The version tag of the hashfoundry-react image that should be deployed.'
         required: true
         type: string
-      env:
-        description: 'The target environment. [dev|staging|prod]'
-        required: false
-        default: dev
-        type: string
   workflow_dispatch:
     inputs:
       tag:
         description: 'The version tag of the hashfoundry-react image that should be deployed.'
         required: true
-        type: string
-      env:
-        description: 'The target environment. [dev|staging|prod]'
-        required: false
-        default: dev
         type: string
 
 jobs:
@@ -43,7 +33,7 @@ jobs:
 
       - name: Update hashfoundry-react image tag
         run: |
-          FILE_NAME=k8s/apps/hashfoundry-react/values.${{ inputs.env }}.yaml
+          FILE_NAME=k8s/apps/hashfoundry-react/values.yaml
           NEW_TAG=${{ inputs.tag }}
           export FILE_CONTENT=$(cat ${FILE_NAME})
           export CURRENT_TAG=$(echo "${FILE_CONTENT}" | grep 'tag: ' | sed -n -e '/tag:/ s/.*: *//p' | tr -d '"')
@@ -55,7 +45,7 @@ jobs:
       - uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: main
-          commit_message: "ci(hashfoundry-react): deploy image ${{ inputs.tag }} in ${{ inputs.env }}"
+          commit_message: "ci(hashfoundry-react): deploy image ${{ inputs.tag }}"
 
       - name: Generate Git Tag
         id: push-deployment-tag
@@ -66,7 +56,7 @@ jobs:
           git fetch && git checkout main
           git config user.name "GitHub Actions"
           git config user.email "github-actions@hashfoundry.com"
-          git tag --force hashfoundry-react-${{ inputs.env }}
-          git push --force origin hashfoundry-react-${{ inputs.env }}
+          git tag --force hashfoundry-react-latest
+          git push --force origin hashfoundry-react-latest
           echo "### Branch TAG Completed :triangular_flag_on_post:	" >> $GITHUB_STEP_SUMMARY
-          echo "- hashfoundry-react-${{ inputs.env }}" >> $GITHUB_STEP_SUMMARY
+          echo "- hashfoundry-react-latest" >> $GITHUB_STEP_SUMMARY
