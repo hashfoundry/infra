@@ -33,8 +33,22 @@ This repository contains the infrastructure code for HashFoundry, including Kube
 │       ├── locals.tf       # Local values
 │       ├── project.tf      # DigitalOcean project configuration
 │       └── kubernetes.tf   # Kubernetes cluster configuration
-└── ha/                     # High-availability deployment (future)
-    └── empty               # Placeholder
+└── ha/                     # High-availability deployment
+    ├── .env.example        # Environment variables template
+    ├── QUICKSTART.md       # Quick start guide
+    ├── deploy.sh           # Main deployment script
+    ├── init.sh             # Initialization script
+    ├── cleanup.sh          # Cleanup script
+    └── terraform/          # Terraform code for HA infrastructure
+        ├── README.md       # Terraform documentation
+        ├── terraform.sh    # Terraform wrapper script
+        ├── main.tf         # Main Terraform configuration
+        ├── providers.tf    # Provider configurations
+        ├── variables.tf    # Variable definitions
+        ├── outputs.tf      # Output definitions
+        ├── locals.tf       # Local values
+        ├── project.tf      # DigitalOcean project configuration
+        └── kubernetes.tf   # Kubernetes cluster configuration
 ```
 
 ## Continuous Deployment with Argo CD
