@@ -1,8 +1,7 @@
 resource "digitalocean_kubernetes_cluster" "kubernetes_cluster" {
-  name       = var.cluster_name
-  region     = var.cluster_region
-  version    = var.cluster_version
-  project_id = var.do_project_id != "" ? var.do_project_id : null
+  name    = var.cluster_name
+  region  = var.cluster_region
+  version = var.cluster_version
 
   node_pool {
     name       = var.node_pool_name
@@ -10,6 +9,15 @@ resource "digitalocean_kubernetes_cluster" "kubernetes_cluster" {
     node_count = var.node_count
     auto_scale = false
   }
+}
+
+# Assign cluster to project
+resource "digitalocean_project_resources" "cluster_assignment" {
+  count   = var.do_project_id != "" ? 1 : 0
+  project = var.do_project_id
+  resources = [
+    digitalocean_kubernetes_cluster.kubernetes_cluster.urn
+  ]
 }
 
 # Save kubeconfig to a file
