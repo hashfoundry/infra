@@ -235,16 +235,33 @@ cd ../argo-cd-apps
 helm upgrade --install -n argocd argo-cd-apps . -f values.yaml
 ```
 
+### DigitalOcean Project Management
+
+The infrastructure automatically manages DigitalOcean projects:
+
+- **Project Name**: Configured via `DO_PROJECT_NAME` in `.env` file
+- **Auto-Creation**: If the project doesn't exist, Terraform will create it automatically
+- **Resource Organization**: All infrastructure resources (cluster, load balancer, etc.) are organized within the specified project
+- **Project Settings**: 
+  - Purpose: Web Application
+  - Environment: Production
+  - Description: HashFoundry infrastructure project
+
 ### Infrastructure Components
 
 The complete deployment includes:
 
-1. **DigitalOcean Kubernetes Cluster** (via Terraform)
+1. **DigitalOcean Project** (auto-created if needed)
+   - Organizes all infrastructure resources
+   - Configured for Web Application purpose
+
+2. **DigitalOcean Kubernetes Cluster** (via Terraform)
    - 1 node with s-1vcpu-2gb
    - Kubernetes v1.33.1
    - Located in fra1 region
+   - Automatically assigned to the specified project
 
-2. **Core Applications** (via ArgoCD)
+3. **Core Applications** (via ArgoCD)
    - NGINX Ingress Controller (automatically creates DigitalOcean Load Balancer)
    - ArgoCD Ingress
    - HashFoundry React Application
