@@ -45,7 +45,7 @@ argo-cd:
   configs:
     secret:
       # Admin password from environment variable (should be bcrypt hash)
-      argocdServerAdminPassword: "${ARGOCD_ADMIN_PASSWORD_HASH}"
+      argocdServerAdminPassword: "$ARGOCD_ADMIN_PASSWORD_HASH"
     params:
       server.insecure: true
       controller.diff.server.side: true

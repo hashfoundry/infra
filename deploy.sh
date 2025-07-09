@@ -83,6 +83,7 @@ echo ""
 if [ -f .env ]; then
     echo "📖 Loading environment variables from .env..."
     source .env
+    export ARGOCD_ADMIN_PASSWORD_HASH
 else
     echo "❌ .env file not found! Please run ./init.sh first."
     exit 1
@@ -132,7 +133,7 @@ echo "⏳ Waiting for ArgoCD to be ready..."
 export KUBECONFIG=$(pwd)/../../../terraform/modules/kubernetes/kubeconfig.yaml
 kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
 
-echo "📱 Step 4: Deploying ArgoCD Apps..."
+echo " Step 4: Deploying ArgoCD Apps..."
 cd ../argo-cd-apps
 helm upgrade --install -n argocd argo-cd-apps . -f values.yaml
 
