@@ -7,20 +7,59 @@ argo-cd:
       - key: node-restriction.kubernetes.io/management
         operator: Exists
 
+  # Enable Redis HA for true high availability
   redis-ha:
-    enabled: false
-
-  redis:
     enabled: true
+    replicas: 3
     tolerations:
       - key: node-restriction.kubernetes.io/management
         operator: Exists
+    # Anti-affinity to spread Redis instances across nodes
+    affinity: |
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: redis-ha
+            topologyKey: kubernetes.io/hostname
 
+  # Disable single Redis instance
+  redis:
+    enabled: false
+
+  # HA Application Controller with multiple replicas
   controller:
-    replicas: 1
+    replicas: 2
+    tolerations:
+      - key: node-restriction.kubernetes.io/management
+        operator: Exists
+    # Anti-affinity to spread controllers across nodes
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: argocd-application-controller
+            topologyKey: kubernetes.io/hostname
+    # Enable sharding for better performance
+    env:
+      - name: ARGOCD_CONTROLLER_REPLICAS
+        value: "2"
+    # Resource limits for stability
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
 
   server:
-    replicas: 2
+    replicas: 3
     service:
       type: ClusterIP
     ingress:
@@ -28,18 +67,79 @@ argo-cd:
     # Run in insecure mode since we use Ingress for TLS termination
     extraArgs:
       - --insecure
+    tolerations:
+      - key: node-restriction.kubernetes.io/management
+        operator: Exists
+    # Anti-affinity to spread servers across nodes
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: argocd-server
+            topologyKey: kubernetes.io/hostname
+    # Resource limits for stability
+    resources:
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
 
   repoServer:
-    replicas: 2
+    replicas: 3
+    tolerations:
+      - key: node-restriction.kubernetes.io/management
+        operator: Exists
+    # Anti-affinity to spread repo servers across nodes
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: argocd-repo-server
+            topologyKey: kubernetes.io/hostname
+    # Resource limits for stability
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
 
   applicationSet:
     replicas: 2
+    tolerations:
+      - key: node-restriction.kubernetes.io/management
+        operator: Exists
+    # Anti-affinity to spread applicationset controllers across nodes
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: argocd-applicationset-controller
+            topologyKey: kubernetes.io/hostname
 
   dex:
     enabled: true
+    tolerations:
+      - key: node-restriction.kubernetes.io/management
+        operator: Exists
 
   notifications:
     enabled: true
+    tolerations:
+      - key: node-restriction.kubernetes.io/management
+        operator: Exists
 
   # Configure parameters and admin password
   configs:
@@ -49,3 +149,5 @@ argo-cd:
     params:
       server.insecure: true
       controller.diff.server.side: true
+      # Enable controller sharding for HA
+      controller.sharding.algorithm: consistent-hashing
