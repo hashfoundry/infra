@@ -145,7 +145,7 @@ helm dependency update
 envsubst < values.yaml | helm upgrade --install --create-namespace -n argocd argocd . -f -
 
 echo "⏳ Waiting for ArgoCD to be ready..."
-export KUBECONFIG=$(pwd)/../../../terraform/modules/kubernetes/kubeconfig.yaml
+export KUBECONFIG=$(pwd)/../../../terraform/kubeconfig.yaml
 kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
 
 echo " Step 4: Deploying ArgoCD Apps..."
