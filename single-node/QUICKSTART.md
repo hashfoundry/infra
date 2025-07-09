@@ -59,8 +59,14 @@ kubectl get ingress -A
 ## Infrastructure Cleanup
 
 ```bash
+./cleanup.sh
+```
+
+Or manually:
+
+```bash
 cd terraform
-source config/.env
+source ../.env
 terraform destroy -var="do_token=$DO_TOKEN" -auto-approve
 ```
 

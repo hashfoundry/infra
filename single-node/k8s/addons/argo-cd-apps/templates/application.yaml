@@ -16,7 +16,7 @@ spec:
     {{- else if $.Values.defaults.source.targetRevision }}
     targetRevision: {{ $.Values.defaults.source.targetRevision }}
     {{- end }}
-    path: k8s/apps/{{ .name }}
+    path: single-node/k8s/apps/{{ .name }}
     {{- if .source }}
     {{- if .source.directory }}
     directory:
@@ -74,7 +74,7 @@ spec:
     {{- else if $.Values.defaults.source.targetRevision }}
     targetRevision: {{ $.Values.defaults.source.targetRevision }}
     {{- end }}
-    path: k8s/addons/{{ .name }}
+    path: single-node/k8s/addons/{{ .name }}
     {{- if .source }}
     {{- if .source.directory }}
     directory:

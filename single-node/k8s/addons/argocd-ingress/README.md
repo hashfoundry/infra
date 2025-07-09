@@ -158,7 +158,7 @@ spec:
   source:
     repoURL: <your-repo>
     targetRevision: HEAD
-    path: k8s/addons/argocd-ingress
+    path: single-node/k8s/addons/argocd-ingress
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

@@ -99,6 +99,7 @@ docker-compose.override.yml
 # Kubernetes
 kubeconfig
 *.kubeconfig
+single-node/terraform/kubeconfig.yaml
 terraform/modules/kubernetes/kubeconfig.yaml
 terraform/kubeconfig.yaml
 

@@ -19,21 +19,21 @@ This Helm chart deploys Argo CD Applications, which are used to manage the deplo
 #### Development Environment
 
 ```bash
-cd k8s/addons/argo-cd-apps
+cd single-node/k8s/addons/argo-cd-apps
 helm upgrade --install --create-namespace -n argocd argo-cd-apps . -f values.yaml -f values.dev.yaml
 ```
 
 #### Staging Environment
 
 ```bash
-cd k8s/addons/argo-cd-apps
+cd single-node/k8s/addons/argo-cd-apps
 helm upgrade --install --create-namespace -n argocd argo-cd-apps . -f values.yaml -f values.staging.yaml
 ```
 
 #### Production Environment
 
 ```bash
-cd k8s/addons/argo-cd-apps
+cd single-node/k8s/addons/argo-cd-apps
 helm upgrade --install --create-namespace -n argocd argo-cd-apps . -f values.yaml -f values.prod.yaml
 ```
 
@@ -59,7 +59,7 @@ apps:
     autosync: true
 ```
 
-This will create an Argo CD Application that points to the `k8s/apps/my-new-app` directory in your repository.
+This will create an Argo CD Application that points to the `single-node/k8s/apps/my-new-app` directory in your repository.
 
 ## Configuration Options
 

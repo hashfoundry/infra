@@ -6,16 +6,35 @@ This repository contains the infrastructure code for HashFoundry, including Kube
 
 ```
 .
-├── .github/workflows/       # GitHub Actions workflows
-├── k8s/                     # Kubernetes manifests and Helm charts
-│   ├── addons/              # Kubernetes addons
-│   │   ├── argo-cd/         # Argo CD Helm chart
-│   │   ├── argo-cd-apps/    # Argo CD Applications Helm chart
-│   │   ├── nginx-ingress/   # NGINX Ingress Controller Helm chart
-│   │   └── argocd-ingress/  # ArgoCD Ingress configuration Helm chart
-│   └── apps/                # Application Helm charts
-│       └── hashfoundry-react/ # HashFoundry React application
-└── terraform/               # Terraform code for infrastructure provisioning
+├── README.md                # This file
+├── .gitignore              # Git ignore rules
+├── single-node/            # Single-node Kubernetes deployment
+│   ├── .env.example        # Environment variables template
+│   ├── QUICKSTART.md       # Quick start guide
+│   ├── deploy.sh           # Main deployment script
+│   ├── init.sh             # Initialization script
+│   ├── cleanup.sh          # Cleanup script
+│   ├── k8s/                # Kubernetes manifests and Helm charts
+│   │   ├── INGRESS_MIGRATION.md # Ingress migration guide
+│   │   ├── addons/         # Kubernetes addons
+│   │   │   ├── argo-cd/    # Argo CD Helm chart
+│   │   │   ├── argo-cd-apps/ # Argo CD Applications Helm chart
+│   │   │   ├── nginx-ingress/ # NGINX Ingress Controller Helm chart
+│   │   │   └── argocd-ingress/ # ArgoCD Ingress configuration Helm chart
+│   │   └── apps/           # Application Helm charts
+│   │       └── hashfoundry-react/ # HashFoundry React application
+│   └── terraform/          # Terraform code for infrastructure provisioning
+│       ├── README.md       # Terraform documentation
+│       ├── terraform.sh    # Terraform wrapper script
+│       ├── main.tf         # Main Terraform configuration
+│       ├── providers.tf    # Provider configurations
+│       ├── variables.tf    # Variable definitions
+│       ├── outputs.tf      # Output definitions
+│       ├── locals.tf       # Local values
+│       ├── project.tf      # DigitalOcean project configuration
+│       └── kubernetes.tf   # Kubernetes cluster configuration
+└── ha/                     # High-availability deployment (future)
+    └── empty               # Placeholder
 ```
 
 ## Continuous Deployment with Argo CD
@@ -36,7 +55,7 @@ To set up Argo CD, follow these steps:
 1. Deploy Argo CD to the cluster:
 
 ```bash
-cd k8s/addons/argo-cd
+cd single-node/k8s/addons/argo-cd
 helm dep up
 helm upgrade --install --create-namespace -n argocd argocd . -f values.yaml
 ```
@@ -44,7 +63,7 @@ helm upgrade --install --create-namespace -n argocd argocd . -f values.yaml
 2. Deploy Argo CD Apps to the cluster:
 
 ```bash
-cd k8s/addons/argo-cd-apps
+cd single-node/k8s/addons/argo-cd-apps
 helm upgrade --install --create-namespace -n argocd argo-cd-apps . -f values.yaml
 ```
 
@@ -66,9 +85,9 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 
 To add a new application to be managed by Argo CD:
 
-1. Create a new directory in `k8s/apps/` for your application
+1. Create a new directory in `single-node/k8s/apps/` for your application
 2. Add your application's Helm chart or Kubernetes manifests to the directory
-3. Add your application to the appropriate values file in `k8s/addons/argo-cd-apps/`:
+3. Add your application to the appropriate values file in `single-node/k8s/addons/argo-cd-apps/`:
 
 ```yaml
 apps:
@@ -119,14 +138,14 @@ This approach is efficient and follows Kubernetes best practices.
 1. Deploy NGINX Ingress Controller:
 
 ```bash
-cd k8s/addons/nginx-ingress
+cd single-node/k8s/addons/nginx-ingress
 make install
 ```
 
 2. Deploy ArgoCD Ingress:
 
 ```bash
-cd k8s/addons/argocd-ingress
+cd single-node/k8s/addons/argocd-ingress
 make install
 ```
 
@@ -170,6 +189,9 @@ This repository is designed as a complete Infrastructure as Code (IaC) solution 
 To deploy the complete infrastructure from scratch:
 
 ```bash
+# Navigate to single-node directory
+cd single-node
+
 # 1. Initialize configuration files
 ./init.sh
 
@@ -217,7 +239,7 @@ If you prefer manual control, you can still deploy step by step:
 
 ```bash
 # 1. Deploy infrastructure with Terraform
-cd terraform
+cd single-node/terraform
 ./terraform.sh init
 ./terraform.sh apply -auto-approve
 
@@ -289,7 +311,14 @@ kubectl get svc -n ingress-nginx nginx-ingress-ingress-nginx-controller
 To destroy the entire infrastructure:
 
 ```bash
-cd terraform
-source config/.env
+cd single-node
+./cleanup.sh
+```
+
+Or manually:
+
+```bash
+cd single-node/terraform
+source ../.env
 terraform destroy -var="do_token=$DO_TOKEN" -auto-approve
 ```

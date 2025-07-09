@@ -20,7 +20,7 @@ addons:
     namespace: ingress-nginx
     project: default
     source:
-      path: k8s/addons/nginx-ingress
+      path: single-node/k8s/addons/nginx-ingress
       helm:
         valueFiles:
           - values.yaml
@@ -35,7 +35,7 @@ addons:
     namespace: argocd
     project: default
     source:
-      path: k8s/addons/argocd-ingress
+      path: single-node/k8s/addons/argocd-ingress
       helm:
         valueFiles:
           - values.yaml
@@ -48,7 +48,7 @@ addons:
     namespace: argocd
     project: default
     source:
-      path: k8s/addons/argo-cd-apps
+      path: single-node/k8s/addons/argo-cd-apps
       helm:
         valueFiles:
           - values.yaml
