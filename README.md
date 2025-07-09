@@ -186,17 +186,17 @@ To deploy the complete infrastructure from scratch:
    This creates `.env` file from the `.env.example` template.
 
 2. **Configure your environment**:
-   Edit the `.env` file and set your DigitalOcean API token and project:
+   Edit the `.env` file and set your DigitalOcean API token and project name:
    ```bash
    # Edit the .env file
    nano .env
    
-   # Set your DO_TOKEN and DO_PROJECT_ID
+   # Set your DO_TOKEN and DO_PROJECT_NAME
    DO_TOKEN=your_actual_digitalocean_api_token
-   DO_PROJECT_ID=your_digitalocean_project_id
+   DO_PROJECT_NAME=hashfoundry
    ```
    
-   To find your project ID, run: `doctl projects list`
+   The project will be created automatically if it doesn't exist. To see existing projects, run: `doctl projects list`
 
 3. **Deploy everything**:
    ```bash

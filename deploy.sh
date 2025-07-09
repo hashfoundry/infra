@@ -116,8 +116,8 @@ cd terraform
 
 # Deploy infrastructure
 ./terraform.sh init
-if [ -n "$DO_PROJECT_ID" ]; then
-    ./terraform.sh apply -var="do_project_id=$DO_PROJECT_ID" -auto-approve
+if [ -n "$DO_PROJECT_NAME" ]; then
+    ./terraform.sh apply -var="do_project_name=$DO_PROJECT_NAME" -auto-approve
 else
     ./terraform.sh apply -auto-approve
 fi

@@ -28,6 +28,24 @@ provider "kubernetes" {
   cluster_ca_certificate = base64decode(data.digitalocean_kubernetes_cluster.cluster.kube_config[0].cluster_ca_certificate)
 }
 
+# Data source to check if project exists
+data "digitalocean_projects" "existing" {}
+
+# Create project if it doesn't exist
+resource "digitalocean_project" "hashfoundry" {
+  count = length([for p in data.digitalocean_projects.existing.projects : p if p.name == var.do_project_name]) == 0 ? 1 : 0
+
+  name        = var.do_project_name
+  description = "HashFoundry infrastructure project"
+  purpose     = "Web Application"
+  environment = "Production"
+}
+
+# Local to get project ID (either existing or newly created)
+locals {
+  project_id = length([for p in data.digitalocean_projects.existing.projects : p if p.name == var.do_project_name]) > 0 ? [for p in data.digitalocean_projects.existing.projects : p if p.name == var.do_project_name][0].id : digitalocean_project.hashfoundry[0].id
+}
+
 # Data source to get the existing cluster details
 data "digitalocean_kubernetes_cluster" "cluster" {
   name       = var.cluster_name
@@ -41,10 +59,10 @@ variable "do_token" {
   sensitive   = true
 }
 
-variable "do_project_id" {
-  description = "DigitalOcean Project ID"
+variable "do_project_name" {
+  description = "DigitalOcean Project Name"
   type        = string
-  default     = ""
+  default     = "hashfoundry"
 }
 
 variable "cluster_name" {
@@ -90,7 +108,7 @@ module "kubernetes_cluster" {
 
   # Pass variables to the module
   do_token        = var.do_token
-  do_project_id   = var.do_project_id
+  do_project_id   = local.project_id
   cluster_name    = var.cluster_name
   cluster_region  = var.cluster_region
   cluster_version = var.cluster_version
@@ -106,6 +124,11 @@ module "kubernetes_cluster" {
 
 
 # Outputs
+output "project_id" {
+  description = "ID of the DigitalOcean project"
+  value       = local.project_id
+}
+
 output "cluster_id" {
   description = "ID of the Kubernetes cluster"
   value       = module.kubernetes_cluster.cluster_id
