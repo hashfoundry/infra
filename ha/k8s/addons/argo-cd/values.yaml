@@ -45,10 +45,6 @@ argo-cd:
               matchLabels:
                 app.kubernetes.io/name: argocd-application-controller
             topologyKey: kubernetes.io/hostname
-    # Enable sharding for better performance
-    env:
-      - name: ARGOCD_CONTROLLER_REPLICAS
-        value: "2"
     # Resource limits for stability
     resources:
       limits:
