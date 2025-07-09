@@ -13,6 +13,8 @@ defaults:
 apps:
   - name: hashfoundry-react
     namespace: hashfoundry-react-dev
+    source:
+      path: ha/k8s/apps/hashfoundry-react
     autosync: true
 
 addons:
@@ -20,7 +22,7 @@ addons:
     namespace: ingress-nginx
     project: default
     source:
-      path: single-node/k8s/addons/nginx-ingress
+      path: ha/k8s/addons/nginx-ingress
       helm:
         valueFiles:
           - values.yaml
@@ -35,7 +37,7 @@ addons:
     namespace: argocd
     project: default
     source:
-      path: single-node/k8s/addons/argocd-ingress
+      path: ha/k8s/addons/argocd-ingress
       helm:
         valueFiles:
           - values.yaml
@@ -48,7 +50,7 @@ addons:
     namespace: argocd
     project: default
     source:
-      path: single-node/k8s/addons/argo-cd-apps
+      path: ha/k8s/addons/argo-cd-apps
       helm:
         valueFiles:
           - values.yaml

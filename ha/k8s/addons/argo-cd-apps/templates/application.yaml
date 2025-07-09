@@ -16,7 +16,11 @@ spec:
     {{- else if $.Values.defaults.source.targetRevision }}
     targetRevision: {{ $.Values.defaults.source.targetRevision }}
     {{- end }}
+    {{- if .source.path }}
+    path: {{ .source.path }}
+    {{- else }}
     path: single-node/k8s/apps/{{ .name }}
+    {{- end }}
     {{- if .source }}
     {{- if .source.directory }}
     directory:
@@ -74,7 +78,11 @@ spec:
     {{- else if $.Values.defaults.source.targetRevision }}
     targetRevision: {{ $.Values.defaults.source.targetRevision }}
     {{- end }}
+    {{- if .source.path }}
+    path: {{ .source.path }}
+    {{- else }}
     path: single-node/k8s/addons/{{ .name }}
+    {{- end }}
     {{- if .source }}
     {{- if .source.directory }}
     directory:
