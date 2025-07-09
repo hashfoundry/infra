@@ -27,3 +27,8 @@ output "node_pool" {
     node_count = digitalocean_kubernetes_cluster.kubernetes_cluster.node_pool[0].node_count
   }
 }
+
+output "cluster_urn" {
+  description = "URN of the Kubernetes cluster for project assignment"
+  value       = digitalocean_kubernetes_cluster.kubernetes_cluster.urn
+}

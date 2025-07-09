@@ -33,8 +33,3 @@ variable "node_count" {
   description = "Number of nodes in the node pool"
   type        = number
 }
-
-variable "do_project_name" {
-  description = "DigitalOcean Project Name"
-  type        = string
-}

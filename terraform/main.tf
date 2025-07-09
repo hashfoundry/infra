@@ -108,14 +108,13 @@ module "kubernetes_cluster" {
   source = "./modules/kubernetes"
 
   # Pass variables to the module
-  do_token         = var.do_token
-  do_project_name  = var.do_project_name
-  cluster_name     = var.cluster_name
-  cluster_region   = var.cluster_region
-  cluster_version  = var.cluster_version
-  node_pool_name   = var.node_pool_name
-  node_size        = var.node_size
-  node_count       = var.node_count
+  do_token        = var.do_token
+  cluster_name    = var.cluster_name
+  cluster_region  = var.cluster_region
+  cluster_version = var.cluster_version
+  node_pool_name  = var.node_pool_name
+  node_size       = var.node_size
+  node_count      = var.node_count
 
   # Explicitly specify providers
   providers = {
@@ -124,6 +123,20 @@ module "kubernetes_cluster" {
 
   # Ensure project is created before cluster
   depends_on = [digitalocean_project.hashfoundry]
+}
+
+# Assign cluster to project
+resource "digitalocean_project_resources" "cluster_assignment" {
+  project = local.project_id
+  resources = [
+    "do:kubernetes:${module.kubernetes_cluster.cluster_id}"
+  ]
+
+  depends_on = [module.kubernetes_cluster, digitalocean_project.hashfoundry]
+
+  lifecycle {
+    ignore_changes = [resources]
+  }
 }
 
 
