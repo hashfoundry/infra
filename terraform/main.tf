@@ -36,14 +36,15 @@ resource "digitalocean_project" "hashfoundry" {
   count = length([for p in data.digitalocean_projects.existing.projects : p if p.name == var.do_project_name]) == 0 ? 1 : 0
 
   name        = var.do_project_name
-  description = "HashFoundry infrastructure project"
+  description = "HashFoundry infrastructure project managed by Terraform"
   purpose     = "Web Application"
   environment = "Production"
 }
 
 # Local to get project ID (either existing or newly created)
 locals {
-  project_id = length([for p in data.digitalocean_projects.existing.projects : p if p.name == var.do_project_name]) > 0 ? [for p in data.digitalocean_projects.existing.projects : p if p.name == var.do_project_name][0].id : digitalocean_project.hashfoundry[0].id
+  existing_project = [for p in data.digitalocean_projects.existing.projects : p if p.name == var.do_project_name]
+  project_id = length(local.existing_project) > 0 ? local.existing_project[0].id : digitalocean_project.hashfoundry[0].id
 }
 
 # Data source to get the existing cluster details
@@ -107,19 +108,22 @@ module "kubernetes_cluster" {
   source = "./modules/kubernetes"
 
   # Pass variables to the module
-  do_token        = var.do_token
-  do_project_id   = local.project_id
-  cluster_name    = var.cluster_name
-  cluster_region  = var.cluster_region
-  cluster_version = var.cluster_version
-  node_pool_name  = var.node_pool_name
-  node_size       = var.node_size
-  node_count      = var.node_count
+  do_token         = var.do_token
+  do_project_name  = var.do_project_name
+  cluster_name     = var.cluster_name
+  cluster_region   = var.cluster_region
+  cluster_version  = var.cluster_version
+  node_pool_name   = var.node_pool_name
+  node_size        = var.node_size
+  node_count       = var.node_count
 
   # Explicitly specify providers
   providers = {
     digitalocean = digitalocean
   }
+
+  # Ensure project is created before cluster
+  depends_on = [digitalocean_project.hashfoundry]
 }
 
 

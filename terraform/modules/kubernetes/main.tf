@@ -1,3 +1,11 @@
+# Data source to get project by name
+data "digitalocean_projects" "existing" {}
+
+# Local to get project ID by name
+locals {
+  project_id = [for p in data.digitalocean_projects.existing.projects : p.id if p.name == var.do_project_name][0]
+}
+
 resource "digitalocean_kubernetes_cluster" "kubernetes_cluster" {
   name    = var.cluster_name
   region  = var.cluster_region
@@ -13,8 +21,7 @@ resource "digitalocean_kubernetes_cluster" "kubernetes_cluster" {
 
 # Assign cluster to project
 resource "digitalocean_project_resources" "cluster_assignment" {
-  count   = var.do_project_id != "" ? 1 : 0
-  project = var.do_project_id
+  project = local.project_id
   resources = [
     digitalocean_kubernetes_cluster.kubernetes_cluster.urn
   ]

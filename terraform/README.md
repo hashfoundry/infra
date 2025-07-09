@@ -20,12 +20,21 @@ This directory contains Terraform configuration to create a minimal Kubernetes c
 1. Create a `.env` file in the project root (one level up from terraform/) with your Digital Ocean API token:
    ```
    DO_TOKEN=your_digitalocean_api_token
+   DO_PROJECT_NAME=hashfoundry
    CLUSTER_NAME=hashfoundry
    CLUSTER_REGION=fra1
    # ... other variables
    ```
 
 2. You can customize other variables in the `.env` file if needed, including load balancer configurations.
+
+## Project Management
+
+The Terraform configuration automatically manages DigitalOcean projects:
+
+- **Project Creation**: If a project with the name specified in `DO_PROJECT_NAME` doesn't exist, it will be created automatically
+- **Resource Assignment**: All infrastructure resources (Kubernetes cluster, load balancers, etc.) are automatically assigned to the specified project
+- **Project Reuse**: If a project with the specified name already exists, it will be used instead of creating a new one
 
 ## Usage
 
