@@ -116,7 +116,11 @@ cd terraform
 
 # Deploy infrastructure
 ./terraform.sh init
-./terraform.sh apply -auto-approve
+if [ -n "$DO_PROJECT_ID" ]; then
+    ./terraform.sh apply -var="do_project_id=$DO_PROJECT_ID" -auto-approve
+else
+    ./terraform.sh apply -auto-approve
+fi
 
 echo "⚙️  Step 2: Configuring kubectl context..."
 cd ..

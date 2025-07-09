@@ -41,6 +41,12 @@ variable "do_token" {
   sensitive   = true
 }
 
+variable "do_project_id" {
+  description = "DigitalOcean Project ID"
+  type        = string
+  default     = ""
+}
+
 variable "cluster_name" {
   description = "Name of the Kubernetes cluster"
   type        = string
@@ -84,6 +90,7 @@ module "kubernetes_cluster" {
 
   # Pass variables to the module
   do_token        = var.do_token
+  do_project_id   = var.do_project_id
   cluster_name    = var.cluster_name
   cluster_region  = var.cluster_region
   cluster_version = var.cluster_version
