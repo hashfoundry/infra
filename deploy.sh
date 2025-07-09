@@ -82,7 +82,7 @@ echo ""
 # Load environment variables
 if [ -f .env ]; then
     echo "📖 Loading environment variables from .env..."
-    export $(grep -v '^#' .env | xargs)
+    source .env
 else
     echo "❌ .env file not found! Please run ./init.sh first."
     exit 1
@@ -103,6 +103,12 @@ if [ -z "$ARGOCD_ADMIN_PASSWORD_HASH" ]; then
     echo "❌ ARGOCD_ADMIN_PASSWORD_HASH not set in .env file"
     exit 1
 fi
+
+echo "🔐 Authenticating with DigitalOcean..."
+doctl auth init -t $DO_TOKEN
+
+echo "📋 Checking available clusters..."
+doctl kubernetes cluster list
 
 echo "🏗️  Step 1: Deploying infrastructure with Terraform..."
 cd terraform
