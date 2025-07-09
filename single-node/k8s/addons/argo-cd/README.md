@@ -145,4 +145,4 @@ kubectl scale deployment argocd-redis-ha-haproxy -n argocd --replicas=1
 
 **Note:** Old ReplicaSets may retain outdated anti-affinity configurations even after deployment updates, causing pods to remain in Pending status.
 
-For detailed troubleshooting steps and solutions, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
+For detailed troubleshooting steps and solutions, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
