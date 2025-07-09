@@ -77,62 +77,6 @@ variable "node_count" {
   default     = 1
 }
 
-# Load Balancer variables
-variable "create_global_lb" {
-  description = "Whether to create a global load balancer using DigitalOcean CDN"
-  type        = bool
-  default     = true
-}
-
-variable "create_standard_lb" {
-  description = "Whether to create a standard load balancer without caching"
-  type        = bool
-  default     = true
-}
-
-variable "origin_endpoint" {
-  description = "The origin endpoint for the CDN"
-  type        = string
-  default     = ""
-}
-
-variable "custom_domain" {
-  description = "The custom domain for the CDN"
-  type        = string
-  default     = ""
-}
-
-variable "lb_name" {
-  description = "The name of the load balancer"
-  type        = string
-  default     = "hashfoundry-lb"
-}
-
-variable "create_k8s_service" {
-  description = "Whether to create a Kubernetes service for the load balancer"
-  type        = bool
-  default     = false
-}
-
-variable "k8s_service_name" {
-  description = "The name of the Kubernetes service"
-  type        = string
-  default     = "hashfoundry-service"
-}
-
-variable "k8s_namespace" {
-  description = "The namespace for the Kubernetes service"
-  type        = string
-  default     = "default"
-}
-
-variable "k8s_selector" {
-  description = "The selector for the Kubernetes service"
-  type        = map(string)
-  default     = {
-    app = "hashfoundry"
-  }
-}
 
 # Module reference
 module "kubernetes_cluster" {
@@ -153,39 +97,6 @@ module "kubernetes_cluster" {
   }
 }
 
-# Load Balancer module
-module "loadbalancer" {
-  source = "./modules/loadbalancer"
-  
-  # Global Load Balancer (CDN) configuration
-  create_global_lb = var.create_global_lb
-  origin_endpoint  = coalesce(var.origin_endpoint, module.kubernetes_cluster.cluster_endpoint)
-  custom_domain    = var.custom_domain
-  
-  # Standard Load Balancer configuration
-  create_standard_lb = var.create_standard_lb
-  lb_name            = var.lb_name
-  region             = var.cluster_region
-  
-  # Kubernetes Service configuration
-  create_k8s_service = var.create_k8s_service
-  k8s_service_name   = var.k8s_service_name
-  k8s_namespace      = var.k8s_namespace
-  k8s_selector       = var.k8s_selector
-  
-  # Default values for optional parameters
-  sticky_sessions_type = "none"
-  redirect_http_to_https = true
-  
-  # Explicitly specify providers
-  providers = {
-    digitalocean = digitalocean
-    kubernetes   = kubernetes
-  }
-  
-  # Ensure the Kubernetes cluster is created first
-  depends_on = [module.kubernetes_cluster]
-}
 
 # Outputs
 output "cluster_id" {
@@ -211,25 +122,4 @@ output "kubeconfig_path" {
 output "node_pool" {
   description = "Node pool details"
   value       = module.kubernetes_cluster.node_pool
-}
-
-# Load Balancer outputs
-output "global_lb_endpoint" {
-  description = "The endpoint of the global load balancer (CDN)"
-  value       = module.loadbalancer.global_lb_endpoint
-}
-
-output "standard_lb_ip" {
-  description = "The IP address of the standard load balancer"
-  value       = module.loadbalancer.standard_lb_ip
-}
-
-output "k8s_service_name" {
-  description = "The name of the Kubernetes service"
-  value       = module.loadbalancer.k8s_service_name
-}
-
-output "k8s_service_load_balancer_ingress" {
-  description = "The load balancer ingress of the Kubernetes service"
-  value       = module.loadbalancer.k8s_service_load_balancer_ingress
 }

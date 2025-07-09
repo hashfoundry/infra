@@ -111,9 +111,8 @@ This infrastructure uses NGINX Ingress Controller for external access to applica
 
 The infrastructure uses a single load balancer approach:
 - **NGINX Ingress Load Balancer**: Automatically created by Kubernetes when NGINX Ingress Controller is deployed
-- **Terraform Load Balancer**: Disabled by default to avoid duplication (can be enabled via .env configuration)
 
-This approach is more efficient and follows Kubernetes best practices.
+This approach is efficient and follows Kubernetes best practices.
 
 ### Setup
 
@@ -242,12 +241,8 @@ The complete deployment includes:
    - Kubernetes v1.33.1
    - Located in fra1 region
 
-2. **Load Balancer** (via Terraform)
-   - Standard DigitalOcean Load Balancer
-   - Kubernetes service integration
-
-3. **Core Applications** (via ArgoCD)
-   - NGINX Ingress Controller
+2. **Core Applications** (via ArgoCD)
+   - NGINX Ingress Controller (automatically creates DigitalOcean Load Balancer)
    - ArgoCD Ingress
    - HashFoundry React Application
 
