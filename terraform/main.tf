@@ -1,7 +1,7 @@
 # Provider configuration
 terraform {
   required_version = ">= 1.0.0"
-  
+
   required_providers {
     digitalocean = {
       source  = "digitalocean/digitalocean"
@@ -30,7 +30,7 @@ provider "kubernetes" {
 
 # Data source to get the existing cluster details
 data "digitalocean_kubernetes_cluster" "cluster" {
-  name = var.cluster_name
+  name       = var.cluster_name
   depends_on = [module.kubernetes_cluster]
 }
 
