@@ -1,6 +1,14 @@
-# HashFoundry Infrastructure - Quick Start
+# HashFoundry Infrastructure - HA Quick Start
 
-Quick deployment of Kubernetes cluster in Digital Ocean with ArgoCD.
+Quick deployment of High Availability Kubernetes cluster in Digital Ocean with ArgoCD.
+
+## HA Configuration Features
+
+- ✅ **3-node cluster** for high availability
+- ✅ **Auto-scaling** (3-6 nodes)
+- ✅ **Economic variant** (s-1vcpu-2gb) - ~$48/month
+- ✅ **Load balancer** managed by ArgoCD
+- ✅ **Fault tolerance** at node level
 
 ## Requirements
 

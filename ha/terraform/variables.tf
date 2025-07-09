@@ -44,5 +44,29 @@ variable "node_size" {
 variable "node_count" {
   description = "Number of nodes in the node pool"
   type        = number
-  default     = 1
+  default     = 3
+}
+
+variable "auto_scale_enabled" {
+  description = "Enable auto-scaling for the node pool"
+  type        = bool
+  default     = true
+}
+
+variable "min_nodes" {
+  description = "Minimum number of nodes in the auto-scaling node pool"
+  type        = number
+  default     = 3
+}
+
+variable "max_nodes" {
+  description = "Maximum number of nodes in the auto-scaling node pool"
+  type        = number
+  default     = 6
+}
+
+variable "enable_ha_control_plane" {
+  description = "Enable HA control plane (managed by DigitalOcean)"
+  type        = bool
+  default     = true
 }

@@ -74,6 +74,12 @@ export TF_VAR_node_pool_name=$NODE_POOL_NAME
 export TF_VAR_node_size=$NODE_SIZE
 export TF_VAR_node_count=$NODE_COUNT
 
+# HA-specific variables
+export TF_VAR_auto_scale_enabled=$AUTO_SCALE_ENABLED
+export TF_VAR_min_nodes=$MIN_NODES
+export TF_VAR_max_nodes=$MAX_NODES
+export TF_VAR_enable_ha_control_plane=$ENABLE_HA_CONTROL_PLANE
+
 # Load Balancer variables
 export TF_VAR_create_global_lb=$CREATE_GLOBAL_LB
 export TF_VAR_create_standard_lb=$CREATE_STANDARD_LB

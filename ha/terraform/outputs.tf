@@ -33,3 +33,14 @@ output "node_pool" {
     node_count = digitalocean_kubernetes_cluster.kubernetes_cluster.node_pool[0].node_count
   }
 }
+
+output "ha_status" {
+  description = "High Availability status of the cluster"
+  value = {
+    node_count     = digitalocean_kubernetes_cluster.kubernetes_cluster.node_pool[0].actual_node_count
+    auto_scale     = digitalocean_kubernetes_cluster.kubernetes_cluster.node_pool[0].auto_scale
+    min_nodes      = digitalocean_kubernetes_cluster.kubernetes_cluster.node_pool[0].min_nodes
+    max_nodes      = digitalocean_kubernetes_cluster.kubernetes_cluster.node_pool[0].max_nodes
+    ha_enabled     = digitalocean_kubernetes_cluster.kubernetes_cluster.ha
+  }
+}

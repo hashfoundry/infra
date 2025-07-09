@@ -36,6 +36,7 @@ This repository contains the infrastructure code for HashFoundry, including Kube
 └── ha/                     # High-availability deployment
     ├── .env.example        # Environment variables template
     ├── QUICKSTART.md       # Quick start guide
+    ├── HA_TRANSFORMATION_PLAN.md # Plan for converting to HA configuration
     ├── deploy.sh           # Main deployment script
     ├── init.sh             # Initialization script
     ├── cleanup.sh          # Cleanup script

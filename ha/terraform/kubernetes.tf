@@ -14,7 +14,12 @@ resource "digitalocean_kubernetes_cluster" "kubernetes_cluster" {
     name       = var.node_pool_name
     size       = var.node_size
     node_count = var.node_count
-    auto_scale = false
+    auto_scale = var.auto_scale_enabled
+    min_nodes  = var.auto_scale_enabled ? var.min_nodes : null
+    max_nodes  = var.auto_scale_enabled ? var.max_nodes : null
+    
+    # Tags for HA identification
+    tags = ["ha", "production"]
   }
 
   depends_on = [digitalocean_project.hashfoundry]
