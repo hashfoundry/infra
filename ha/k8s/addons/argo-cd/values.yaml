@@ -53,6 +53,14 @@ argo-cd:
       requests:
         cpu: 250m
         memory: 256Mi
+    # NFS shared storage for shared data
+    volumes:
+      - name: argocd-shared-data
+        persistentVolumeClaim:
+          claimName: argocd-shared-data
+    volumeMounts:
+      - name: argocd-shared-data
+        mountPath: /app/config/shared
 
   server:
     replicas: 3
@@ -108,6 +116,14 @@ argo-cd:
       requests:
         cpu: 100m
         memory: 256Mi
+    # NFS shared storage for shared data
+    volumes:
+      - name: argocd-repo-server-shared
+        persistentVolumeClaim:
+          claimName: argocd-repo-server-tls-certs
+    volumeMounts:
+      - name: argocd-repo-server-shared
+        mountPath: /app/config/shared
 
   applicationSet:
     replicas: 2
@@ -147,3 +163,30 @@ argo-cd:
       controller.diff.server.side: true
       # Enable controller sharding for HA
       controller.sharding.algorithm: consistent-hashing
+
+  # Create PVC for shared NFS storage
+  extraObjects:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: argocd-shared-data
+        namespace: argocd
+      spec:
+        accessModes:
+          - ReadWriteMany
+        storageClassName: nfs-client
+        resources:
+          requests:
+            storage: 1Gi
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: argocd-repo-server-tls-certs
+        namespace: argocd
+      spec:
+        accessModes:
+          - ReadWriteMany
+        storageClassName: nfs-client
+        resources:
+          requests:
+            storage: 1Gi
