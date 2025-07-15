@@ -1,0 +1,81 @@
+# Platform-specific storage class for NFS server backing storage
+platformStorageClass: "do-block-storage"
+
+# NFS Server configuration
+nfsServer:
+  image: k8s.gcr.io/volume-nfs:0.8
+  storage: 50Gi
+  replicas: 1
+  
+  # Resource limits for NFS server
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  # Node selector for NFS server placement
+  nodeSelector: {}
+  
+  # Tolerations for NFS server
+  tolerations: []
+  
+  # Affinity rules
+  affinity: {}
+
+# NFS Client Provisioner configuration
+nfsProvisioner:
+  image: k8s.gcr.io/sig-storage/nfs-subdir-external-provisioner:v4.0.2
+  
+  # Storage class configuration
+  storageClass:
+    name: nfs-client
+    defaultClass: false
+    reclaimPolicy: Retain
+    volumeBindingMode: Immediate
+    allowVolumeExpansion: true
+  
+  # Resource limits for provisioner
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 10m
+      memory: 16Mi
+  
+  # Node selector for provisioner placement
+  nodeSelector: {}
+  
+  # Tolerations for provisioner
+  tolerations: []
+
+# Service configuration
+service:
+  type: ClusterIP
+  ports:
+    nfs: 2049
+    mountd: 20048
+    rpcbind: 111
+
+# Security context
+securityContext:
+  privileged: true
+  runAsUser: 0
+  runAsGroup: 0
+
+# Monitoring
+monitoring:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+
+# Backup configuration
+backup:
+  enabled: false
+  schedule: "0 2 * * *"
+  retention: 7

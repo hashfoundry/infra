@@ -1,0 +1,18 @@
+apiVersion: v2
+name: nfs-provisioner
+description: Platform-agnostic NFS storage provisioner for ArgoCD HA
+type: application
+version: 0.1.0
+appVersion: "1.0"
+keywords:
+  - nfs
+  - storage
+  - provisioner
+  - argocd
+  - ha
+home: https://github.com/hashfoundry/infra
+sources:
+  - https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner
+maintainers:
+  - name: HashFoundry Team
+    email: team@hashfoundry.com

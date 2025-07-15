@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nfs-provisioner.fullname" . }}-provisioner
+  labels:
+    {{- include "nfs-provisioner.provisionerLabels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "nfs-provisioner.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: nfs-provisioner
+  template:
+    metadata:
+      labels:
+        {{- include "nfs-provisioner.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: nfs-provisioner
+    spec:
+      serviceAccountName: {{ include "nfs-provisioner.fullname" . }}-provisioner
+      {{- with .Values.nfsProvisioner.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nfsProvisioner.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: nfs-client-provisioner
+        image: {{ .Values.nfsProvisioner.image }}
+        volumeMounts:
+        - name: nfs-client-root
+          mountPath: /persistentvolumes
+        env:
+        - name: PROVISIONER_NAME
+          value: {{ include "nfs-provisioner.fullname" . }}/nfs
+        - name: NFS_SERVER
+          value: {{ include "nfs-provisioner.fullname" . }}-server
+        - name: NFS_PATH
+          value: /exports
+        resources:
+          {{- toYaml .Values.nfsProvisioner.resources | nindent 10 }}
+      volumes:
+      - name: nfs-client-root
+        nfs:
+          server: {{ include "nfs-provisioner.fullname" . }}-server
+          path: /exports

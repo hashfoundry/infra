@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "nfs-provisioner.fullname" . }}-server-pvc
+  labels:
+    {{- include "nfs-provisioner.nfsServerLabels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.platformStorageClass | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.nfsServer.storage }}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nfs-provisioner.fullname" . }}-server
+  labels:
+    {{- include "nfs-provisioner.nfsServerLabels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.nfsServer.replicas }}
+  selector:
+    matchLabels:
+      {{- include "nfs-provisioner.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: nfs-server
+  template:
+    metadata:
+      labels:
+        {{- include "nfs-provisioner.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: nfs-server
+    spec:
+      {{- with .Values.nfsServer.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nfsServer.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nfsServer.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: nfs-server
+        image: {{ .Values.nfsServer.image }}
+        ports:
+        - containerPort: 2049
+          name: nfs
+        - containerPort: 20048
+          name: mountd
+        - containerPort: 111
+          name: rpcbind
+        securityContext:
+          privileged: {{ .Values.securityContext.privileged }}
+          runAsUser: {{ .Values.securityContext.runAsUser }}
+          runAsGroup: {{ .Values.securityContext.runAsGroup }}
+        volumeMounts:
+        - name: nfs-storage
+          mountPath: /exports
+        resources:
+          {{- toYaml .Values.nfsServer.resources | nindent 10 }}
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "showmount -e localhost"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "showmount -e localhost"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: nfs-storage
+        persistentVolumeClaim:
+          claimName: {{ include "nfs-provisioner.fullname" . }}-server-pvc

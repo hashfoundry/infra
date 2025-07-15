@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nfs-provisioner.fullname" . }}-server
+  labels:
+    {{- include "nfs-provisioner.nfsServerLabels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "nfs-provisioner.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: nfs-server
+  ports:
+  - port: {{ .Values.service.ports.nfs }}
+    targetPort: nfs
+    name: nfs
+  - port: {{ .Values.service.ports.mountd }}
+    targetPort: mountd
+    name: mountd
+  - port: {{ .Values.service.ports.rpcbind }}
+    targetPort: rpcbind
+    name: rpcbind
