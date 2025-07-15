@@ -27,10 +27,11 @@ nfsServer:
 
 # NFS Client Provisioner configuration
 nfsProvisioner:
+  enabled: true
   image: k8s.gcr.io/sig-storage/nfs-subdir-external-provisioner:v4.0.2
   
   # NFS Server connection (auto-detected if empty)
-  nfsServer: "10.245.209.9"  # Leave empty for auto-detection, or set specific IP/hostname
+  nfsServer: ""  # Leave empty for auto-detection, or set specific IP/hostname
   nfsPath: "/exports"
   
   # Storage class configuration

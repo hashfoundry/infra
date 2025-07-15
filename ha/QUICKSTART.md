@@ -9,6 +9,8 @@ Quick deployment of High Availability Kubernetes cluster in Digital Ocean with A
 - ✅ **Economic variant** (s-1vcpu-2gb) - ~$48/month
 - ✅ **Load balancer** managed by ArgoCD
 - ✅ **Fault tolerance** at node level
+- ✅ **NFS Provisioner** with dynamic IP approach (no hard-coded IPs)
+- ✅ **ReadWriteMany storage** for shared volumes
 
 ## Requirements
 

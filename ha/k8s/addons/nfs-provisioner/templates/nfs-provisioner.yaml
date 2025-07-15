@@ -1,3 +1,4 @@
+{{- if .Values.nfsProvisioner.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -51,3 +52,4 @@ spec:
         nfs:
           server: {{ if .Values.nfsProvisioner.nfsServer }}{{ .Values.nfsProvisioner.nfsServer }}{{ else }}{{ include "nfs-provisioner.fullname" . }}-server.{{ .Release.Namespace }}.svc.cluster.local{{ end }}
           path: {{ .Values.nfsProvisioner.nfsPath }}
+{{- end }}

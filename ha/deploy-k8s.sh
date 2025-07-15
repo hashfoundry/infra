@@ -27,13 +27,30 @@ fi
 # Setup kubectl context
 setup_kubectl_context "$CLUSTER_NAME" "$CLUSTER_REGION"
 
-echo "🗄️  Step 1: Deploying NFS Provisioner..."
+echo "🗄️  Step 1: Deploying NFS Provisioner (Dynamic IP approach)..."
 cd k8s/addons/nfs-provisioner
-echo "   Installing NFS Provisioner for ReadWriteMany storage support..."
-helm upgrade --install --create-namespace -n nfs-system nfs-provisioner . -f values.yaml --wait --timeout=10m
 
-echo "✅ NFS Provisioner deployed successfully!"
-echo "   StorageClass 'nfs-client' is now available for ReadWriteMany volumes"
+# Phase 1: Deploy only the NFS server (without provisioner)
+echo "   Phase 1: Installing NFS Server only..."
+helm upgrade --install --create-namespace -n nfs-system nfs-provisioner . -f values.yaml --set nfsProvisioner.enabled=false --wait --timeout=10m
+
+# Wait for NFS server service to be ready
+echo "   Waiting for NFS server service to be ready..."
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/component=nfs-server -n nfs-system --timeout=300s
+
+# Phase 2: Get the dynamic IP address of NFS server service
+echo "   Phase 2: Getting NFS server service IP dynamically..."
+NFS_SERVER_IP=$(kubectl get svc nfs-provisioner-server -n nfs-system -o jsonpath='{.spec.clusterIP}')
+echo "   ✅ NFS Server IP detected: $NFS_SERVER_IP"
+
+# Phase 3: Deploy the provisioner with the dynamically obtained IP
+echo "   Phase 3: Installing NFS Provisioner with dynamic server IP..."
+helm upgrade nfs-provisioner . -n nfs-system -f values.yaml --set nfsProvisioner.nfsServer="$NFS_SERVER_IP" --wait --timeout=5m
+
+echo "✅ NFS Provisioner deployed successfully with dynamic IP approach!"
+echo "   📦 StorageClass 'nfs-client' is now available for ReadWriteMany volumes"
+echo "   🌐 NFS Server IP: $NFS_SERVER_IP"
+echo "   🔄 No hard-coded IPs - fully repeatable deployment!"
 
 echo "🎯 Step 2: Deploying ArgoCD..."
 cd ../argo-cd
