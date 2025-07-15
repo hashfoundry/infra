@@ -54,9 +54,9 @@
 
 ## 🚀 **Развертывание**
 
-### **Вариант A: Интеграция в новый кластер (рекомендуется)**
+### **🎯 Автоматическое развертывание (рекомендуется)**
 
-Этот вариант подходит для развертывания NFS Provisioner вместе с новым HA кластером.
+**Самый простой способ** - использовать автоматизированный скрипт развертывания, который включает NFS Provisioner:
 
 #### **Шаг 1: Подготовка окружения**
 ```bash
@@ -72,13 +72,61 @@ nano .env
 # Установите ваш DO_TOKEN и другие параметры
 ```
 
-#### **Шаг 2: Развертывание инфраструктуры**
+#### **Шаг 2: Полное развертывание одной командой**
 ```bash
-# Полное развертывание HA кластера с ArgoCD
-./deploy.sh
+# Развертывание Terraform инфраструктуры
+./deploy-terraform.sh
+
+# Развертывание всех Kubernetes компонентов (включая NFS Provisioner)
+./deploy-k8s.sh
 ```
 
-#### **Шаг 3: Развертывание NFS Provisioner**
+**Что включает `./deploy-k8s.sh`:**
+- ✅ ArgoCD HA с NFS интеграцией
+- ✅ NFS Provisioner для ReadWriteMany storage
+- ✅ NGINX Ingress Controller
+- ✅ ArgoCD Applications (nginx-ingress, argocd-ingress, hashfoundry-react)
+- ✅ Автоматическая синхронизация всех приложений
+
+#### **Шаг 3: Проверка развертывания**
+```bash
+# Проверка статуса всех компонентов
+./status.sh
+
+# Или проверка отдельных компонентов:
+kubectl get pods -n nfs-system          # NFS Provisioner
+kubectl get pods -n argocd              # ArgoCD HA
+kubectl get applications -n argocd      # ArgoCD Applications
+kubectl get storageclass nfs-client     # NFS StorageClass
+```
+
+**Ожидаемый результат:**
+```
+# NFS Provisioner
+NAME                                           READY   STATUS    RESTARTS   AGE
+nfs-provisioner-provisioner-xxxxx-xxxxx        1/1     Running   0          2m
+nfs-provisioner-server-xxxxx-xxxxx             1/1     Running   0          2m
+
+# ArgoCD Applications
+NAME                SYNC STATUS   HEALTH STATUS
+argo-cd-apps        Synced        Healthy
+argocd-ingress      Synced        Healthy
+hashfoundry-react   Synced        Healthy
+nginx-ingress       Synced        Healthy
+nfs-provisioner     Synced        Healthy
+
+# StorageClass
+NAME                          PROVISIONER           RECLAIMPOLICY   VOLUMEBINDINGMODE
+nfs-client                    nfs-provisioner/nfs   Retain          Immediate
+```
+
+---
+
+### **🔧 Ручное развертывание (для экспертов)**
+
+Если вы хотите больше контроля над процессом развертывания:
+
+#### **Шаг 1: Развертывание NFS Provisioner**
 ```bash
 # Переход в директорию NFS Provisioner
 cd k8s/addons/nfs-provisioner
@@ -87,26 +135,11 @@ cd k8s/addons/nfs-provisioner
 make install
 ```
 
-#### **Шаг 4: Проверка развертывания**
+#### **Шаг 2: Интеграция с ArgoCD**
 ```bash
-# Проверка статуса подов
-kubectl get pods -n nfs-system
-
-# Проверка StorageClass
-kubectl get storageclass nfs-client
-
-# Проверка сервисов
-kubectl get svc -n nfs-system
-```
-
-**Ожидаемый результат:**
-```
-NAME                                           READY   STATUS    RESTARTS   AGE
-nfs-provisioner-provisioner-xxxxx-xxxxx        1/1     Running   0          2m
-nfs-provisioner-server-xxxxx-xxxxx             1/1     Running   0          2m
-
-NAME                          PROVISIONER           RECLAIMPOLICY   VOLUMEBINDINGMODE
-nfs-client                    nfs-provisioner/nfs   Retain          Immediate
+# Обновление ArgoCD с NFS поддержкой
+cd ../argo-cd
+helm upgrade argocd . -n argocd -f values.yaml
 ```
 
 ---

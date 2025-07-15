@@ -87,10 +87,12 @@ kubectl get ingress -A
 ## What gets deployed
 
 - ✅ Kubernetes cluster in Digital Ocean (fra1)
+- ✅ NFS Provisioner for ReadWriteMany storage
+- ✅ ArgoCD HA with NFS integration
 - ✅ NGINX Ingress Controller
-- ✅ ArgoCD with pre-configured password
 - ✅ HashFoundry React application
 - ✅ Load Balancer for external access
+- ✅ Automatic application synchronization
 
 ## Infrastructure Cleanup
 

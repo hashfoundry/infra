@@ -27,22 +27,38 @@ fi
 # Setup kubectl context
 setup_kubectl_context "$CLUSTER_NAME" "$CLUSTER_REGION"
 
-echo "🎯 Step 1: Deploying ArgoCD..."
-cd k8s/addons/argo-cd
+echo "🗄️  Step 1: Deploying NFS Provisioner..."
+cd k8s/addons/nfs-provisioner
+echo "   Installing NFS Provisioner for ReadWriteMany storage support..."
+helm upgrade --install --create-namespace -n nfs-system nfs-provisioner . -f values.yaml --wait --timeout=10m
+
+echo "✅ NFS Provisioner deployed successfully!"
+echo "   StorageClass 'nfs-client' is now available for ReadWriteMany volumes"
+
+echo "🎯 Step 2: Deploying ArgoCD..."
+cd ../argo-cd
 helm dependency update
 
-# Deploy ArgoCD with environment variables
+# Deploy ArgoCD with environment variables (includes NFS integration)
 envsubst < values.yaml | helm upgrade --install --create-namespace -n argocd argocd . -f -
 
 echo "⏳ Waiting for ArgoCD to be ready..."
 kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 
-echo "📦 Step 2: Deploying ArgoCD Apps..."
+echo "📦 Step 3: Deploying ArgoCD Apps..."
 cd ../argo-cd-apps
 helm upgrade --install -n argocd argo-cd-apps . -f values.yaml
 
 echo "⏳ Waiting for all applications to sync..."
 sleep 30
+
+echo "🔄 Step 4: Triggering application synchronization..."
+# Trigger sync for applications that might be OutOfSync
+kubectl patch application nginx-ingress -n argocd --type merge --patch '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"revision":"HEAD"}}}' 2>/dev/null || true
+kubectl patch application hashfoundry-react -n argocd --type merge --patch '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"revision":"HEAD"}}}' 2>/dev/null || true
+
+echo "⏳ Waiting for final synchronization..."
+sleep 20
 
 echo "✅ Kubernetes applications deployment completed!"
 echo ""

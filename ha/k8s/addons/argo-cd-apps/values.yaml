@@ -18,6 +18,21 @@ apps:
     autosync: true
 
 addons:
+  - name: nfs-provisioner
+    namespace: nfs-system
+    project: default
+    source:
+      path: ha/k8s/addons/nfs-provisioner
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+    autosync: true
   - name: nginx-ingress
     namespace: ingress-nginx
     project: default
