@@ -27,8 +27,8 @@ Quick deployment of High Availability Kubernetes cluster in Digital Ocean with A
 # 2. Edit .env file (set your DO_TOKEN)
 nano .env
 
-# 3. Deploy entire infrastructure
-./deploy.sh
+# 3. Deploy infrastructure and applications
+./deploy-terraform.sh && ./deploy-k8s.sh
 ```
 
 ### Option 2: Step-by-Step Deployment
