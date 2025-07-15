@@ -678,27 +678,91 @@ spec:
 
 ## 📋 **Развертывание**
 
-### **Шаг 1: Развернуть NFS Provisioner**
+### **Вариант A: Интеграция в новый кластер (рекомендуется)**
+
+#### **Шаг 1: Развернуть инфраструктуру**
 ```bash
-cd ha/k8s/addons/nfs-provisioner
+./deploy-terraform.sh
+```
+
+#### **Шаг 2: Создать NFS Provisioner Helm chart**
+```bash
+# Создать структуру директорий
+mkdir -p k8s/addons/nfs-provisioner/templates
+
+# Создать все файлы согласно структуре выше:
+# - Chart.yaml
+# - values.yaml  
+# - Makefile
+# - README.md
+# - templates/_helpers.tpl
+# - templates/nfs-server.yaml
+# - templates/nfs-provisioner.yaml
+# - templates/storage-class.yaml
+# - templates/rbac.yaml
+# - templates/service.yaml
+```
+
+#### **Шаг 3: Развернуть NFS Provisioner**
+```bash
+cd k8s/addons/nfs-provisioner
 make install
 ```
 
-### **Шаг 2: Проверить статус**
+#### **Шаг 3: Проверить NFS статус**
+```bash
+make status
+# Убедиться что StorageClass создан:
+kubectl get storageclass nfs-client
+```
+
+#### **Шаг 4: Развернуть ArgoCD с NFS поддержкой**
+```bash
+cd ../argo-cd
+# ArgoCD будет установлен с обновленным values.yaml, который уже содержит NFS конфигурацию
+helm dependency update
+envsubst < values.yaml | helm install --create-namespace -n argocd argocd . -f -
+```
+
+#### **Шаг 5: Развернуть ArgoCD Apps**
+```bash
+cd ../argo-cd-apps
+helm install -n argocd argo-cd-apps . -f values.yaml
+```
+
+### **Вариант B: Добавление в существующий кластер**
+
+#### **Шаг 1: Развернуть NFS Provisioner**
+```bash
+cd k8s/addons/nfs-provisioner
+make install
+```
+
+#### **Шаг 2: Проверить статус**
 ```bash
 make status
 ```
 
-### **Шаг 3: Обновить ArgoCD**
+#### **Шаг 3: Обновить ArgoCD (только для существующих установок)**
 ```bash
-cd ha/k8s/addons/argo-cd
+cd ../argo-cd
 helm upgrade argocd . -n argocd -f values.yaml
 ```
 
-### **Шаг 4: Проверить PVC**
+### **Проверка развертывания**
 ```bash
+# Проверить PVC
 kubectl get pvc -n argocd
+kubectl get pvc -n nfs-system
+
+# Проверить PV
 kubectl get pv
+
+# Проверить StorageClass
+kubectl get storageclass
+
+# Проверить ArgoCD поды
+kubectl get pods -n argocd
 ```
 
 ## 💰 **Стоимость**
