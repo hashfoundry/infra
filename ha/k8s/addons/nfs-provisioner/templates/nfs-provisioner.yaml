@@ -41,13 +41,13 @@ spec:
         - name: PROVISIONER_NAME
           value: {{ include "nfs-provisioner.fullname" . }}/nfs
         - name: NFS_SERVER
-          value: "10.245.209.9"
+          value: {{ if .Values.nfsProvisioner.nfsServer }}{{ .Values.nfsProvisioner.nfsServer }}{{ else }}{{ include "nfs-provisioner.fullname" . }}-server.{{ .Release.Namespace }}.svc.cluster.local{{ end }}
         - name: NFS_PATH
-          value: /exports
+          value: {{ .Values.nfsProvisioner.nfsPath }}
         resources:
           {{- toYaml .Values.nfsProvisioner.resources | nindent 10 }}
       volumes:
       - name: nfs-client-root
         nfs:
-          server: "10.245.209.9"
-          path: /exports
+          server: {{ if .Values.nfsProvisioner.nfsServer }}{{ .Values.nfsProvisioner.nfsServer }}{{ else }}{{ include "nfs-provisioner.fullname" . }}-server.{{ .Release.Namespace }}.svc.cluster.local{{ end }}
+          path: {{ .Values.nfsProvisioner.nfsPath }}
