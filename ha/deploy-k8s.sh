@@ -62,20 +62,72 @@ envsubst < values.yaml | helm upgrade --install --create-namespace -n argocd arg
 echo "⏳ Waiting for ArgoCD to be ready..."
 kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 
-echo "📦 Step 3: Deploying ArgoCD Apps..."
+echo "🏗️  Step 3: Creating required namespaces..."
+# Create namespaces that ArgoCD applications need
+echo "   Creating ingress-nginx namespace..."
+kubectl create namespace ingress-nginx --dry-run=client -o yaml | kubectl apply -f -
+
+echo "   Creating hashfoundry-react-dev namespace..."
+kubectl create namespace hashfoundry-react-dev --dry-run=client -o yaml | kubectl apply -f -
+
+echo "📦 Step 4: Deploying ArgoCD Apps..."
 cd ../argo-cd-apps
+
+# Update NFS Provisioner Application with dynamic IP before deploying
+echo "   Preparing ArgoCD Applications with dynamic NFS IP..."
+# Create a temporary values file with the dynamic NFS IP
+cat > values-dynamic.yaml << EOF
+addons:
+  - name: nfs-provisioner
+    namespace: nfs-system
+    project: default
+    source:
+      path: ha/k8s/addons/nfs-provisioner
+      helm:
+        valueFiles:
+          - values.yaml
+        parameters:
+          - name: nfsProvisioner.nfsServer
+            value: "$NFS_SERVER_IP"
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+    autosync: true
+EOF
+
+# Deploy ArgoCD Apps with base values first
 helm upgrade --install -n argocd argo-cd-apps . -f values.yaml
+
+# Wait a moment for applications to be created
+echo "   Waiting for ArgoCD Applications to be created..."
+sleep 10
+
+# Update NFS Provisioner with dynamic IP
+echo "   Updating NFS Provisioner with dynamic IP: $NFS_SERVER_IP"
+kubectl patch application nfs-provisioner -n argocd --type merge --patch "{\"spec\":{\"source\":{\"helm\":{\"parameters\":[{\"name\":\"nfsProvisioner.nfsServer\",\"value\":\"$NFS_SERVER_IP\"}]}}}}"
 
 echo "⏳ Waiting for all applications to sync..."
 sleep 30
 
-echo "🔄 Step 4: Triggering application synchronization..."
-# Trigger sync for applications that might be OutOfSync
-kubectl patch application nginx-ingress -n argocd --type merge --patch '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"revision":"HEAD"}}}' 2>/dev/null || true
-kubectl patch application hashfoundry-react -n argocd --type merge --patch '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"revision":"HEAD"}}}' 2>/dev/null || true
+echo "🔄 Step 5: Verifying application synchronization..."
+# Check application status and trigger sync if needed
+for app in nginx-ingress hashfoundry-react nfs-provisioner; do
+    echo "   Checking $app application status..."
+    status=$(kubectl get application $app -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NotFound")
+    if [ "$status" != "Synced" ]; then
+        echo "   Triggering sync for $app..."
+        kubectl patch application $app -n argocd --type merge --patch '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"revision":"HEAD"}}}' 2>/dev/null || true
+    fi
+done
 
 echo "⏳ Waiting for final synchronization..."
-sleep 20
+sleep 30
+
+# Clean up temporary file
+rm -f values-dynamic.yaml
 
 echo "✅ Kubernetes applications deployment completed!"
 echo ""
