@@ -27,7 +27,7 @@ fi
 # Setup kubectl context
 setup_kubectl_context "$CLUSTER_NAME" "$CLUSTER_REGION"
 
-echo "🎯 Step 2: Deploying ArgoCD..."
+echo "🎯 Step 1: Deploying ArgoCD..."
 cd k8s/addons/argo-cd
 helm dependency update
 
@@ -37,14 +37,14 @@ envsubst < values.yaml | helm upgrade --install --create-namespace -n argocd arg
 echo "⏳ Waiting for ArgoCD to be ready..."
 kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 
-echo " Step 3: Deploying ArgoCD Apps..."
+echo "📦 Step 2: Deploying ArgoCD Apps..."
 cd ../argo-cd-apps
 helm upgrade --install -n argocd argo-cd-apps . -f values.yaml
 
 echo "⏳ Waiting for all applications to sync..."
 sleep 30
 
-echo "✅ Deployment completed!"
+echo "✅ Kubernetes applications deployment completed!"
 echo ""
 echo "🔗 Access Information:"
 echo "ArgoCD UI: http://localhost:8080 (run: kubectl port-forward svc/argocd-server -n argocd 8080:80)"
@@ -52,6 +52,7 @@ echo "Username: admin"
 echo "Password: $ARGOCD_ADMIN_PASSWORD"
 echo ""
 echo "📊 Check status:"
+echo "./status.sh                    # Comprehensive status check"
 echo "kubectl get applications -n argocd"
 echo "kubectl get nodes"
 echo ""
