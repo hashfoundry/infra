@@ -27,7 +27,7 @@ grafana:
       path: /api/health
       port: 3000
     initialDelaySeconds: 120  # Увеличено с 60 до 120 секунд
-    timeoutSeconds: 30
+    timeoutSeconds: 29
     periodSeconds: 10
     failureThreshold: 10
   
