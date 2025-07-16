@@ -25,11 +25,18 @@ nfsExporter:
       cpu: 100m
       memory: 128Mi
 
-  # Security context
+  # Security context (pod-level)
   securityContext:
     runAsNonRoot: true
     runAsUser: 65534
+
+  # Container security context
+  containerSecurityContext:
     readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
 
   # Node selector for NFS nodes
   nodeSelector: {}

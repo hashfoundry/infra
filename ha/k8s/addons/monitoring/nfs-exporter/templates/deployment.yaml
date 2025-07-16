@@ -25,6 +25,8 @@ spec:
       - name: nfs-exporter
         image: "{{ .Values.nfsExporter.image.repository }}:{{ .Values.nfsExporter.image.tag }}"
         imagePullPolicy: {{ .Values.nfsExporter.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.nfsExporter.containerSecurityContext | nindent 10 }}
         args:
           - --web.listen-address=:{{ .Values.nfsExporter.service.targetPort }}
           - --path.procfs=/host/proc
