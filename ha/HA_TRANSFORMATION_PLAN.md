@@ -33,7 +33,7 @@ node_pool {
 ```hcl
 node_pool {
   name       = "ha-worker-pool"
-  size       = "s-1vcpu-2gb"  # Те же ресурсы, что и single-node
+  size       = "s-1vcpu-2gb"  # Базовые ресурсы
   node_count = 3              # Минимум 3 узла для кворума
   auto_scale = true
   min_nodes  = 3
@@ -41,15 +41,15 @@ node_pool {
 }
 ```
 
-#### HA конфигурация (рекомендуемый вариант):
+#### HA конфигурация (production вариант - РЕКОМЕНДУЕМЫЙ):
 ```hcl
 node_pool {
   name       = "ha-worker-pool"
   size       = "s-2vcpu-4gb"  # Увеличенные ресурсы для стабильности
-  node_count = 3              # Минимум 3 узла для кворума
+  node_count = 4              # Больше узлов для лучшего распределения
   auto_scale = true
-  min_nodes  = 3
-  max_nodes  = 6
+  min_nodes  = 4
+  max_nodes  = 9
 }
 ```
 

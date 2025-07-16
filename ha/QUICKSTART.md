@@ -4,11 +4,12 @@ Quick deployment of High Availability Kubernetes cluster in Digital Ocean with A
 
 ## HA Configuration Features
 
-- ✅ **3-node cluster** for high availability
-- ✅ **Auto-scaling** (3-6 nodes)
-- ✅ **Economic variant** (s-1vcpu-2gb) - ~$48/month
+- ✅ **4-node cluster** for high availability
+- ✅ **Auto-scaling** (4-9 nodes)
+- ✅ **Production variant** (s-2vcpu-4gb) - ~$96/month
 - ✅ **Load balancer** managed by ArgoCD
 - ✅ **Fault tolerance** at node level
+- ✅ **Enhanced resource capacity** for demanding workloads
 - ✅ **NFS Provisioner** with dynamic IP approach (no hard-coded IPs)
 - ✅ **ReadWriteMany storage** for shared volumes
 
