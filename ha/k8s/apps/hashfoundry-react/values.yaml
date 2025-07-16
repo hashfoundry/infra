@@ -1,7 +1,7 @@
 # Default values for HashFoundry React
 nginx:
-  # Development environment specific configuration
-  replicaCount: 1
+  # HA configuration with multiple replicas
+  replicaCount: 3
   
   # Image configuration
   image:
@@ -88,9 +88,13 @@ nginx:
   metrics:
     enabled: false
     
-  # Autoscaling configuration for dev
+  # Autoscaling configuration for HA
   autoscaling:
-    enabled: false
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
     
   # Liveness and readiness probes
   livenessProbe:
@@ -113,6 +117,18 @@ nginx:
     tcpSocket:
       port: http
       
-  # Pod configuration
+  # Pod configuration with anti-affinity for HA
   podAnnotations: {}
   podLabels: {}
+  
+  # Anti-affinity for HA distribution
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: nginx
+              app.kubernetes.io/instance: hashfoundry-react
+          topologyKey: kubernetes.io/hostname

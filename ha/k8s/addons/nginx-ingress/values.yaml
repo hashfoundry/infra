@@ -26,13 +26,25 @@ ingress-nginx:
         cpu: 100m
         memory: 128Mi
     
-    # Replica count
-    replicaCount: 1
+    # Replica count for HA
+    replicaCount: 3
     
     # Node tolerations
     tolerations:
       - key: node-restriction.kubernetes.io/management
         operator: Exists
+    
+    # Anti-affinity for HA distribution
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: ingress-nginx
+                app.kubernetes.io/component: controller
+            topologyKey: kubernetes.io/hostname
     
     # Configuration for better performance
     config:
@@ -57,10 +69,20 @@ ingress-nginx:
       enabled: true
       failurePolicy: Fail
       
-  # Default backend
+  # Default backend for HA
   defaultBackend:
     enabled: true
-    replicaCount: 1
+    replicaCount: 2
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: ingress-nginx
+                app.kubernetes.io/component: default-backend
+            topologyKey: kubernetes.io/hostname
     resources:
       limits:
         cpu: 50m

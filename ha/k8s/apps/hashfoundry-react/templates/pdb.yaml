@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "hashfoundry-react.fullname" . }}-pdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "hashfoundry-react.labels" . | nindent 4 }}
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nginx
+      app.kubernetes.io/instance: {{ .Release.Name }}
