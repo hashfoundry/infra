@@ -20,6 +20,22 @@ Quick deployment of High Availability Kubernetes cluster in Digital Ocean with A
 
 **Note**: All scripts now automatically check for required CLI tools and provide installation instructions if any are missing.
 
+## Quick Deployment (3 Commands)
+
+```bash
+# 1. Initialize configuration and check dependencies
+./init.sh
+
+# 2. Edit .env file (set your DO_TOKEN)
+nano .env
+
+# 3a. Deploy infrastructure
+./deploy-terraform.sh
+
+# 3b. Deploy applications
+./deploy-k8s.sh
+```
+
 ## Deployment Options
 
 ### Option 1: Full Deployment (Recommended)
