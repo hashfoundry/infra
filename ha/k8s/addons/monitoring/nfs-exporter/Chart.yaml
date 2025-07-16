@@ -1,0 +1,19 @@
+apiVersion: v2
+name: nfs-exporter
+description: NFS Exporter for Prometheus monitoring of NFS services
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - nfs
+  - monitoring
+  - prometheus
+  - exporter
+
+maintainers:
+  - name: HashFoundry Team
+    email: team@hashfoundry.com
+
+annotations:
+  category: Monitoring

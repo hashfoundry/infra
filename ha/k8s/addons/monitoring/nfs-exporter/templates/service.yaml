@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nfs-exporter.fullname" . }}
+  namespace: {{ .Values.serviceMonitor.namespace }}
+  labels:
+    {{- include "nfs-exporter.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.nfsExporter.service.annotations | nindent 4 }}
+spec:
+  type: {{ .Values.nfsExporter.service.type }}
+  ports:
+  - port: {{ .Values.nfsExporter.service.port }}
+    targetPort: {{ .Values.nfsExporter.service.targetPort }}
+    protocol: TCP
+    name: metrics
+  selector:
+    {{- include "nfs-exporter.selectorLabels" . | nindent 4 }}

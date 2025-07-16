@@ -1,0 +1,129 @@
+# NFS Exporter Configuration
+nfsExporter:
+  # Image configuration
+  image:
+    repository: prom/node-exporter
+    tag: "v1.6.1"
+    pullPolicy: IfNotPresent
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 9100
+    targetPort: 9100
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9100"
+      prometheus.io/path: "/metrics"
+
+  # Resources
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    readOnlyRootFilesystem: true
+
+  # Node selector for NFS nodes
+  nodeSelector: {}
+  
+  # Tolerations
+  tolerations: []
+  
+  # Affinity
+  affinity: {}
+
+# ServiceMonitor for Prometheus
+serviceMonitor:
+  enabled: false  # Disabled until Prometheus Operator is confirmed
+  namespace: monitoring
+  labels:
+    app: nfs-exporter
+  interval: 30s
+  scrapeTimeout: 10s
+  path: /metrics
+
+# NFS specific monitoring configuration
+nfsMonitoring:
+  # Enable NFS specific metrics collection
+  enabled: true
+  
+  # NFS server endpoints to monitor
+  targets:
+    - name: nfs-provisioner-server
+      namespace: nfs-system
+      service: nfs-provisioner-server
+      port: 2049
+      
+  # Custom metrics collection
+  customMetrics:
+    # NFS connection metrics
+    - name: nfs_connections_total
+      help: "Total number of NFS connections"
+      type: counter
+      
+    # NFS operations metrics  
+    - name: nfs_operations_total
+      help: "Total number of NFS operations"
+      type: counter
+      labels:
+        - operation
+        - status
+        
+    # NFS storage metrics
+    - name: nfs_storage_bytes
+      help: "NFS storage usage in bytes"
+      type: gauge
+      labels:
+        - export
+        - type
+
+# Grafana dashboard configuration
+grafanaDashboard:
+  enabled: true
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana.com/dashboard: "nfs-monitoring"
+
+# Alert rules for NFS monitoring
+alertRules:
+  enabled: true
+  namespace: monitoring
+  labels:
+    app: nfs-exporter
+  rules:
+    - alert: NFSServerDown
+      expr: up{job="nfs-exporter"} == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "NFS Server is down"
+        description: "NFS Server {{ $labels.instance }} has been down for more than 5 minutes"
+        
+    - alert: NFSHighConnections
+      expr: nfs_connections_total > 100
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High number of NFS connections"
+        description: "NFS Server {{ $labels.instance }} has {{ $value }} connections"
+        
+    - alert: NFSStorageUsageHigh
+      expr: (nfs_storage_bytes{type="used"} / nfs_storage_bytes{type="total"}) * 100 > 80
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "NFS storage usage is high"
+        description: "NFS export {{ $labels.export }} usage is {{ $value }}%"
