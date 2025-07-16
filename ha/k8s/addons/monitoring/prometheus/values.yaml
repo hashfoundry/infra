@@ -104,6 +104,14 @@ prometheus:
         - source_labels: [__meta_kubernetes_pod_container_port_number]
           action: keep
           regex: "10254"
+    
+    # NFS Exporter metrics
+    - job_name: 'nfs-exporter'
+      static_configs:
+        - targets: ['nfs-exporter.monitoring.svc.cluster.local:9100']
+      scrape_interval: 30s
+      scrape_timeout: 10s
+      metrics_path: /metrics
 
   # Alert rules
   serverFiles:
@@ -166,3 +174,41 @@ prometheus:
               annotations:
                 summary: ArgoCD application unhealthy
                 description: "Application {{ $labels.name }} in project {{ $labels.project }} is unhealthy."
+        
+        - name: nfs-alerts
+          rules:
+            - alert: NFSExporterDown
+              expr: up{job="nfs-exporter"} == 0
+              for: 5m
+              labels:
+                severity: critical
+              annotations:
+                summary: NFS Exporter is down
+                description: "NFS Exporter has been down for more than 5 minutes."
+            
+            - alert: FilesystemSpaceUsageHigh
+              expr: (node_filesystem_size_bytes{job="nfs-exporter"} - node_filesystem_avail_bytes{job="nfs-exporter"}) / node_filesystem_size_bytes{job="nfs-exporter"} * 100 > 80
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: Filesystem space usage is high
+                description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $value }}% full."
+            
+            - alert: FilesystemSpaceUsageCritical
+              expr: (node_filesystem_size_bytes{job="nfs-exporter"} - node_filesystem_avail_bytes{job="nfs-exporter"}) / node_filesystem_size_bytes{job="nfs-exporter"} * 100 > 90
+              for: 5m
+              labels:
+                severity: critical
+              annotations:
+                summary: Filesystem space usage is critical
+                description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $value }}% full."
+            
+            - alert: FilesystemInodesUsageHigh
+              expr: (node_filesystem_files{job="nfs-exporter"} - node_filesystem_files_free{job="nfs-exporter"}) / node_filesystem_files{job="nfs-exporter"} * 100 > 80
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: Filesystem inodes usage is high
+                description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} has {{ $value }}% inodes used."
