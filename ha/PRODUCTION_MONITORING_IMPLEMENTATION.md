@@ -521,9 +521,9 @@ grafana:
   persistence:
     enabled: true
     size: 10Gi
-    storageClassName: "nfs-client"
+    storageClassName: "do-block-storage"
     accessModes:
-      - ReadWriteMany
+      - ReadWriteOnce
   
   # Service configuration
   service:
