@@ -17,6 +17,25 @@ grafana:
       cpu: 250m
       memory: 512Mi
   
+  # Health checks - увеличенные таймауты для NFS storage
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 120  # Увеличено с 60 до 120 секунд
+    timeoutSeconds: 30
+    periodSeconds: 10
+    failureThreshold: 10
+  
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 30   # Увеличено с 0 до 30 секунд
+    timeoutSeconds: 5
+    periodSeconds: 10
+    failureThreshold: 5
+  
   # Persistence
   persistence:
     enabled: true
@@ -37,7 +56,6 @@ grafana:
     hosts:
       - grafana.hashfoundry.local
     path: /
-    pathType: Prefix
     tls:
       - secretName: grafana-tls
         hosts:
@@ -61,7 +79,7 @@ grafana:
   securityContext:
     runAsUser: 472      # Официальный UID пользователя grafana (не root для безопасности)
     runAsGroup: 472     # Официальная группа grafana для правильных прав доступа
-    fsGroup: 472        # Критично для правильных прав на mounted volumes
+    fsGroup: 472        # Критично для NFS - устанавливает права на mounted volumes
   
   # Grafana configuration
   grafana.ini:
