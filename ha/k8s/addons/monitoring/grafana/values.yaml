@@ -179,6 +179,11 @@ grafana:
         gnetId: 14584
         revision: 1
         datasource: Prometheus
+    
+    nfs:
+      # NFS Exporter Dashboard
+      nfs-exporter:
+        file: dashboards/nfs-exporter-dashboard.json
   
   # Plugins
   plugins:
