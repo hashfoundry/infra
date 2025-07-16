@@ -47,12 +47,23 @@ echo "💾 Step 1: Cleaning up Kubernetes volumes..."
 if kubectl config current-context | grep -q "$CLUSTER_NAME" 2>/dev/null; then
     echo "📋 Found active kubectl context, cleaning up volumes..."
     
-    # Delete all PVCs (this will trigger PV deletion)
+    # Delete all PVCs with force and short timeout
     echo "   Deleting PersistentVolumeClaims..."
-    kubectl delete pvc --all --all-namespaces --timeout=60s || echo "   No PVCs found or already deleted"
+    kubectl delete pvc --all --all-namespaces --timeout=30s --force --grace-period=0 2>/dev/null || echo "   Initial PVC deletion completed or timed out"
+    
+    # Force delete any remaining PVCs by removing finalizers
+    echo "   Force deleting remaining PVCs..."
+    remaining_pvcs=$(kubectl get pvc --all-namespaces --no-headers 2>/dev/null | awk '{print $2 " -n " $1}' || true)
+    if [ -n "$remaining_pvcs" ]; then
+        echo "$remaining_pvcs" | while read pvc_name namespace_flag namespace_name; do
+            echo "     Force deleting PVC: $pvc_name in namespace $namespace_name"
+            kubectl patch pvc "$pvc_name" -n "$namespace_name" -p '{"metadata":{"finalizers":null}}' 2>/dev/null || true
+            kubectl delete pvc "$pvc_name" -n "$namespace_name" --force --grace-period=0 2>/dev/null || true
+        done
+    fi
     
     # Wait a bit for PVCs to be deleted
-    sleep 10
+    sleep 5
     
     # Force delete any remaining PVs
     echo "   Checking for remaining PersistentVolumes..."
