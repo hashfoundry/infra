@@ -109,6 +109,7 @@ doctl
 
 # Helm
 **/charts/*.tgz
+values-dynamic.yaml
 
 # Certificates
 *.crt
