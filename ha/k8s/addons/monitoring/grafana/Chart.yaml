@@ -1,0 +1,11 @@
+apiVersion: v2
+name: grafana
+description: Grafana dashboard for HashFoundry monitoring
+type: application
+version: 0.1.0
+appVersion: "10.2.0"
+
+dependencies:
+  - name: grafana
+    version: 7.0.8
+    repository: https://grafana.github.io/helm-charts

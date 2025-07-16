@@ -1,0 +1,189 @@
+grafana:
+  # Image configuration
+  image:
+    repository: grafana/grafana
+    tag: "10.2.0"
+  
+  # Admin credentials
+  adminUser: admin
+  adminPassword: admin
+  
+  # Resource limits
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  
+  # Persistence
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: "do-block-storage"
+    accessModes:
+      - ReadWriteOnce
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 80
+  
+  # Ingress
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - grafana.hashfoundry.local
+    path: /
+    pathType: Prefix
+    tls:
+      - secretName: grafana-tls
+        hosts:
+          - grafana.hashfoundry.local
+  
+  # Security context
+  # UID/GID 472 - официальный стандартный идентификатор пользователя grafana
+  # 
+  # Подробности про UID 472:
+  # - Это НЕ случайное число, а официально зарегистрированный UID для Grafana
+  # - Определен в официальном Dockerfile Grafana: https://github.com/grafana/grafana/blob/main/Dockerfile
+  # - Используется во всех официальных образах grafana/grafana
+  # - Соответствует стандартам безопасности контейнеров (non-root user)
+  # - Обеспечивает консистентность между различными развертываниями
+  # 
+  # Зачем именно 472:
+  # - Выбран командой Grafana как уникальный идентификатор
+  # - Избегает конфликтов с системными пользователями (обычно < 1000)
+  # - Стандартизирован для всех инсталляций Grafana в контейнерах
+  # - Позволяет правильно работать с volume permissions
+  securityContext:
+    runAsUser: 472      # Официальный UID пользователя grafana (не root для безопасности)
+    runAsGroup: 472     # Официальная группа grafana для правильных прав доступа
+    fsGroup: 472        # Критично для правильных прав на mounted volumes
+  
+  # Grafana configuration
+  grafana.ini:
+    server:
+      root_url: https://grafana.hashfoundry.local
+    security:
+      admin_user: admin
+      admin_password: admin
+    auth.anonymous:
+      enabled: false
+    analytics:
+      check_for_updates: false
+      reporting_enabled: false
+    log:
+      mode: console
+      level: info
+  
+  # Datasources
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus-server.monitoring.svc.cluster.local
+          access: proxy
+          isDefault: true
+          editable: true
+        - name: Loki
+          type: loki
+          url: http://loki.monitoring.svc.cluster.local:3100
+          access: proxy
+          editable: true
+  
+  # Dashboard providers
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'default'
+          orgId: 1
+          folder: ''
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/default
+        - name: 'kubernetes'
+          orgId: 1
+          folder: 'Kubernetes'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/kubernetes
+        - name: 'argocd'
+          orgId: 1
+          folder: 'ArgoCD'
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/argocd
+  
+  # Dashboards
+  dashboards:
+    default:
+      # Infrastructure Overview Dashboard
+      infrastructure-overview:
+        gnetId: 7249
+        revision: 1
+        datasource: Prometheus
+      
+      # Node Exporter Dashboard
+      node-exporter:
+        gnetId: 1860
+        revision: 31
+        datasource: Prometheus
+    
+    kubernetes:
+      # Kubernetes Cluster Monitoring
+      kubernetes-cluster:
+        gnetId: 7249
+        revision: 1
+        datasource: Prometheus
+      
+      # Kubernetes Pod Monitoring
+      kubernetes-pods:
+        gnetId: 6417
+        revision: 1
+        datasource: Prometheus
+      
+      # Kubernetes Deployment
+      kubernetes-deployment:
+        gnetId: 8588
+        revision: 1
+        datasource: Prometheus
+    
+    argocd:
+      # ArgoCD Dashboard
+      argocd-overview:
+        gnetId: 14584
+        revision: 1
+        datasource: Prometheus
+  
+  # Plugins
+  plugins:
+    - grafana-piechart-panel
+    - grafana-worldmap-panel
+    - grafana-clock-panel
+  
+  # SMTP configuration (optional)
+  smtp:
+    enabled: false
+  
+  # Anti-affinity for HA
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: grafana
+          topologyKey: kubernetes.io/hostname
