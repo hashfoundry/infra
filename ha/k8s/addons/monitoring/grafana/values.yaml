@@ -1,4 +1,8 @@
 grafana:
+  # Deployment strategy - Recreate to avoid RWO PVC conflicts during upgrades
+  deploymentStrategy:
+    type: Recreate
+
   # Image configuration
   image:
     repository: grafana/grafana

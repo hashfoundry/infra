@@ -1,4 +1,4 @@
-.PHONY: install uninstall upgrade status
+.PHONY: install uninstall upgrade upgrade-safe status
 
 NAMESPACE = monitoring
 RELEASE_NAME = grafana
@@ -31,3 +31,12 @@ logs:
 password:
 	@echo "Grafana admin password:"
 	@kubectl get secret --namespace $(NAMESPACE) grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+
+upgrade-safe:
+	@echo "🔄 Performing safe Grafana upgrade with Recreate strategy..."
+	@chmod +x upgrade.sh
+	@./upgrade.sh
+
+strategy:
+	@echo "📊 Current deployment strategy:"
+	@kubectl get deployment $(RELEASE_NAME) -n $(NAMESPACE) -o jsonpath='{.spec.strategy.type}' 2>/dev/null || echo "Deployment not found"
