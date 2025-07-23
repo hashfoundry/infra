@@ -13,6 +13,7 @@ services:
       - --rpc-cors=all
       - --rpc-methods=unsafe
       - --name=alice-node
+      - --bootnodes=/dns/blockchain-bob/tcp/30333/p2p/12D3KooWCypfENuYs2G13wp2pJ9LaukfCcRHT4tAxEyE1XCGwVVN
     ports:
       - "${ALICE_RPC_PORT:-9933}:9933"  # RPC HTTP
       - "${ALICE_WS_PORT:-9944}:9944"   # RPC WebSocket  
@@ -44,7 +45,7 @@ services:
       - --rpc-cors=all
       - --rpc-methods=unsafe
       - --name=bob-node
-      - --bootnodes=/dns/blockchain-alice/tcp/30333/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp
+      - --bootnodes=/dns/blockchain-alice/tcp/30333/p2p/12D3KooWAMacdttUqjZbBG2WzK7j6uZ8xfuv77eKzDKzKi6w3Jm8
     ports:
       - "${BOB_RPC_PORT:-9934}:9933"   # RPC HTTP (different port)
       - "${BOB_WS_PORT:-9945}:9944"    # RPC WebSocket (different port)
