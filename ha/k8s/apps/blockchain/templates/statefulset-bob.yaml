@@ -40,19 +40,12 @@ spec:
           - "--validator"
           - "--node-key-file=/data/bob.key"
           - "--base-path=/data"
-          - "--rpc-external"
-          - "--ws-external"
           - "--rpc-cors=all"
           - "--unsafe-rpc-external"
-          - "--unsafe-ws-external"
-          - "--prometheus-external"
           - "--port={{ .Values.validatorBob.service.p2pPort }}"
           - "--rpc-port={{ .Values.validatorBob.service.rpcPort }}"
-          - "--ws-port={{ .Values.validatorBob.service.wsPort }}"
-          - "--prometheus-port={{ .Values.validatorBob.service.prometheusPort }}"
           - "--log={{ .Values.validatorBob.nodeConfig.logLevel }}"
           - "--name=Bob"
-          - "--telemetry-url={{ .Values.validatorBob.nodeConfig.telemetryUrl }}"
           - "--bootnodes=/ip4/{{ include "blockchain.aliceFullname" . }}.{{ include "blockchain.namespace" . }}.svc.cluster.local/tcp/{{ .Values.validatorAlice.service.p2pPort }}/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp"
         ports:
         - name: rpc
@@ -110,7 +103,7 @@ spec:
           name: {{ include "blockchain.fullname" . }}-chainspec
       - name: bob-key
         secret:
-          name: {{ include "blockchain.fullname" . }}-bob-key
+          secretName: {{ include "blockchain.fullname" . }}-bob-key
           defaultMode: 0400
   {{- if .Values.validatorBob.persistence.enabled }}
   volumeClaimTemplates:

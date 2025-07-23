@@ -40,19 +40,12 @@ spec:
           - "--validator"
           - "--node-key-file=/data/alice.key"
           - "--base-path=/data"
-          - "--rpc-external"
-          - "--ws-external"
           - "--rpc-cors=all"
           - "--unsafe-rpc-external"
-          - "--unsafe-ws-external"
-          - "--prometheus-external"
           - "--port={{ .Values.validatorAlice.service.p2pPort }}"
           - "--rpc-port={{ .Values.validatorAlice.service.rpcPort }}"
-          - "--ws-port={{ .Values.validatorAlice.service.wsPort }}"
-          - "--prometheus-port={{ .Values.validatorAlice.service.prometheusPort }}"
           - "--log={{ .Values.validatorAlice.nodeConfig.logLevel }}"
           - "--name=Alice"
-          - "--telemetry-url={{ .Values.validatorAlice.nodeConfig.telemetryUrl }}"
         ports:
         - name: rpc
           containerPort: {{ .Values.validatorAlice.service.rpcPort }}
@@ -109,7 +102,7 @@ spec:
           name: {{ include "blockchain.fullname" . }}-chainspec
       - name: alice-key
         secret:
-          name: {{ include "blockchain.fullname" . }}-alice-key
+          secretName: {{ include "blockchain.fullname" . }}-alice-key
           defaultMode: 0400
   {{- if .Values.validatorAlice.persistence.enabled }}
   volumeClaimTemplates:

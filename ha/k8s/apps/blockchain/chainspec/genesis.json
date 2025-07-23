@@ -28,11 +28,24 @@
           ]
         ]
       },
-      "aura": {
+      "babe": {
         "authorities": [
-          "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
-          "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
-        ]
+          [
+            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            1
+          ],
+          [
+            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            1
+          ]
+        ],
+        "epochConfig": {
+          "c": [
+            1,
+            4
+          ],
+          "allowedSlots": "PrimaryAndSecondaryPlainSlots"
+        }
       },
       "grandpa": {
         "authorities": [
@@ -48,6 +61,9 @@
       },
       "sudo": {
         "key": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+      },
+      "indices": {
+        "indices": []
       },
       "transactionPayment": {
         "multiplier": "1000000000000000000"
