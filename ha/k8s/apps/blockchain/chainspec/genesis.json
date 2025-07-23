@@ -1,0 +1,57 @@
+{
+  "name": "HashFoundry Local Testnet",
+  "id": "hashfoundry_local",
+  "chainType": "Local",
+  "bootNodes": [],
+  "telemetryEndpoints": null,
+  "protocolId": "hf",
+  "properties": {
+    "tokenSymbol": "HF",
+    "tokenDecimals": 12,
+    "ss58Format": 42
+  },
+  "codeSubstitutes": {},
+  "genesis": {
+    "runtime": {
+      "system": {
+        "code": "0x"
+      },
+      "balances": {
+        "balances": [
+          [
+            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            1000000000000000
+          ],
+          [
+            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            1000000000000000
+          ]
+        ]
+      },
+      "aura": {
+        "authorities": [
+          "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+          "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty"
+        ]
+      },
+      "grandpa": {
+        "authorities": [
+          [
+            "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+            1
+          ],
+          [
+            "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+            1
+          ]
+        ]
+      },
+      "sudo": {
+        "key": "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY"
+      },
+      "transactionPayment": {
+        "multiplier": "1000000000000000000"
+      }
+    }
+  }
+}

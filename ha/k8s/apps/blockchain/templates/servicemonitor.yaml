@@ -1,0 +1,45 @@
+{{- if and .Values.monitoring.enabled .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "blockchain.fullname" . }}
+  namespace: {{ include "blockchain.namespace" . }}
+  labels:
+    {{- include "blockchain.labels" . | nindent 4 }}
+    {{- with .Values.monitoring.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "blockchain.selectorLabels" . | nindent 6 }}
+  endpoints:
+  {{- if .Values.validatorAlice.enabled }}
+  - port: prometheus
+    interval: {{ .Values.monitoring.serviceMonitor.interval }}
+    scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout }}
+    path: /metrics
+    targetPort: {{ .Values.validatorAlice.service.prometheusPort }}
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service
+    - replacement: alice
+      targetLabel: validator
+  {{- end }}
+  {{- if .Values.validatorBob.enabled }}
+  - port: prometheus
+    interval: {{ .Values.monitoring.serviceMonitor.interval }}
+    scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout }}
+    path: /metrics
+    targetPort: {{ .Values.validatorBob.service.prometheusPort }}
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_service_name]
+      targetLabel: service
+    - replacement: bob
+      targetLabel: validator
+  {{- end }}
+{{- end }}

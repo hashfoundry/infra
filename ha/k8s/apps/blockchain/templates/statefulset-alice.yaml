@@ -1,0 +1,126 @@
+{{- if .Values.validatorAlice.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "blockchain.aliceFullname" . }}
+  namespace: {{ include "blockchain.namespace" . }}
+  labels:
+    {{- include "blockchain.aliceLabels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "blockchain.aliceFullname" . }}
+  replicas: {{ .Values.validatorAlice.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "blockchain.aliceSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "blockchain.aliceLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: substrate-alice
+        image: "{{ .Values.validatorAlice.image.repository }}:{{ .Values.validatorAlice.image.tag }}"
+        imagePullPolicy: {{ .Values.validatorAlice.image.pullPolicy }}
+        {{- with .Values.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        command:
+          - "substrate"
+          - "--chain=/chainspec/genesis.json"
+          - "--alice"
+          - "--validator"
+          - "--node-key-file=/data/alice.key"
+          - "--base-path=/data"
+          - "--rpc-external"
+          - "--ws-external"
+          - "--rpc-cors=all"
+          - "--unsafe-rpc-external"
+          - "--unsafe-ws-external"
+          - "--prometheus-external"
+          - "--port={{ .Values.validatorAlice.service.p2pPort }}"
+          - "--rpc-port={{ .Values.validatorAlice.service.rpcPort }}"
+          - "--ws-port={{ .Values.validatorAlice.service.wsPort }}"
+          - "--prometheus-port={{ .Values.validatorAlice.service.prometheusPort }}"
+          - "--log={{ .Values.validatorAlice.nodeConfig.logLevel }}"
+          - "--name=Alice"
+          - "--telemetry-url={{ .Values.validatorAlice.nodeConfig.telemetryUrl }}"
+        ports:
+        - name: rpc
+          containerPort: {{ .Values.validatorAlice.service.rpcPort }}
+          protocol: TCP
+        - name: ws
+          containerPort: {{ .Values.validatorAlice.service.wsPort }}
+          protocol: TCP
+        - name: p2p
+          containerPort: {{ .Values.validatorAlice.service.p2pPort }}
+          protocol: TCP
+        - name: prometheus
+          containerPort: {{ .Values.validatorAlice.service.prometheusPort }}
+          protocol: TCP
+        {{- if .Values.healthChecks.liveness.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.validatorAlice.service.rpcPort }}
+          initialDelaySeconds: {{ .Values.healthChecks.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.liveness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthChecks.liveness.failureThreshold }}
+        {{- end }}
+        {{- if .Values.healthChecks.readiness.enabled }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.validatorAlice.service.rpcPort }}
+          initialDelaySeconds: {{ .Values.healthChecks.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.readiness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthChecks.readiness.failureThreshold }}
+        {{- end }}
+        {{- with .Values.validatorAlice.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: blockchain-data
+          mountPath: /data
+        - name: chainspec
+          mountPath: /chainspec
+          readOnly: true
+        - name: alice-key
+          mountPath: /data/alice.key
+          subPath: alice.key
+          readOnly: true
+        env:
+        - name: RUST_LOG
+          value: {{ .Values.validatorAlice.nodeConfig.logLevel }}
+      volumes:
+      - name: chainspec
+        configMap:
+          name: {{ include "blockchain.fullname" . }}-chainspec
+      - name: alice-key
+        secret:
+          name: {{ include "blockchain.fullname" . }}-alice-key
+          defaultMode: 0400
+  {{- if .Values.validatorAlice.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: blockchain-data
+    spec:
+      accessModes:
+        - {{ .Values.validatorAlice.persistence.accessMode }}
+      storageClassName: {{ .Values.validatorAlice.persistence.storageClass }}
+      resources:
+        requests:
+          storage: {{ .Values.validatorAlice.persistence.size }}
+  {{- end }}
+{{- end }}

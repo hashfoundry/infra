@@ -1,0 +1,30 @@
+{{- if .Values.validatorBob.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "blockchain.bobFullname" . }}
+  namespace: {{ include "blockchain.namespace" . }}
+  labels:
+    {{- include "blockchain.bobLabels" . | nindent 4 }}
+spec:
+  type: {{ .Values.validatorBob.service.type }}
+  ports:
+    - port: {{ .Values.validatorBob.service.rpcPort }}
+      targetPort: rpc
+      protocol: TCP
+      name: rpc
+    - port: {{ .Values.validatorBob.service.wsPort }}
+      targetPort: ws
+      protocol: TCP
+      name: ws
+    - port: {{ .Values.validatorBob.service.p2pPort }}
+      targetPort: p2p
+      protocol: TCP
+      name: p2p
+    - port: {{ .Values.validatorBob.service.prometheusPort }}
+      targetPort: prometheus
+      protocol: TCP
+      name: prometheus
+  selector:
+    {{- include "blockchain.bobSelectorLabels" . | nindent 4 }}
+{{- end }}

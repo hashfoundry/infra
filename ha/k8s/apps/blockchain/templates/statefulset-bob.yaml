@@ -1,0 +1,127 @@
+{{- if .Values.validatorBob.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "blockchain.bobFullname" . }}
+  namespace: {{ include "blockchain.namespace" . }}
+  labels:
+    {{- include "blockchain.bobLabels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "blockchain.bobFullname" . }}
+  replicas: {{ .Values.validatorBob.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "blockchain.bobSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "blockchain.bobLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: substrate-bob
+        image: "{{ .Values.validatorBob.image.repository }}:{{ .Values.validatorBob.image.tag }}"
+        imagePullPolicy: {{ .Values.validatorBob.image.pullPolicy }}
+        {{- with .Values.securityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        command:
+          - "substrate"
+          - "--chain=/chainspec/genesis.json"
+          - "--bob"
+          - "--validator"
+          - "--node-key-file=/data/bob.key"
+          - "--base-path=/data"
+          - "--rpc-external"
+          - "--ws-external"
+          - "--rpc-cors=all"
+          - "--unsafe-rpc-external"
+          - "--unsafe-ws-external"
+          - "--prometheus-external"
+          - "--port={{ .Values.validatorBob.service.p2pPort }}"
+          - "--rpc-port={{ .Values.validatorBob.service.rpcPort }}"
+          - "--ws-port={{ .Values.validatorBob.service.wsPort }}"
+          - "--prometheus-port={{ .Values.validatorBob.service.prometheusPort }}"
+          - "--log={{ .Values.validatorBob.nodeConfig.logLevel }}"
+          - "--name=Bob"
+          - "--telemetry-url={{ .Values.validatorBob.nodeConfig.telemetryUrl }}"
+          - "--bootnodes=/ip4/{{ include "blockchain.aliceFullname" . }}.{{ include "blockchain.namespace" . }}.svc.cluster.local/tcp/{{ .Values.validatorAlice.service.p2pPort }}/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp"
+        ports:
+        - name: rpc
+          containerPort: {{ .Values.validatorBob.service.rpcPort }}
+          protocol: TCP
+        - name: ws
+          containerPort: {{ .Values.validatorBob.service.wsPort }}
+          protocol: TCP
+        - name: p2p
+          containerPort: {{ .Values.validatorBob.service.p2pPort }}
+          protocol: TCP
+        - name: prometheus
+          containerPort: {{ .Values.validatorBob.service.prometheusPort }}
+          protocol: TCP
+        {{- if .Values.healthChecks.liveness.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.validatorBob.service.rpcPort }}
+          initialDelaySeconds: {{ .Values.healthChecks.liveness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.liveness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.liveness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthChecks.liveness.failureThreshold }}
+        {{- end }}
+        {{- if .Values.healthChecks.readiness.enabled }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{ .Values.validatorBob.service.rpcPort }}
+          initialDelaySeconds: {{ .Values.healthChecks.readiness.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.readiness.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.readiness.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthChecks.readiness.failureThreshold }}
+        {{- end }}
+        {{- with .Values.validatorBob.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: blockchain-data
+          mountPath: /data
+        - name: chainspec
+          mountPath: /chainspec
+          readOnly: true
+        - name: bob-key
+          mountPath: /data/bob.key
+          subPath: bob.key
+          readOnly: true
+        env:
+        - name: RUST_LOG
+          value: {{ .Values.validatorBob.nodeConfig.logLevel }}
+      volumes:
+      - name: chainspec
+        configMap:
+          name: {{ include "blockchain.fullname" . }}-chainspec
+      - name: bob-key
+        secret:
+          name: {{ include "blockchain.fullname" . }}-bob-key
+          defaultMode: 0400
+  {{- if .Values.validatorBob.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: blockchain-data
+    spec:
+      accessModes:
+        - {{ .Values.validatorBob.persistence.accessMode }}
+      storageClassName: {{ .Values.validatorBob.persistence.storageClass }}
+      resources:
+        requests:
+          storage: {{ .Values.validatorBob.persistence.size }}
+  {{- end }}
+{{- end }}
