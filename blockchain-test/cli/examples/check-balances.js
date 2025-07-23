@@ -5,8 +5,8 @@ async function checkBalances() {
 
   try {
     // Alice node connection
-    console.log('📡 Connecting to Alice node (localhost:9944)...');
-    const aliceProvider = new WsProvider('ws://localhost:9944');
+    console.log('📡 Connecting to Alice node (localhost:9933)...');
+    const aliceProvider = new WsProvider('ws://localhost:9933');
     const aliceApi = await ApiPromise.create({ provider: aliceProvider });
     
     // Alice balance
@@ -14,8 +14,8 @@ async function checkBalances() {
     console.log(`👩 Alice Balance: ${aliceAccount.data.free.toHuman()}`);
 
     // Bob node connection
-    console.log('📡 Connecting to Bob node (localhost:9945)...');
-    const bobProvider = new WsProvider('ws://localhost:9945');
+    console.log('📡 Connecting to Bob node (localhost:9934)...');
+    const bobProvider = new WsProvider('ws://localhost:9934');
     const bobApi = await ApiPromise.create({ provider: bobProvider });
     
     // Bob balance  

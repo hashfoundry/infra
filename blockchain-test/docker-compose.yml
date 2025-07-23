@@ -1,20 +1,16 @@
-version: '3.8'
-
 services:
   # Alice Validator Node
   blockchain-alice:
     image: parity/substrate:latest
     container_name: blockchain-alice
     command:
-      - --chain=/chainspec/genesis.json
+      - --chain=local
       - --validator
       - --alice
-      - --base-path=/data
+      - --tmp
       - --rpc-external
-      - --ws-external
+      - --rpc-port=9933
       - --rpc-cors=all
-      - --unsafe-rpc-external
-      - --unsafe-ws-external
       - --rpc-methods=unsafe
       - --name=alice-node
     ports:
@@ -28,7 +24,7 @@ services:
       - blockchain-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9933/health"]
+      test: ["CMD", "curl", "-H", "Content-Type: application/json", "-d", "{\"id\":1, \"jsonrpc\":\"2.0\", \"method\": \"system_health\", \"params\":[]}", "http://localhost:9933"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -39,15 +35,13 @@ services:
     image: parity/substrate:latest
     container_name: blockchain-bob
     command:
-      - --chain=/chainspec/genesis.json
+      - --chain=local
       - --validator
       - --bob
-      - --base-path=/data
+      - --tmp
       - --rpc-external
-      - --ws-external
+      - --rpc-port=9933
       - --rpc-cors=all
-      - --unsafe-rpc-external
-      - --unsafe-ws-external
       - --rpc-methods=unsafe
       - --name=bob-node
       - --bootnodes=/dns/blockchain-alice/tcp/30333/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp
@@ -65,7 +59,7 @@ services:
       blockchain-alice:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9933/health"]
+      test: ["CMD", "curl", "-H", "Content-Type: application/json", "-d", "{\"id\":1, \"jsonrpc\":\"2.0\", \"method\": \"system_health\", \"params\":[]}", "http://localhost:9933"]
       interval: 30s
       timeout: 10s
       retries: 3

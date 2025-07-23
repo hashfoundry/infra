@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "check-balances": "node examples/check-balances.js",
+    "simple-check": "node examples/simple-balance-check.js",
+    "test-transfer": "node examples/test-transfer.js",
     "transfer": "node examples/transfer-tokens.js",
     "monitor": "node examples/monitor-blocks.js"
   },
