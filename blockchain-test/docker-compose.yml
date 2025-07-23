@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # Alice Validator Node
+  blockchain-alice:
+    image: parity/substrate:latest
+    container_name: blockchain-alice
+    command:
+      - --chain=/chainspec/genesis.json
+      - --validator
+      - --alice
+      - --base-path=/data
+      - --rpc-external
+      - --ws-external
+      - --rpc-cors=all
+      - --unsafe-rpc-external
+      - --unsafe-ws-external
+      - --rpc-methods=unsafe
+      - --name=alice-node
+    ports:
+      - "${ALICE_RPC_PORT:-9933}:9933"  # RPC HTTP
+      - "${ALICE_WS_PORT:-9944}:9944"   # RPC WebSocket  
+      - "${ALICE_P2P_PORT:-30333}:30333" # P2P
+    volumes:
+      - blockchain-alice-data:/data
+      - ./chainspec:/chainspec:ro
+    networks:
+      - blockchain-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9933/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Bob Validator Node
+  blockchain-bob:
+    image: parity/substrate:latest
+    container_name: blockchain-bob
+    command:
+      - --chain=/chainspec/genesis.json
+      - --validator
+      - --bob
+      - --base-path=/data
+      - --rpc-external
+      - --ws-external
+      - --rpc-cors=all
+      - --unsafe-rpc-external
+      - --unsafe-ws-external
+      - --rpc-methods=unsafe
+      - --name=bob-node
+      - --bootnodes=/dns/blockchain-alice/tcp/30333/p2p/12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp
+    ports:
+      - "${BOB_RPC_PORT:-9934}:9933"   # RPC HTTP (different port)
+      - "${BOB_WS_PORT:-9945}:9944"    # RPC WebSocket (different port)
+      - "${BOB_P2P_PORT:-30334}:30333" # P2P (different port)
+    volumes:
+      - blockchain-bob-data:/data
+      - ./chainspec:/chainspec:ro
+    networks:
+      - blockchain-network
+    restart: unless-stopped
+    depends_on:
+      blockchain-alice:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9933/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+networks:
+  blockchain-network:
+    driver: bridge
+
+volumes:
+  blockchain-alice-data:
+    driver: local
+  blockchain-bob-data:
+    driver: local
