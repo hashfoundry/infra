@@ -16,20 +16,6 @@ apps:
     source:
       path: ha/k8s/apps/hashfoundry-react
     autosync: true
-  # Temporarily disabled for manual debugging
-  # - name: hashfoundry-blockchain
-  #   namespace: blockchain
-  #   source:
-  #     path: ha/k8s/apps/blockchain
-  #   syncPolicy:
-  #     automated:
-  #       prune: true
-  #       selfHeal: true
-  #     syncOptions:
-  #       - CreateNamespace=true
-  #       - PrunePropagationPolicy=foreground
-  #       - PruneLast=true
-  #   autosync: true
 
 addons:
   - name: nfs-provisioner
