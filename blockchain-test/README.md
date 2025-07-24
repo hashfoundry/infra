@@ -131,8 +131,6 @@ blockchain-test/
 ├── docker-compose.yml          # Основная конфигурация
 ├── test-blockchain.sh          # Скрипт автоматического тестирования
 ├── README.md                   # Этот файл
-├── chainspec/                  # Конфигурация блокчейна
-│   └── genesis.json           # Genesis блок (если нужен)
 └── cli/                       # CLI инструменты
     ├── package.json
     └── examples/
