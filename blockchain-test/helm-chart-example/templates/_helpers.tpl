@@ -119,10 +119,7 @@ Generate substrate command arguments
 - --rpc-port={{ .config.service.ports.rpcHttp }}
 - --rpc-cors={{ .config.nodeConfig.rpcCors }}
 - --rpc-methods={{ .config.nodeConfig.rpcMethods }}
-- --ws-external
-- --ws-port={{ .config.service.ports.rpcWs }}
 - --unsafe-rpc-external
-- --unsafe-ws-external
 - --port={{ .config.service.ports.p2p }}
 - --name={{ .config.nodeConfig.name }}
 {{- if eq .Values.nodeKeyStrategy "fixed" }}

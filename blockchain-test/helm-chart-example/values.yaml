@@ -228,6 +228,7 @@ podDisruptionBudget:
 # Service account
 serviceAccount:
   create: true
+  automount: false
   annotations: {}
   name: ""
 
