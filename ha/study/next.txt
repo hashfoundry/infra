@@ -1,0 +1,253 @@
+>>
+66. What is the difference between static and dynamic provisioning?
+<<
+>>
+67. How do you resize Persistent Volume Claims?
+<<
+>>
+68. What are Volume Snapshots and how do you use them?
+<<
+>>
+69. How do you handle volume mounting issues?
+<<
+>>
+70. What is Container Storage Interface (CSI)?
+<<
+
+
+>>
+71. When should you use multiple namespaces?
+<<
+>>
+72. What are Resource Quotas and Limit Ranges?
+<<
+>>
+73. What is RBAC in Kubernetes?
+<<
+>>
+74. What is the difference between Role and ClusterRole?
+<<
+>>
+75. How do Service Accounts work in Kubernetes?
+<<
+
+
+>>
+76. How do you create custom RBAC policies?
+<<
+>>
+77. What are the default RBAC roles in Kubernetes?
+<<
+>>
+78. How do you troubleshoot RBAC permission issues?
+<<
+>>
+79. What is the principle of least privilege in Kubernetes RBAC?
+<<
+>>
+80. How do you implement multi-tenancy with namespaces?
+<<
+
+
+>>
+81. What are Pod Security Standards and how do they work?
+<<
+>>
+82. What is the difference between Pod Security Policies and Pod Security Standards?
+<<
+>>
+83. How do you implement network segmentation in Kubernetes?
+<<
+>>
+84. What are admission controllers and how do they enhance security?
+<<
+>>
+85. How do you scan container images for vulnerabilities?
+<<
+
+
+>>
+86. What is mutual TLS (mTLS) and how do you implement it?
+<<
+>>
+87. How do you rotate certificates in Kubernetes?
+<<
+>>
+88. What are security contexts and how do you use them effectively?
+<<
+>>
+89. How do you implement secrets encryption at rest?
+<<
+>>
+90. What are some Kubernetes security best practices?
+<<
+
+
+>>
+91. How does Kubernetes node selection work?
+<<
+>>
+92. What are Node Affinity and Pod Affinity?
+<<
+>>
+93. What are Taints and Tolerations?
+<<
+>>
+94. How do you cordon and drain nodes?
+<<
+>>
+95. What is the Horizontal Pod Autoscaler (HPA)?
+<<
+
+
+>>
+96. What is the Vertical Pod Autoscaler (VPA)?
+<<
+>>
+97. What is the Cluster Autoscaler?
+<<
+>>
+98. How do you implement custom scheduling?
+<<
+>>
+99. What are priority classes and how do they work?
+<<
+>>
+100. How do you handle node failures and Pod eviction?
+<<
+
+
+>>
+101. What are the key metrics to monitor in Kubernetes?
+<<
+>>
+102. How does Kubernetes metrics collection work?
+<<
+>>
+103. What is the difference between metrics-server and Prometheus?
+<<
+>>
+104. How do you implement centralized logging?
+<<
+>>
+105. What are the different types of logs in Kubernetes?
+<<
+
+
+>>
+106. How do you monitor Kubernetes control plane?
+<<
+>>
+107. What is distributed tracing and how do you implement it?
+<<
+>>
+108. How do you set up alerting for Kubernetes clusters?
+<<
+>>
+109. What are some common Kubernetes performance bottlenecks?
+<<
+>>
+110. How do you monitor application health in Kubernetes?
+<<
+
+
+>>
+111. How do you troubleshoot a Pod that won't start?
+<<
+>>
+112. What are the common causes of ImagePullBackOff errors?
+<<
+>>
+113. How do you debug networking issues in Kubernetes?
+<<
+>>
+114. What tools do you use for Kubernetes debugging?
+<<
+>>
+115. How do you troubleshoot DNS issues in Kubernetes?
+<<
+
+
+>>
+116. How do you troubleshoot resource constraints and OOMKilled Pods?
+<<
+>>
+117. What steps do you take when a service is not reachable?
+<<
+>>
+118. How do you troubleshoot etcd issues?
+<<
+>>
+119. What do you do when kubectl commands are slow or timing out?
+<<
+>>
+120. How do you debug certificate-related issues?
+<<
+
+
+>>
+121. Explain the Container Network Interface (CNI) in detail.
+<<
+>>
+122. What are the different CNI plugins and their characteristics?
+<<
+>>
+123. How does Pod-to-Pod networking work across nodes?
+<<
+>>
+124. What is IPVS and how does it differ from iptables?
+<<
+>>
+125. How do you implement ingress traffic management?
+<<
+>>
+126. What are service meshes and how do they integrate with Kubernetes?
+<<
+
+
+>>
+127. How do you troubleshoot DNS resolution issues?
+<<
+>>
+128. What is the difference between NodePort, LoadBalancer, and Ingress?
+<<
+>>
+129. How do you implement network segmentation and microsegmentation?
+<<
+>>
+130. What are the security implications of different networking choices?
+<<
+>>
+131. What are Custom Resource Definitions (CRDs)?
+<<
+
+
+>>
+132. How do you create and manage CRDs?
+<<
+>>
+133. What is the Operator Pattern?
+<<
+>>
+134. What are the components of a Kubernetes Operator?
+<<
+>>
+135. How do you develop a custom operator?
+<<
+>>
+136. What is the difference between controllers and operators?
+<<
+
+
+>>
+137. How do you handle operator upgrades and versioning?
+<<
+>>
+138. What are admission controllers and webhooks?
+<<
+>>
+139. How do you implement custom scheduling logic?
+<<
+>>
+140. What are some popular operators in the ecosystem?
+<<
