@@ -1,38 +1,4 @@
 >>
-71. When should you use multiple namespaces?
-<<
->>
-72. What are Resource Quotas and Limit Ranges?
-<<
->>
-73. What is RBAC in Kubernetes?
-<<
->>
-74. What is the difference between Role and ClusterRole?
-<<
->>
-75. How do Service Accounts work in Kubernetes?
-<<
-
-
->>
-76. How do you create custom RBAC policies?
-<<
->>
-77. What are the default RBAC roles in Kubernetes?
-<<
->>
-78. How do you troubleshoot RBAC permission issues?
-<<
->>
-79. What is the principle of least privilege in Kubernetes RBAC?
-<<
->>
-80. How do you implement multi-tenancy with namespaces?
-<<
-
-
->>
 81. What are Pod Security Standards and how do they work?
 <<
 >>
