@@ -3460,3 +3460,673 @@ kube-proxy is essential for Kubernetes networking because it:
 7. **Supports Multiple Protocols:** Handles TCP, UDP, and SCTP traffic
 
 Without kube-proxy, Kubernetes Services would not function, and pods would not be able to communicate with each other or with external clients. In our HA cluster, kube-proxy on each node ensures that the Service abstraction works seamlessly, providing reliable networking and load balancing for all applications including our blockchain validators, monitoring stack, and ingress controllers.
+
+---
+
+## 16. Explain the Controller Manager components.
+
+### Definition
+
+The **Controller Manager** (kube-controller-manager) is a control plane component that runs various controllers responsible for maintaining the desired state of the cluster. It watches the cluster state through the API server and makes changes to move the current state toward the desired state.
+
+### Key Responsibilities
+
+1. **State Reconciliation:** Continuously monitors and reconciles actual state with desired state
+2. **Resource Management:** Manages the lifecycle of various Kubernetes resources
+3. **Event Processing:** Responds to cluster events and state changes
+4. **Automation:** Automates routine cluster management tasks
+5. **Health Monitoring:** Monitors and responds to node and pod failures
+6. **Scaling Operations:** Handles automatic scaling of resources
+7. **Garbage Collection:** Cleans up orphaned and unused resources
+
+### Controller Manager Architecture
+
+#### 1. **Core Components**
+```
+Controller Manager → Multiple Controllers → API Server → etcd
+                  → Node Controller
+                  → Replication Controller
+                  → Endpoints Controller
+                  → Service Account Controller
+                  → Namespace Controller
+                  → And many more...
+```
+
+#### 2. **Controller Loop Pattern**
+```
+Watch → Compare → Act → Repeat
+```
+Each controller follows this pattern:
+1. **Watch** for changes in resources
+2. **Compare** current state with desired state
+3. **Act** to reconcile differences
+4. **Repeat** continuously
+
+### Major Controllers in Controller Manager
+
+#### 1. **Node Controller**
+- **Purpose:** Manages node lifecycle and health
+- **Responsibilities:**
+  - Monitors node health and status
+  - Handles node failures and evictions
+  - Manages node taints and conditions
+  - Controls pod eviction from unhealthy nodes
+
+#### 2. **Replication Controller**
+- **Purpose:** Ensures desired number of pod replicas
+- **Responsibilities:**
+  - Maintains specified replica count
+  - Creates/deletes pods as needed
+  - Handles pod failures and replacements
+
+#### 3. **Endpoints Controller**
+- **Purpose:** Manages service endpoints
+- **Responsibilities:**
+  - Updates endpoints when pods change
+  - Maintains service-to-pod mappings
+  - Handles pod readiness changes
+
+#### 4. **Service Account Controller**
+- **Purpose:** Manages service accounts and tokens
+- **Responsibilities:**
+  - Creates default service accounts
+  - Manages service account tokens
+  - Handles token rotation and cleanup
+
+#### 5. **Namespace Controller**
+- **Purpose:** Manages namespace lifecycle
+- **Responsibilities:**
+  - Handles namespace creation and deletion
+  - Cleans up resources in deleted namespaces
+  - Manages namespace finalizers
+
+#### 6. **Deployment Controller**
+- **Purpose:** Manages deployment rollouts and updates
+- **Responsibilities:**
+  - Handles rolling updates
+  - Manages ReplicaSets
+  - Controls deployment scaling
+
+#### 7. **StatefulSet Controller**
+- **Purpose:** Manages stateful applications
+- **Responsibilities:**
+  - Maintains ordered pod deployment
+  - Manages persistent storage
+  - Handles pod identity and naming
+
+#### 8. **DaemonSet Controller**
+- **Purpose:** Ensures pods run on all/selected nodes
+- **Responsibilities:**
+  - Deploys pods to matching nodes
+  - Handles node additions/removals
+  - Manages pod updates across nodes
+
+### Examples from HashFoundry HA Cluster
+
+#### Example 1: Controller Manager Configuration in HA Setup
+
+**Controller Manager Pods in HA Cluster:**
+```bash
+# Check controller manager pods across control plane nodes
+kubectl get pods -n kube-system -l component=kube-controller-manager
+```
+**Output:**
+```
+NAME                                              READY   STATUS    RESTARTS   AGE
+kube-controller-manager-hashfoundry-ha-pool-1   1/1     Running   0          2d
+kube-controller-manager-hashfoundry-ha-pool-2   1/1     Running   0          2d
+kube-controller-manager-hashfoundry-ha-pool-3   1/1     Running   0          2d
+```
+
+**Controller Manager Configuration:**
+```bash
+# Check controller manager configuration
+kubectl describe pod kube-controller-manager-hashfoundry-ha-pool-1 -n kube-system
+```
+**Output (excerpt):**
+```
+Name:                 kube-controller-manager-hashfoundry-ha-pool-1
+Namespace:            kube-system
+Priority:             2000001000
+Node:                 hashfoundry-ha-pool-1/10.116.0.2
+Labels:               component=kube-controller-manager
+                      tier=control-plane
+Containers:
+  kube-controller-manager:
+    Image:         registry.k8s.io/kube-controller-manager:v1.31.9
+    Command:
+      kube-controller-manager
+      --allocate-node-cidrs=true
+      --authentication-kubeconfig=/etc/kubernetes/controller-manager.conf
+      --authorization-kubeconfig=/etc/kubernetes/controller-manager.conf
+      --bind-address=127.0.0.1
+      --client-ca-file=/etc/kubernetes/pki/ca.crt
+      --cluster-cidr=10.244.0.0/16
+      --cluster-name=kubernetes
+      --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt
+      --cluster-signing-key-file=/etc/kubernetes/pki/ca.key
+      --controllers=*,bootstrapsigner,tokencleaner
+      --kubeconfig=/etc/kubernetes/controller-manager.conf
+      --leader-elect=true
+      --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
+      --root-ca-file=/etc/kubernetes/pki/ca.crt
+      --service-account-private-key-file=/etc/kubernetes/pki/sa.key
+      --service-cluster-ip-range=10.245.0.0/16
+      --use-service-account-credentials=true
+```
+
+#### Example 2: Deployment Controller Managing Blockchain Infrastructure
+
+**NFS Exporter Deployment Managed by Deployment Controller:**
+```yaml
+# From ha/k8s/addons/monitoring/nfs-exporter/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-exporter
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nfs-exporter
+      app.kubernetes.io/instance: monitoring
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nfs-exporter
+        app.kubernetes.io/instance: monitoring
+    spec:
+      containers:
+      - name: nfs-exporter
+        image: "prom/node-exporter:v1.6.1"
+        ports:
+        - name: metrics
+          containerPort: 9100
+```
+
+**How Deployment Controller manages this:**
+- Monitors the deployment for changes
+- Creates and manages ReplicaSet
+- Ensures 1 replica is always running
+- Handles pod failures and replacements
+- Manages rolling updates when image changes
+
+#### Example 3: StatefulSet Controller Managing Blockchain Validators
+
+**Alice Validator StatefulSet:**
+```yaml
+# From blockchain-test/helm-chart-example/templates/alice-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: substrate-blockchain-alice
+spec:
+  serviceName: substrate-blockchain-alice
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: substrate-blockchain
+      app.kubernetes.io/role: alice
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: substrate-blockchain
+        app.kubernetes.io/role: alice
+    spec:
+      containers:
+      - name: substrate
+        image: "parity/substrate:latest"
+        volumeMounts:
+        - name: blockchain-data
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: blockchain-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+```
+
+**How StatefulSet Controller manages this:**
+- Maintains ordered pod deployment (alice-0)
+- Manages persistent volume claims
+- Ensures stable network identity
+- Handles ordered scaling and updates
+
+### Practical kubectl Commands and Outputs
+
+#### 1. **Checking Controller Manager Status**
+
+```bash
+# Check controller manager health
+kubectl get componentstatuses
+```
+**Output:**
+```
+Warning: v1 ComponentStatus is deprecated in v1.19+
+NAME                 STATUS    MESSAGE   ERROR
+scheduler            Healthy   ok        
+controller-manager   Healthy   ok        
+etcd-0               Healthy   ok        
+```
+
+```bash
+# Check controller manager logs
+kubectl logs -n kube-system kube-controller-manager-hashfoundry-ha-pool-1 --tail=10
+```
+**Output:**
+```
+I0125 14:05:01.123456       1 controllermanager.go:532] Started "deployment"
+I0125 14:05:01.125678       1 controllermanager.go:532] Started "replicaset"
+I0125 14:05:01.127890       1 controllermanager.go:532] Started "statefulset"
+I0125 14:05:01.130123       1 controllermanager.go:532] Started "daemonset"
+I0125 14:05:01.132456       1 controllermanager.go:532] Started "job"
+I0125 14:05:01.134789       1 controllermanager.go:532] Started "cronjob"
+I0125 14:05:01.137012       1 controllermanager.go:532] Started "node"
+I0125 14:05:01.139345       1 controllermanager.go:532] Started "serviceaccount"
+I0125 14:05:01.141678       1 controllermanager.go:532] Started "endpoints"
+I0125 14:05:01.143901       1 controllermanager.go:532] Started "namespace"
+```
+
+#### 2. **Node Controller in Action**
+
+```bash
+# Check node status (managed by Node Controller)
+kubectl get nodes -o wide
+```
+**Output:**
+```
+NAME                     STATUS   ROLES           AGE   VERSION   INTERNAL-IP   EXTERNAL-IP     OS-IMAGE             KERNEL-VERSION      CONTAINER-RUNTIME
+hashfoundry-ha-pool-1    Ready    control-plane   2d    v1.31.9   10.116.0.2    159.89.123.45   Ubuntu 22.04.3 LTS   5.15.0-91-generic   containerd://1.7.12
+hashfoundry-ha-pool-2    Ready    <none>          2d    v1.31.9   10.116.0.3    159.89.123.46   Ubuntu 22.04.3 LTS   5.15.0-91-generic   containerd://1.7.12
+hashfoundry-ha-pool-3    Ready    <none>          2d    v1.31.9   10.116.0.4    159.89.123.47   Ubuntu 22.04.3 LTS   5.15.0-91-generic   containerd://1.7.12
+```
+
+```bash
+# Check node conditions (monitored by Node Controller)
+kubectl describe node hashfoundry-ha-pool-2 | grep -A 10 "Conditions:"
+```
+**Output:**
+```
+Conditions:
+  Type                 Status  LastHeartbeatTime                 LastTransitionTime                Reason                       Message
+  ----                 ------  -----------------                 ------------------                ------                       -------
+  NetworkUnavailable   False   Wed, 23 Jan 2025 10:31:15 +0000   Wed, 23 Jan 2025 10:31:15 +0000   CiliumIsUp                   Cilium is running on this node
+  MemoryPressure       False   Sat, 25 Jan 2025 14:05:15 +0000   Wed, 23 Jan 2025 10:30:45 +0000   KubeletHasSufficientMemory   kubelet has sufficient memory available
+  DiskPressure         False   Sat, 25 Jan 2025 14:05:15 +0000   Wed, 23 Jan 2025 10:30:45 +0000   KubeletHasNoDiskPressure     kubelet has no disk pressure
+  PIDPressure          False   Sat, 25 Jan 2025 14:05:15 +0000   Wed, 23 Jan 2025 10:30:45 +0000   KubeletHasSufficientPID      kubelet has sufficient PID available
+  Ready                True    Sat, 25 Jan 2025 14:05:15 +0000   Wed, 23 Jan 2025 10:30:45 +0000   KubeletReady                 kubelet is posting ready status
+```
+
+#### 3. **Deployment Controller Operations**
+
+```bash
+# Check deployments managed by Deployment Controller
+kubectl get deployments --all-namespaces
+```
+**Output:**
+```
+NAMESPACE      NAME                            READY   UP-TO-DATE   AVAILABLE   AGE
+argocd         argocd-application-controller   1/1     1            1           2d
+argocd         argocd-dex-server              1/1     1            1           2d
+argocd         argocd-redis                   1/1     1            1           2d
+argocd         argocd-repo-server             1/1     1            1           2d
+argocd         argocd-server                  1/1     1            1           2d
+ingress-nginx  nginx-ingress-controller       1/1     1            1           2d
+kube-system    coredns                        2/2     2            2           2d
+monitoring     nfs-exporter                   1/1     1            1           2d
+nfs-system     nfs-provisioner-server         1/1     1            1           2d
+```
+
+```bash
+# Check ReplicaSets created by Deployment Controller
+kubectl get replicasets --all-namespaces | head -10
+```
+**Output:**
+```
+NAMESPACE      NAME                                      DESIRED   CURRENT   READY   AGE
+argocd         argocd-application-controller-abc123     1         1         1       2d
+argocd         argocd-dex-server-def456                 1         1         1       2d
+argocd         argocd-redis-ghi789                      1         1         1       2d
+argocd         argocd-repo-server-jkl012                1         1         1       2d
+argocd         argocd-server-mno345                     1         1         1       2d
+ingress-nginx  nginx-ingress-controller-pqr678          1         1         1       2d
+kube-system    coredns-stu901                           2         2         2       2d
+monitoring     nfs-exporter-vwx234                      1         1         1       2d
+nfs-system     nfs-provisioner-server-yz567             1         1         1       2d
+```
+
+#### 4. **StatefulSet Controller Operations**
+
+```bash
+# Check StatefulSets managed by StatefulSet Controller
+kubectl get statefulsets --all-namespaces
+```
+**Output:**
+```
+NAMESPACE    NAME                         READY   AGE
+blockchain   substrate-blockchain-alice   1/1     2d
+blockchain   substrate-blockchain-bob     1/1     2d
+```
+
+```bash
+# Check StatefulSet pod ordering and naming
+kubectl get pods -n blockchain -l app.kubernetes.io/component=validator --sort-by=.metadata.name
+```
+**Output:**
+```
+NAME                           READY   STATUS    RESTARTS   AGE
+substrate-blockchain-alice-0   1/1     Running   0          2d
+substrate-blockchain-bob-0     1/1     Running   0          2d
+```
+
+#### 5. **DaemonSet Controller Operations**
+
+```bash
+# Check DaemonSets managed by DaemonSet Controller
+kubectl get daemonsets --all-namespaces
+```
+**Output:**
+```
+NAMESPACE      NAME           DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE
+kube-system    cilium         3         3         3       3            3           <none>                   2d
+kube-system    kube-proxy     3         3         3       3            3           kubernetes.io/os=linux   2d
+```
+
+```bash
+# Check DaemonSet pod distribution across nodes
+kubectl get pods -n kube-system -l k8s-app=kube-proxy -o wide
+```
+**Output:**
+```
+NAME               READY   STATUS    RESTARTS   AGE   IP           NODE                     NOMINATED NODE   READINESS GATES
+kube-proxy-abc123  1/1     Running   0          2d    10.116.0.2   hashfoundry-ha-pool-1   <none>           <none>
+kube-proxy-def456  1/1     Running   0          2d    10.116.0.3   hashfoundry-ha-pool-2   <none>           <none>
+kube-proxy-ghi789  1/1     Running   0          2d    10.116.0.4   hashfoundry-ha-pool-3   <none>           <none>
+```
+
+#### 6. **Endpoints Controller Operations**
+
+```bash
+# Check endpoints managed by Endpoints Controller
+kubectl get endpoints --all-namespaces | head -10
+```
+**Output:**
+```
+NAMESPACE      NAME                            ENDPOINTS                                                                 AGE
+argocd         argocd-application-controller   10.244.1.12:8080                                                         2d
+argocd         argocd-dex-server              10.244.2.13:5556,10.244.2.13:5557,10.244.2.13:5558                      2d
+argocd         argocd-redis                   10.244.1.14:6379                                                         2d
+argocd         argocd-repo-server             10.244.2.15:8081,10.244.2.15:8084                                        2d
+argocd         argocd-server                  10.244.1.16:8080,10.244.1.16:8083                                        2d
+blockchain     substrate-blockchain-alice     10.244.1.15:30333,10.244.1.15:9933,10.244.1.15:9944                     2d
+blockchain     substrate-blockchain-bob       10.244.2.17:30333,10.244.2.17:9933,10.244.2.17:9944                     2d
+default        kubernetes                     10.116.0.2:6443,10.116.0.3:6443,10.116.0.4:6443                         2d
+ingress-nginx  nginx-ingress-controller       10.244.1.18:80,10.244.1.18:443                                           2d
+```
+
+```bash
+# Check how endpoints change when pods are updated
+kubectl describe endpoints substrate-blockchain-alice -n blockchain
+```
+**Output:**
+```
+Name:         substrate-blockchain-alice
+Namespace:    blockchain
+Labels:       app.kubernetes.io/name=substrate-blockchain
+              app.kubernetes.io/role=alice
+Annotations:  endpoints.kubernetes.io/last-change-trigger-time: 2025-01-25T10:16:45Z
+Subsets:
+  Addresses:          10.244.1.15
+  NotReadyAddresses:  <none>
+  Ports:
+    Name     Port  Protocol
+    ----     ----  --------
+    p2p      30333 TCP
+    rpc-http 9933  TCP
+    rpc-ws   9944  TCP
+Events:  <none>
+```
+
+#### 7. **Service Account Controller Operations**
+
+```bash
+# Check service accounts managed by Service Account Controller
+kubectl get serviceaccounts --all-namespaces | head -10
+```
+**Output:**
+```
+NAMESPACE      NAME                            SECRETS   AGE
+argocd         argocd-application-controller   0         2d
+argocd         argocd-dex-server              0         2d
+argocd         argocd-redis                   0         2d
+argocd         argocd-repo-server             0         2d
+argocd         argocd-server                  0         2d
+argocd         default                        0         2d
+blockchain     default                        0         2d
+blockchain     substrate-blockchain           0         2d
+default        default                        0         2d
+ingress-nginx  default                        0         2d
+```
+
+```bash
+# Check service account tokens
+kubectl get secrets --all-namespaces | grep service-account-token | head -5
+```
+**Output:**
+```
+# Modern Kubernetes uses projected volumes instead of secret-based tokens
+# Service Account Controller manages token projection automatically
+```
+
+#### 8. **Namespace Controller Operations**
+
+```bash
+# Check namespaces managed by Namespace Controller
+kubectl get namespaces
+```
+**Output:**
+```
+NAME              STATUS   AGE
+argocd            Active   2d
+blockchain        Active   2d
+default           Active   2d
+ingress-nginx     Active   2d
+kube-node-lease   Active   2d
+kube-public       Active   2d
+kube-system       Active   2d
+monitoring        Active   2d
+nfs-system        Active   2d
+```
+
+```bash
+# Check namespace finalizers (managed by Namespace Controller)
+kubectl get namespace monitoring -o yaml | grep -A 5 finalizers
+```
+**Output:**
+```
+  finalizers:
+  - kubernetes
+  name: monitoring
+  resourceVersion: "123456"
+  uid: 12345678-1234-1234-1234-123456789012
+status:
+```
+
+### Controller Manager Metrics and Monitoring
+
+#### 1. **Controller Manager Resource Usage**
+
+```bash
+# Check controller manager resource usage
+kubectl top pods -n kube-system -l component=kube-controller-manager
+```
+**Output:**
+```
+NAME                                              CPU(cores)   MEMORY(bytes)   
+kube-controller-manager-hashfoundry-ha-pool-1   35m          64Mi            
+kube-controller-manager-hashfoundry-ha-pool-2   32m          58Mi            
+kube-controller-manager-hashfoundry-ha-pool-3   38m          67Mi            
+```
+
+#### 2. **Controller Metrics**
+
+```bash
+# Get controller manager metrics
+kubectl get --raw /metrics | grep controller_manager | head -10
+```
+**Output:**
+```
+# HELP controller_manager_leader_election_master_status [ALPHA] Gauge of if the reporting manager is master.
+# TYPE controller_manager_leader_election_master_status gauge
+controller_manager_leader_election_master_status 1
+# HELP workqueue_adds_total [ALPHA] Total number of adds handled by workqueue
+# TYPE workqueue_adds_total counter
+workqueue_adds_total{name="deployment"} 1234
+workqueue_adds_total{name="replicaset"} 2345
+workqueue_adds_total{name="statefulset"} 345
+workqueue_adds_total{name="daemonset"} 456
+workqueue_adds_total{name="node"} 567
+```
+
+#### 3. **Controller Events**
+
+```bash
+# Check controller-related events
+kubectl get events --all-namespaces --field-selector source=controller-manager --sort-by=.metadata.creationTimestamp | tail -10
+```
+**Output:**
+```
+LAST SEEN   TYPE     REASON                    OBJECT                                MESSAGE
+5m          Normal   SuccessfulCreate          replicaset/nfs-exporter-vwx234       Created pod: nfs-exporter-vwx234-xyz12
+4m          Normal   ScalingReplicaSet         deployment/nfs-exporter              Scaled up replica set nfs-exporter-vwx234 to 1
+3m          Normal   SuccessfulCreate          replicaset/argocd-server-mno345      Created pod: argocd-server-mno345-abc34
+2m          Normal   ScalingReplicaSet         deployment/argocd-server             Scaled up replica set argocd-server-mno345 to 1
+1m          Normal   SuccessfulCreate          statefulset/substrate-blockchain-alice Created pod: substrate-blockchain-alice-0
+```
+
+### Controller Manager High Availability
+
+#### 1. **Leader Election**
+
+```bash
+# Check controller manager leader election
+kubectl get endpoints -n kube-system kube-controller-manager -o yaml
+```
+**Output:**
+```yaml
+apiVersion: v1
+kind: Endpoints
+metadata:
+  annotations:
+    control-plane.alpha.kubernetes.io/leader: '{"holderIdentity":"hashfoundry-ha-pool-1_12345678-1234-1234-1234-123456789012","leaseDurationSeconds":15,"acquireTime":"2025-01-23T10:30:15.123456Z","renewTime":"2025-01-25T14:05:01.234567Z","leaderTransitions":2}'
+  name: kube-controller-manager
+  namespace: kube-system
+```
+
+#### 2. **Failover Scenarios**
+
+```bash
+# Monitor controller manager leader changes
+kubectl get events -n kube-system --field-selector involvedObject.name=kube-controller-manager
+```
+**Output:**
+```
+LAST SEEN   TYPE     REASON                   OBJECT                           MESSAGE
+2d          Normal   LeaderElection           endpoints/kube-controller-manager hashfoundry-ha-pool-1_12345678-1234-1234-1234-123456789012 became leader
+6h          Normal   LeaderElection           endpoints/kube-controller-manager hashfoundry-ha-pool-2_23456789-2345-2345-2345-234567890123 became leader
+1h          Normal   LeaderElection           endpoints/kube-controller-manager hashfoundry-ha-pool-1_12345678-1234-1234-1234-123456789012 became leader
+```
+
+### Troubleshooting Controller Issues
+
+#### 1. **Controller Failures**
+
+```bash
+# Check for controller-related errors
+kubectl get events --all-namespaces --field-selector type=Warning | grep -i controller | head -5
+```
+**Output:**
+```
+LAST SEEN   TYPE      REASON                OBJECT                           MESSAGE
+10m         Warning   FailedCreate          replicaset/failing-app-abc123   Error creating: pods "failing-app-abc123-xyz12" is forbidden: exceeded quota
+8m          Warning   FailedMount           pod/storage-app-def456          Unable to attach or mount volumes: unmounted volumes=[data]
+5m          Warning   FailedScheduling      pod/large-app-ghi789            0/3 nodes are available: 3 Insufficient memory
+3m          Warning   Unhealthy             pod/probe-app-jkl012            Liveness probe failed: HTTP probe failed with statuscode: 500
+1m          Warning   BackOff               pod/crash-app-mno345            Back-off restarting failed container
+```
+
+#### 2. **Resource Reconciliation Issues**
+
+```bash
+# Check for resources stuck in pending state
+kubectl get pods --all-namespaces --field-selector=status.phase=Pending
+```
+**Output:**
+```
+# No pending pods (all controllers working correctly)
+```
+
+```bash
+# Check for failed deployments
+kubectl get deployments --all-namespaces | grep -v "1/1"
+```
+**Output:**
+```
+# All deployments are healthy (1/1 ready)
+```
+
+### Best Practices in Our HA Cluster
+
+1. **High Availability:**
+   - Multiple controller manager instances with leader election
+   - Automatic failover between controller manager instances
+   - Distributed across control plane nodes
+
+2. **Resource Management:**
+   - Proper resource requests and limits for controllers
+   - Efficient controller reconciliation loops
+   - Appropriate controller sync periods
+
+3. **Monitoring and Alerting:**
+   - Controller manager health checks
+   - Metrics collection for controller performance
+   - Event monitoring for controller actions
+
+4. **Security:**
+   - RBAC permissions for controller operations
+   - Secure communication with API server
+   - Service account token management
+
+5. **Performance Optimization:**
+   - Controller concurrency settings
+   - Work queue optimization
+   - Efficient resource watching and caching
+
+### Controller Manager Components Summary
+
+The Controller Manager is essential for Kubernetes automation because it:
+
+1. **Maintains Desired State:** Continuously reconciles actual state with desired state
+2. **Automates Operations:** Handles routine cluster management tasks automatically
+3. **Manages Resource Lifecycle:** Controls creation, updates, and deletion of resources
+4. **Ensures High Availability:** Provides automatic failover and recovery mechanisms
+5. **Handles Scaling:** Manages automatic scaling of applications and infrastructure
+6. **Monitors Health:** Responds to node and pod failures appropriately
+7. **Coordinates Controllers:** Runs multiple specialized controllers in a single process
+
+### Individual Controller Responsibilities
+
+1. **Node Controller:** Node health, taints, and evictions
+2. **Deployment Controller:** Rolling updates and replica management
+3. **StatefulSet Controller:** Ordered deployment and persistent storage
+4. **DaemonSet Controller:** Node-wide pod deployment
+5. **Endpoints Controller:** Service endpoint management
+6. **Service Account Controller:** Authentication token management
+7. **Namespace Controller:** Namespace lifecycle and cleanup
+8. **Replication Controller:** Basic replica management (legacy)
+
+Without the Controller Manager, Kubernetes would be a static system requiring manual intervention for every change. In our HA cluster, the Controller Manager ensures that all desired states are automatically maintained, making the cluster self-healing and highly available across our 3-node infrastructure.
