@@ -1,0 +1,39 @@
+{{- if .Values.validators.alice.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "substrate-blockchain.fullname" . }}-alice
+  labels:
+    {{- include "substrate-blockchain.labels" . | nindent 4 }}
+    app.kubernetes.io/component: validator
+    app.kubernetes.io/role: alice
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.validators.alice.service.type }}
+  ports:
+  - name: p2p
+    port: {{ .Values.validators.alice.service.ports.p2p }}
+    targetPort: p2p
+    protocol: TCP
+  - name: rpc-http
+    port: {{ .Values.validators.alice.service.ports.rpcHttp }}
+    targetPort: rpc-http
+    protocol: TCP
+  - name: rpc-ws
+    port: {{ .Values.validators.alice.service.ports.rpcWs }}
+    targetPort: rpc-ws
+    protocol: TCP
+  {{- if .Values.monitoring.prometheus.enabled }}
+  - name: metrics
+    port: {{ .Values.monitoring.prometheus.port }}
+    targetPort: metrics
+    protocol: TCP
+  {{- end }}
+  selector:
+    {{- include "substrate-blockchain.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: validator
+    app.kubernetes.io/role: alice
+{{- end }}

@@ -1,0 +1,25 @@
+apiVersion: v2
+name: substrate-blockchain
+description: A Helm chart for Substrate blockchain deployment
+type: application
+version: 0.1.0
+appVersion: "latest"
+
+keywords:
+  - blockchain
+  - substrate
+  - polkadot
+  - validator
+
+home: https://github.com/hashfoundry/infra
+sources:
+  - https://github.com/paritytech/substrate
+
+maintainers:
+  - name: HashFoundry Team
+    email: dev@hashfoundry.com
+
+dependencies: []
+
+annotations:
+  category: Blockchain

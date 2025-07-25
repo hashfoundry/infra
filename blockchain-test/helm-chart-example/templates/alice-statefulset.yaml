@@ -1,0 +1,128 @@
+{{- if .Values.validators.alice.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "substrate-blockchain.fullname" . }}-alice
+  labels:
+    {{- include "substrate-blockchain.labels" . | nindent 4 }}
+    app.kubernetes.io/component: validator
+    app.kubernetes.io/role: alice
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  serviceName: {{ include "substrate-blockchain.fullname" . }}-alice
+  replicas: {{ .Values.validators.alice.replicas }}
+  selector:
+    matchLabels:
+      {{- include "substrate-blockchain.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: validator
+      app.kubernetes.io/role: alice
+  template:
+    metadata:
+      labels:
+        {{- include "substrate-blockchain.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: validator
+        app.kubernetes.io/role: alice
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if eq .Values.nodeKeyStrategy "fixed" }}
+        checksum/secrets: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "substrate-blockchain.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.security.podSecurityContext | nindent 8 }}
+      containers:
+      - name: substrate
+        image: "{{ .Values.global.image.registry }}/{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
+        imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.security.securityContext | nindent 10 }}
+        command:
+        - substrate
+        args:
+        {{- include "substrate-blockchain.args" (dict "Values" .Values "role" "alice" "config" .Values.validators.alice "index" 1 "namespace" .Release.Namespace "fullname" (include "substrate-blockchain.fullname" .)) | nindent 8 }}
+        env:
+        {{- include "substrate-blockchain.env" (dict "Values" .Values "role" "alice") | nindent 8 }}
+        ports:
+        - name: p2p
+          containerPort: {{ .Values.validators.alice.service.ports.p2p }}
+          protocol: TCP
+        - name: rpc-http
+          containerPort: {{ .Values.validators.alice.service.ports.rpcHttp }}
+          protocol: TCP
+        - name: rpc-ws
+          containerPort: {{ .Values.validators.alice.service.ports.rpcWs }}
+          protocol: TCP
+        {{- if .Values.monitoring.prometheus.enabled }}
+        - name: metrics
+          containerPort: {{ .Values.monitoring.prometheus.port }}
+          protocol: TCP
+        {{- end }}
+        {{- if .Values.healthChecks.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: rpc-http
+            httpHeaders:
+            - name: Content-Type
+              value: application/json
+          initialDelaySeconds: {{ .Values.healthChecks.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthChecks.livenessProbe.failureThreshold }}
+        {{- end }}
+        {{- if .Values.healthChecks.readinessProbe.enabled }}
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - |
+              curl -s -H "Content-Type: application/json" \
+                -d '{"id":1, "jsonrpc":"2.0", "method": "system_health", "params":[]}' \
+                http://localhost:{{ .Values.validators.alice.service.ports.rpcHttp }} | grep -q '"isSyncing":false'
+          initialDelaySeconds: {{ .Values.healthChecks.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthChecks.readinessProbe.failureThreshold }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.validators.alice.resources | nindent 10 }}
+        volumeMounts:
+        {{- include "substrate-blockchain.volumeMounts" (dict "config" .Values.validators.alice "nodeKeyStrategy" .Values.nodeKeyStrategy) | nindent 8 }}
+      volumes:
+      {{- include "substrate-blockchain.volumes" (dict "nodeKeyStrategy" .Values.nodeKeyStrategy "fullname" (include "substrate-blockchain.fullname" .) "role" "alice") | nindent 6 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.validators.alice.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: blockchain-data
+      labels:
+        {{- include "substrate-blockchain.labels" . | nindent 8 }}
+        app.kubernetes.io/component: validator
+        app.kubernetes.io/role: alice
+    spec:
+      accessModes:
+      - {{ .Values.validators.alice.persistence.accessMode }}
+      {{- if .Values.validators.alice.persistence.storageClass }}
+      storageClassName: {{ .Values.validators.alice.persistence.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.validators.alice.persistence.size }}
+  {{- end }}
+{{- end }}

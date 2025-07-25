@@ -1,0 +1,128 @@
+{{- if .Values.validators.bob.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "substrate-blockchain.fullname" . }}-bob
+  labels:
+    {{- include "substrate-blockchain.labels" . | nindent 4 }}
+    app.kubernetes.io/component: validator
+    app.kubernetes.io/role: bob
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  serviceName: {{ include "substrate-blockchain.fullname" . }}-bob
+  replicas: {{ .Values.validators.bob.replicas }}
+  selector:
+    matchLabels:
+      {{- include "substrate-blockchain.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: validator
+      app.kubernetes.io/role: bob
+  template:
+    metadata:
+      labels:
+        {{- include "substrate-blockchain.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: validator
+        app.kubernetes.io/role: bob
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- if eq .Values.nodeKeyStrategy "fixed" }}
+        checksum/secrets: {{ include (print $.Template.BasePath "/secrets.yaml") . | sha256sum }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "substrate-blockchain.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.security.podSecurityContext | nindent 8 }}
+      containers:
+      - name: substrate
+        image: "{{ .Values.global.image.registry }}/{{ .Values.global.image.repository }}:{{ .Values.global.image.tag }}"
+        imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.security.securityContext | nindent 10 }}
+        command:
+        - substrate
+        args:
+        {{- include "substrate-blockchain.args" (dict "Values" .Values "role" "bob" "config" .Values.validators.bob "index" 2 "namespace" .Release.Namespace "fullname" (include "substrate-blockchain.fullname" .)) | nindent 8 }}
+        env:
+        {{- include "substrate-blockchain.env" (dict "Values" .Values "role" "bob") | nindent 8 }}
+        ports:
+        - name: p2p
+          containerPort: {{ .Values.validators.bob.service.ports.p2p }}
+          protocol: TCP
+        - name: rpc-http
+          containerPort: {{ .Values.validators.bob.service.ports.rpcHttp }}
+          protocol: TCP
+        - name: rpc-ws
+          containerPort: {{ .Values.validators.bob.service.ports.rpcWs }}
+          protocol: TCP
+        {{- if .Values.monitoring.prometheus.enabled }}
+        - name: metrics
+          containerPort: {{ .Values.monitoring.prometheus.port }}
+          protocol: TCP
+        {{- end }}
+        {{- if .Values.healthChecks.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: rpc-http
+            httpHeaders:
+            - name: Content-Type
+              value: application/json
+          initialDelaySeconds: {{ .Values.healthChecks.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthChecks.livenessProbe.failureThreshold }}
+        {{- end }}
+        {{- if .Values.healthChecks.readinessProbe.enabled }}
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - |
+              curl -s -H "Content-Type: application/json" \
+                -d '{"id":1, "jsonrpc":"2.0", "method": "system_health", "params":[]}' \
+                http://localhost:{{ .Values.validators.bob.service.ports.rpcHttp }} | grep -q '"isSyncing":false'
+          initialDelaySeconds: {{ .Values.healthChecks.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.healthChecks.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.healthChecks.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.healthChecks.readinessProbe.failureThreshold }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.validators.bob.resources | nindent 10 }}
+        volumeMounts:
+        {{- include "substrate-blockchain.volumeMounts" (dict "config" .Values.validators.bob "nodeKeyStrategy" .Values.nodeKeyStrategy) | nindent 8 }}
+      volumes:
+      {{- include "substrate-blockchain.volumes" (dict "nodeKeyStrategy" .Values.nodeKeyStrategy "fullname" (include "substrate-blockchain.fullname" .) "role" "bob") | nindent 6 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.validators.bob.persistence.enabled }}
+  volumeClaimTemplates:
+  - metadata:
+      name: blockchain-data
+      labels:
+        {{- include "substrate-blockchain.labels" . | nindent 8 }}
+        app.kubernetes.io/component: validator
+        app.kubernetes.io/role: bob
+    spec:
+      accessModes:
+      - {{ .Values.validators.bob.persistence.accessMode }}
+      {{- if .Values.validators.bob.persistence.storageClass }}
+      storageClassName: {{ .Values.validators.bob.persistence.storageClass }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.validators.bob.persistence.size }}
+  {{- end }}
+{{- end }}

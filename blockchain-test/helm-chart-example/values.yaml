@@ -1,0 +1,270 @@
+# Default values for substrate-blockchain
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  # Namespace where the blockchain will be deployed
+  namespace: blockchain
+  # Image registry and tag
+  image:
+    registry: docker.io
+    repository: parity/substrate
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  # Network configuration
+  network:
+    chainType: local
+    protocolId: hf
+    tokenSymbol: HF
+    tokenDecimals: 12
+
+# Node configuration strategy
+nodeKeyStrategy: fixed  # Options: fixed, generated, persistent
+
+# Fixed node keys for demo/testing (only used when nodeKeyStrategy: fixed)
+nodeKeys:
+  alice: "0000000000000000000000000000000000000000000000000000000000000001"
+  bob: "0000000000000000000000000000000000000000000000000000000000000002"
+
+# Validator nodes configuration
+validators:
+  alice:
+    enabled: true
+    replicas: 1
+    role: alice
+    
+    # Resource limits
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    
+    # Service configuration
+    service:
+      type: ClusterIP
+      ports:
+        p2p: 30333
+        rpcHttp: 9933
+        rpcWs: 9944
+    
+    # Persistence
+    persistence:
+      enabled: true
+      storageClass: ""  # Use default storage class
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    
+    # Node-specific configuration
+    nodeConfig:
+      validator: true
+      rpcExternal: true
+      rpcCors: all
+      rpcMethods: unsafe
+      wsExternal: true
+      unsafeRpcExternal: true
+      unsafeWsExternal: true
+      basePath: /data
+      name: alice-node
+
+  bob:
+    enabled: true
+    replicas: 1
+    role: bob
+    
+    # Resource limits
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "500m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    
+    # Service configuration
+    service:
+      type: ClusterIP
+      ports:
+        p2p: 30333
+        rpcHttp: 9933
+        rpcWs: 9944
+    
+    # Persistence
+    persistence:
+      enabled: true
+      storageClass: ""
+      size: 10Gi
+      accessMode: ReadWriteOnce
+    
+    # Node-specific configuration
+    nodeConfig:
+      validator: true
+      rpcExternal: true
+      rpcCors: all
+      rpcMethods: unsafe
+      wsExternal: true
+      unsafeRpcExternal: true
+      unsafeWsExternal: true
+      basePath: /data
+      name: bob-node
+    
+    # Bootnodes configuration
+    bootnodes:
+      enabled: true
+      # Static bootnode configuration (for demo/testing)
+      static:
+        - peerId: "12D3KooWEyoppNCUx8Yx66oV9fJnriXwCcXwDDUA2kj6vnc6iDEp"
+          service: "alice"
+          port: 30333
+      # Dynamic discovery (for production)
+      discovery:
+        enabled: false
+        timeout: 60s
+        retries: 5
+
+# Health checks configuration
+healthChecks:
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Ingress configuration for external access
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  
+  hosts:
+    alice:
+      host: blockchain-alice.local
+      paths:
+        - path: /
+          pathType: Prefix
+          port: 9933
+    bob:
+      host: blockchain-bob.local
+      paths:
+        - path: /
+          pathType: Prefix
+          port: 9933
+  
+  tls: []
+  #  - secretName: blockchain-tls
+  #    hosts:
+  #      - blockchain-alice.local
+  #      - blockchain-bob.local
+
+# Monitoring configuration
+monitoring:
+  enabled: false
+  prometheus:
+    enabled: false
+    port: 9615
+    path: /metrics
+  
+  grafana:
+    enabled: false
+    dashboards:
+      enabled: false
+
+# Security configuration
+security:
+  networkPolicy:
+    enabled: false
+    # Allow P2P communication between blockchain nodes
+    allowP2P: true
+    # Allow RPC access from specific namespaces
+    allowRPCFrom: []
+  
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+  
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+# Autoscaling (experimental)
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Node affinity and tolerations
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Additional labels and annotations
+labels: {}
+annotations: {}
+
+# Environment-specific overrides
+environments:
+  development:
+    nodeKeyStrategy: fixed
+    ingress:
+      enabled: true
+    monitoring:
+      enabled: false
+    security:
+      networkPolicy:
+        enabled: false
+  
+  staging:
+    nodeKeyStrategy: persistent
+    ingress:
+      enabled: true
+    monitoring:
+      enabled: true
+    security:
+      networkPolicy:
+        enabled: true
+  
+  production:
+    nodeKeyStrategy: persistent
+    ingress:
+      enabled: true
+    monitoring:
+      enabled: true
+    security:
+      networkPolicy:
+        enabled: true
+    autoscaling:
+      enabled: true
