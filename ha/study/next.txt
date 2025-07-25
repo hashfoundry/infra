@@ -1,21 +1,4 @@
 >>
-66. What is the difference between static and dynamic provisioning?
-<<
->>
-67. How do you resize Persistent Volume Claims?
-<<
->>
-68. What are Volume Snapshots and how do you use them?
-<<
->>
-69. How do you handle volume mounting issues?
-<<
->>
-70. What is Container Storage Interface (CSI)?
-<<
-
-
->>
 71. When should you use multiple namespaces?
 <<
 >>
