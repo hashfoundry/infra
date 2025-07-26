@@ -45,8 +45,6 @@
 >>
 95. What is the Horizontal Pod Autoscaler (HPA)?
 <<
-
-
 >>
 96. What is the Vertical Pod Autoscaler (VPA)?
 <<
