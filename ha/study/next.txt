@@ -13,8 +13,6 @@
 >>
 85. How do you scan container images for vulnerabilities?
 <<
-
-
 >>
 86. What is mutual TLS (mTLS) and how do you implement it?
 <<
