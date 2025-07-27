@@ -1,41 +1,4 @@
 >>
-126. What are service meshes and how do they integrate with Kubernetes?
-<<
->>
-127. How do you troubleshoot DNS resolution issues?
-<<
->>
-128. What is the difference between NodePort, LoadBalancer, and Ingress?
-<<
->>
-129. How do you implement network segmentation and microsegmentation?
-<<
->>
-130. What are the security implications of different networking choices?
-<<
-
-
->>
-131. What are Custom Resource Definitions (CRDs)?
-<<
->>
-132. How do you create and manage CRDs?
-<<
->>
-133. What is the Operator Pattern?
-<<
->>
-134. What are the components of a Kubernetes Operator?
-<<
->>
-135. How do you develop a custom operator?
-<<
->>
-136. What is the difference between controllers and operators?
-<<
-
-
->>
 137. How do you handle operator upgrades and versioning?
 <<
 >>
