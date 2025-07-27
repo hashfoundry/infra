@@ -1,58 +1,6 @@
-
->>
-111. How do you troubleshoot a Pod that won't start?
-<<
->>
-112. What are the common causes of ImagePullBackOff errors?
-<<
->>
-113. How do you debug networking issues in Kubernetes?
-<<
->>
-114. What tools do you use for Kubernetes debugging?
-<<
->>
-115. How do you troubleshoot DNS issues in Kubernetes?
-<<
-
-
->>
-116. How do you troubleshoot resource constraints and OOMKilled Pods?
-<<
->>
-117. What steps do you take when a service is not reachable?
-<<
->>
-118. How do you troubleshoot etcd issues?
-<<
->>
-119. What do you do when kubectl commands are slow or timing out?
-<<
->>
-120. How do you debug certificate-related issues?
-<<
-
-
->>
-121. Explain the Container Network Interface (CNI) in detail.
-<<
->>
-122. What are the different CNI plugins and their characteristics?
-<<
->>
-123. How does Pod-to-Pod networking work across nodes?
-<<
->>
-124. What is IPVS and how does it differ from iptables?
-<<
->>
-125. How do you implement ingress traffic management?
-<<
 >>
 126. What are service meshes and how do they integrate with Kubernetes?
 <<
-
-
 >>
 127. How do you troubleshoot DNS resolution issues?
 <<
@@ -65,11 +13,11 @@
 >>
 130. What are the security implications of different networking choices?
 <<
+
+
 >>
 131. What are Custom Resource Definitions (CRDs)?
 <<
-
-
 >>
 132. How do you create and manage CRDs?
 <<
