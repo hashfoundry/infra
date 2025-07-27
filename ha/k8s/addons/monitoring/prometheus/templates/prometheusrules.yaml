@@ -1,3 +1,4 @@
+{{- if .Values.prometheusRules }}
 {{- range $name, $pr := .Values.prometheusRules }}
 {{- if $pr.enabled }}
 ---
@@ -13,5 +14,6 @@ metadata:
     {{- end }}
 spec:
   {{- toYaml $pr.spec | nindent 2 }}
+{{- end }}
 {{- end }}
 {{- end }}

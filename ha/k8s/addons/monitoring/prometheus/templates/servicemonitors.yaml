@@ -1,3 +1,4 @@
+{{- if .Values.serviceMonitors }}
 {{- range $name, $sm := .Values.serviceMonitors }}
 {{- if $sm.enabled }}
 ---
@@ -13,5 +14,6 @@ metadata:
     {{- end }}
 spec:
   {{- toYaml $sm.spec | nindent 2 }}
+{{- end }}
 {{- end }}
 {{- end }}
