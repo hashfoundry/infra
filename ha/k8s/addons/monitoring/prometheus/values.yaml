@@ -160,15 +160,92 @@ kube-prometheus-stack:
       prometheus: true
       prometheusOperator: true
 
-# Additional monitoring configurations will be managed by separate charts
-# Disabled custom ServiceMonitors and PrometheusRules for now to prevent template errors
+# Additional ServiceMonitors and PrometheusRules managed as separate CRDs
+# ServiceMonitor and PrometheusRule CRDs are now available in the cluster
 
-# ServiceMonitors - Disabled (to be managed by kube-prometheus-stack CRDs)
-serviceMonitors: {}
-#  nfs-exporter:
-#    enabled: false
+# ServiceMonitor for NFS Exporter
+serviceMonitors:
+  nfs-exporter:
+    enabled: true
+    namespace: monitoring
+    labels:
+      app.kubernetes.io/name: nfs-exporter
+    spec:
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: nfs-exporter
+      endpoints:
+      - port: metrics
+        path: /metrics
+        interval: 30s
+        scrapeTimeout: 10s
+        honorLabels: true
+        relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: instance
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: kubernetes_namespace
+        - sourceLabels: [__meta_kubernetes_service_name]
+          targetLabel: kubernetes_name
+        - targetLabel: job
+          replacement: nfs-exporter
 
-# PrometheusRules - Disabled (to be managed by kube-prometheus-stack CRDs)  
-prometheusRules: {}
-#  hashfoundry-alerts:
-#    enabled: false
+# PrometheusRules for custom alerting
+prometheusRules:
+  hashfoundry-alerts:
+    enabled: true
+    namespace: monitoring
+    labels:
+      app.kubernetes.io/name: hashfoundry-rules
+    spec:
+      groups:
+        - name: argocd-alerts
+          rules:
+            - alert: ArgoCDAppNotSynced
+              expr: argocd_app_info{sync_status!="Synced"} == 1
+              for: 15m
+              labels:
+                severity: warning
+              annotations:
+                summary: ArgoCD application not synced
+                description: "Application {{ $labels.name }} in project {{ $labels.project }} is not synced."
+            
+            - alert: ArgoCDAppUnhealthy
+              expr: argocd_app_info{health_status!="Healthy"} == 1
+              for: 15m
+              labels:
+                severity: critical
+              annotations:
+                summary: ArgoCD application unhealthy
+                description: "Application {{ $labels.name }} in project {{ $labels.project }} is unhealthy."
+        
+        - name: nfs-alerts
+          rules:
+            - alert: NFSExporterDown
+              expr: up{job="nfs-exporter"} == 0
+              for: 5m
+              labels:
+                severity: critical
+              annotations:
+                summary: NFS Exporter is down
+                description: "NFS Exporter has been down for more than 5 minutes."
+            
+            - alert: FilesystemSpaceUsageHigh
+              expr: (node_filesystem_size_bytes{job="nfs-exporter"} - node_filesystem_avail_bytes{job="nfs-exporter"}) / node_filesystem_size_bytes{job="nfs-exporter"} * 100 > 80
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: Filesystem space usage is high
+                description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $value }}% full."
+            
+            - alert: FilesystemSpaceUsageCritical
+              expr: (node_filesystem_size_bytes{job="nfs-exporter"} - node_filesystem_avail_bytes{job="nfs-exporter"}) / node_filesystem_size_bytes{job="nfs-exporter"} * 100 > 90
+              for: 5m
+              labels:
+                severity: critical
+              annotations:
+                summary: Filesystem space usage is critical
+                description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $value }}% full."
