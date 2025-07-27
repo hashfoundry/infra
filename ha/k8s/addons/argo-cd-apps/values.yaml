@@ -89,3 +89,49 @@ addons:
         prune: true
         selfHeal: true
     autosync: true
+  - name: prometheus
+    namespace: monitoring
+    project: default
+    source:
+      path: ha/k8s/addons/monitoring/prometheus
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+        - ServerSideApply=true
+    autosync: true
+  - name: nfs-exporter
+    namespace: monitoring
+    project: default
+    source:
+      path: ha/k8s/addons/monitoring/nfs-exporter
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+    autosync: true
+  - name: grafana
+    namespace: monitoring
+    project: default
+    source:
+      path: ha/k8s/addons/monitoring/grafana
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+    autosync: true
