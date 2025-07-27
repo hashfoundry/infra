@@ -1,37 +1,94 @@
-prometheus:
-  # Prometheus server configuration
-  server:
+kube-prometheus-stack:
+  # Global settings
+  global:
+    imageRegistry: ""
+    imagePullSecrets: []
+  
+  # Prometheus configuration
+  prometheus:
     enabled: true
-    image:
-      repository: prom/prometheus
-      tag: v2.45.0
     
-    # Resource limits
-    resources:
-      limits:
-        cpu: 1000m
-        memory: 2Gi
-      requests:
-        cpu: 500m
-        memory: 1Gi
-    
-    # Persistence
-    persistentVolume:
-      enabled: true
-      size: 20Gi
-      storageClass: "do-block-storage"
-      accessModes:
-        - ReadWriteOnce
-    
-    # Retention
-    retention: "30d"
+    prometheusSpec:
+      # Image settings
+      image:
+        repository: quay.io/prometheus/prometheus
+        tag: v2.45.0
+      
+      # Resource limits
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+        requests:
+          cpu: 500m
+          memory: 1Gi
+      
+      # Storage configuration
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: do-block-storage
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 20Gi
+      
+      # Retention
+      retention: 30d
+      retentionSize: 18GB
+      
+      # Security context
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 2000
+        fsGroup: 2000
+      
+      # Service Monitor selector (enable all namespaces)
+      serviceMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorSelector: {}
+      serviceMonitorNamespaceSelector: {}
+      
+      # Pod Monitor selector
+      podMonitorSelectorNilUsesHelmValues: false
+      podMonitorSelector: {}
+      podMonitorNamespaceSelector: {}
+      
+      # Rule selector
+      ruleSelectorNilUsesHelmValues: false
+      ruleSelector: {}
+      ruleNamespaceSelector: {}
+      
+      # Anti-affinity for HA
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: prometheus
+              topologyKey: kubernetes.io/hostname
+      
+      # Additional scrape configs
+      additionalScrapeConfigs:
+        - job_name: 'argocd-metrics'
+          static_configs:
+            - targets: ['argocd-metrics.argocd.svc.cluster.local:8082']
+        
+        - job_name: 'argocd-server-metrics'
+          static_configs:
+            - targets: ['argocd-server-metrics.argocd.svc.cluster.local:8083']
+        
+        - job_name: 'argocd-repo-server-metrics'
+          static_configs:
+            - targets: ['argocd-repo-server.argocd.svc.cluster.local:8084']
     
     # Service configuration
     service:
       type: ClusterIP
       port: 9090
     
-    # Ingress
+    # Ingress configuration
     ingress:
       enabled: true
       ingressClassName: nginx
@@ -41,120 +98,109 @@ prometheus:
         - secretName: prometheus-tls
           hosts:
             - prometheus.hashfoundry.local
-    
-    # Security context
-    securityContext:
-      runAsUser: 65534
-      runAsGroup: 65534
-      fsGroup: 65534
-    
-    # Anti-affinity for HA
-    affinity:
-      podAntiAffinity:
-        preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchLabels:
-                app.kubernetes.io/name: prometheus
-            topologyKey: kubernetes.io/hostname
 
-  # AlertManager integration
+  # Alertmanager configuration
   alertmanager:
     enabled: false
     
-  # Node exporter
+  # Grafana configuration (disable as we have separate Grafana)
+  grafana:
+    enabled: false
+    
+  # Node Exporter
   nodeExporter:
     enabled: true
     
-  # Kube state metrics
+  # Kube State Metrics
   kubeStateMetrics:
     enabled: true
     
-  # Pushgateway
-  pushgateway:
-    enabled: false
+  # Prometheus Operator
+  prometheusOperator:
+    enabled: true
+    
+    # Admission webhooks (disable for simplicity)
+    admissionWebhooks:
+      enabled: false
+      patch:
+        enabled: false
+    
+    # TLS configuration
+    tls:
+      enabled: false
+    
+    # ServiceMonitor for operator itself
+    serviceMonitor:
+      enabled: true
+  
+  # Default rules
+  defaultRules:
+    create: true
+    rules:
+      alertmanager: false
+      etcd: true
+      configReloaders: true
+      general: true
+      k8s: true
+      kubeApiserver: true
+      kubeApiserverAvailability: true
+      kubeApiserverSlos: true
+      kubelet: true
+      kubeProxy: true
+      kubePrometheusGeneral: true
+      kubePrometheusNodeRecording: true
+      kubernetesApps: true
+      kubernetesResources: true
+      kubernetesStorage: true
+      kubernetesSystem: true
+      network: true
+      node: true
+      nodeExporterAlerting: true
+      nodeExporterRecording: true
+      prometheus: true
+      prometheusOperator: true
 
-  # Additional scrape configs (chart provides defaults)
-  extraScrapeConfigs: |
-    # ArgoCD metrics
-    - job_name: 'argocd-metrics'
-      static_configs:
-        - targets: ['argocd-metrics.argocd.svc.cluster.local:8082']
-    
-    - job_name: 'argocd-server-metrics'
-      static_configs:
-        - targets: ['argocd-server-metrics.argocd.svc.cluster.local:8083']
-    
-    - job_name: 'argocd-repo-server-metrics'
-      static_configs:
-        - targets: ['argocd-repo-server.argocd.svc.cluster.local:8084']
-    
-    # NGINX Ingress metrics
-    - job_name: 'nginx-ingress'
-      kubernetes_sd_configs:
-        - role: pod
-          namespaces:
-            names:
-              - ingress-nginx
-      relabel_configs:
-        - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
-          action: keep
-          regex: ingress-nginx
-        - source_labels: [__meta_kubernetes_pod_container_port_number]
-          action: keep
-          regex: "10254"
-    
-    # NFS Exporter metrics
-    - job_name: 'nfs-exporter'
-      static_configs:
-        - targets: ['nfs-exporter.monitoring.svc.cluster.local:9100']
-      scrape_interval: 30s
-      scrape_timeout: 10s
-      metrics_path: /metrics
+# Additional ServiceMonitors and PrometheusRules will be created as separate resources
+# This approach allows for better modularity and GitOps management
 
-  # Alert rules
-  serverFiles:
-    alerts.yml:
+# ServiceMonitor for NFS Exporter (example)
+serviceMonitors:
+  nfs-exporter:
+    enabled: true
+    namespace: monitoring
+    labels:
+      app.kubernetes.io/name: nfs-exporter
+    spec:
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: nfs-exporter
+      endpoints:
+      - port: metrics
+        path: /metrics
+        interval: 30s
+        scrapeTimeout: 10s
+        honorLabels: true
+        relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: instance
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+        - sourceLabels: [__meta_kubernetes_namespace]
+          targetLabel: kubernetes_namespace
+        - sourceLabels: [__meta_kubernetes_service_name]
+          targetLabel: kubernetes_name
+        - targetLabel: job
+          replacement: nfs-exporter
+
+# PrometheusRules for custom alerting
+prometheusRules:
+  hashfoundry-alerts:
+    enabled: true
+    namespace: monitoring
+    labels:
+      app.kubernetes.io/name: hashfoundry-rules
+    spec:
       groups:
-        - name: kubernetes-alerts
-          rules:
-            - alert: KubernetesNodeReady
-              expr: kube_node_status_condition{condition="Ready",status="true"} == 0
-              for: 10m
-              labels:
-                severity: critical
-              annotations:
-                summary: Kubernetes Node not ready
-                description: "Node {{ $labels.node }} has been unready for more than 10 minutes."
-            
-            - alert: KubernetesPodCrashLooping
-              expr: increase(kube_pod_container_status_restarts_total[1h]) > 5
-              for: 0m
-              labels:
-                severity: warning
-              annotations:
-                summary: Kubernetes pod crash looping
-                description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping."
-            
-            - alert: KubernetesNodeMemoryPressure
-              expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
-              for: 2m
-              labels:
-                severity: critical
-              annotations:
-                summary: Kubernetes Node memory pressure
-                description: "Node {{ $labels.node }} has MemoryPressure condition."
-            
-            - alert: KubernetesNodeDiskPressure
-              expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
-              for: 2m
-              labels:
-                severity: critical
-              annotations:
-                summary: Kubernetes Node disk pressure
-                description: "Node {{ $labels.node }} has DiskPressure condition."
-        
         - name: argocd-alerts
           rules:
             - alert: ArgoCDAppNotSynced
@@ -203,12 +249,3 @@ prometheus:
               annotations:
                 summary: Filesystem space usage is critical
                 description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is {{ $value }}% full."
-            
-            - alert: FilesystemInodesUsageHigh
-              expr: (node_filesystem_files{job="nfs-exporter"} - node_filesystem_files_free{job="nfs-exporter"}) / node_filesystem_files{job="nfs-exporter"} * 100 > 80
-              for: 10m
-              labels:
-                severity: warning
-              annotations:
-                summary: Filesystem inodes usage is high
-                description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} has {{ $value }}% inodes used."
