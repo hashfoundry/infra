@@ -18,6 +18,21 @@ apps:
     autosync: true
 
 addons:
+  - name: metrics-server
+    namespace: kube-system
+    project: default
+    source:
+      path: ha/k8s/addons/metrics-server
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+    autosync: true
   - name: nfs-provisioner
     namespace: nfs-system
     project: default
