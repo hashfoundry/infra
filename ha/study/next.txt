@@ -1,41 +1,4 @@
-глава:
->>
-Performance & Optimization
-<<
-Статьи:
->>
-151. What are the key performance metrics for Kubernetes?
-<<
->>
-152. How do you optimize resource allocation in Kubernetes?
-<<
->>
-153. What strategies help improve Pod startup time?
-<<
->>
-154. How do you optimize etcd performance?
-<<
->>
-155. What are the best practices for node optimization?
-<<
->>
-156. How do you optimize networking performance?
-<<
->>
-157. What is the impact of Quality of Service classes on performance?
-<<
->>
-158. How do you optimize storage performance?
-<<
->>
-159. What are common Kubernetes performance anti-patterns?
-<<
->>
-160. How do you implement horizontal and vertical scaling optimization?
-<<
-
-
-глава:
+глава 16:
 >>
 Backup & Disaster Recovery
 <<
@@ -72,7 +35,7 @@ Backup & Disaster Recovery
 <<
 
 
-глава:
+глава 17:
 >>
 Service Mesh
 <<
@@ -108,7 +71,7 @@ Service Mesh
 180. What are service mesh gateways and how do they work?
 <<
 
-глава:
+глава 18:
 >>
 Advanced Topics
 <<
