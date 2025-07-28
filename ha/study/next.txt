@@ -1,0 +1,160 @@
+глава:
+>>
+Performance & Optimization
+<<
+Статьи:
+>>
+151. What are the key performance metrics for Kubernetes?
+<<
+>>
+152. How do you optimize resource allocation in Kubernetes?
+<<
+>>
+153. What strategies help improve Pod startup time?
+<<
+>>
+154. How do you optimize etcd performance?
+<<
+>>
+155. What are the best practices for node optimization?
+<<
+>>
+156. How do you optimize networking performance?
+<<
+>>
+157. What is the impact of Quality of Service classes on performance?
+<<
+>>
+158. How do you optimize storage performance?
+<<
+>>
+159. What are common Kubernetes performance anti-patterns?
+<<
+>>
+160. How do you implement horizontal and vertical scaling optimization?
+<<
+
+
+глава:
+>>
+Backup & Disaster Recovery
+<<
+Статьи:
+>>
+161. What are the components that need backup in Kubernetes?
+<<
+>>
+162. How do you backup and restore etcd?
+<<
+>>
+163. What tools do you use for Kubernetes backup?
+<<
+>>
+164. How do you implement disaster recovery strategies?
+<<
+>>
+165. What is the difference between backup and disaster recovery?
+<<
+>>
+166. How do you test backup and recovery procedures?
+<<
+>>
+167. What are the challenges of stateful application backup?
+<<
+>>
+168. How do you handle backup retention and lifecycle?
+<<
+>>
+169. What security considerations apply to backup and recovery?
+<<
+>>
+170. How do you implement cross-cloud disaster recovery?
+<<
+
+
+глава:
+>>
+Service Mesh
+<<
+Статьи:
+>>
+171. What is a service mesh and why do you need it?
+<<
+>>
+172. Compare different service mesh solutions.
+<<
+>>
+173. How does Istio architecture work?
+<<
+>>
+174. What are the benefits and drawbacks of service mesh?
+<<
+>>
+175. How do you implement mTLS with service mesh?
+<<
+>>
+176. What is traffic splitting and how do you implement it?
+<<
+>>
+177. How do you implement circuit breaking in service mesh?
+<<
+>>
+178. What observability features does service mesh provide?
+<<
+>>
+179. How do you troubleshoot service mesh issues?
+<<
+>>
+180. What are service mesh gateways and how do they work?
+<<
+
+глава:
+>>
+Advanced Topics
+<<
+Cтатьи:
+>>
+181. What is the Kubernetes scheduler framework?
+<<
+>>
+182. How do you implement custom metrics for HPA?
+<<
+>>
+183. What are finalizers and how do they work?
+<<
+>>
+184. How does garbage collection work in Kubernetes?
+<<
+>>
+185. What is the aggregated API server?
+<<
+>>
+186. How do you implement admission webhooks?
+<<
+>>
+187. What are device plugins and how do they work?
+<<
+>>
+188. How do you implement pod preemption?
+<<
+>>
+189. What is the cluster autoscaler and how does it decide to scale?
+<<
+>>
+190. How do you implement advanced scheduling constraints?
+<<
+>>
+191. What are the emerging trends in Kubernetes ecosystem?
+<<
+>>
+192. How do you handle Kubernetes security at scale?
+<<
+>>
+193. What is the future of Kubernetes?
+<<
+>>
+194. How do you contribute to the Kubernetes community?
+<<
+>>
+195. What are some advanced Kubernetes deployment patterns?
+<<
