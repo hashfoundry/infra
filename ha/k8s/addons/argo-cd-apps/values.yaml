@@ -1,0 +1,91 @@
+defaults:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  source:
+    repoURL: https://github.com/hashfoundry/infra.git
+    targetRevision: HEAD
+    helm:
+      valueFiles:
+        - values.yaml
+  env: dev
+
+apps:
+  - name: hashfoundry-react
+    namespace: hashfoundry-react-dev
+    source:
+      path: ha/k8s/apps/hashfoundry-react
+    autosync: true
+
+addons:
+  - name: metrics-server
+    namespace: kube-system
+    project: default
+    source:
+      path: ha/k8s/addons/metrics-server
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+    autosync: true
+  - name: nfs-provisioner
+    namespace: nfs-system
+    project: default
+    source:
+      path: ha/k8s/addons/nfs-provisioner
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+    autosync: true
+  - name: nginx-ingress
+    namespace: ingress-nginx
+    project: default
+    source:
+      path: ha/k8s/addons/nginx-ingress
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+      syncOptions:
+        - CreateNamespace=true
+    autosync: true
+  - name: argocd-ingress
+    namespace: argocd
+    project: default
+    source:
+      path: ha/k8s/addons/argocd-ingress
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+    autosync: true
+  - name: argo-cd-apps
+    namespace: argocd
+    project: default
+    source:
+      path: ha/k8s/addons/argo-cd-apps
+      helm:
+        valueFiles:
+          - values.yaml
+    syncPolicy:
+      automated:
+        prune: true
+        selfHeal: true
+    autosync: true

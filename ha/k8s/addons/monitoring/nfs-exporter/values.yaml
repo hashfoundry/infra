@@ -49,10 +49,10 @@ nfsExporter:
 
 # ServiceMonitor for Prometheus
 serviceMonitor:
-  enabled: true  # Enabled with Prometheus Operator (kube-prometheus-stack)
+  enabled: false  # Disabled until Prometheus Operator is confirmed
   namespace: monitoring
   labels:
-    app.kubernetes.io/name: nfs-exporter
+    app: nfs-exporter
   interval: 30s
   scrapeTimeout: 10s
   path: /metrics

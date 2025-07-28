@@ -1,11 +1,11 @@
 apiVersion: v2
 name: prometheus
-description: Prometheus monitoring server for HashFoundry with ServiceMonitor support
+description: Prometheus monitoring server for HashFoundry
 type: application
-version: 0.2.0
+version: 0.1.0
 appVersion: "2.45.0"
 
 dependencies:
-  - name: kube-prometheus-stack
-    version: 75.15.0
+  - name: prometheus
+    version: 25.8.0
     repository: https://prometheus-community.github.io/helm-charts
