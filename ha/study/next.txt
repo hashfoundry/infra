@@ -84,3 +84,24 @@ Cтатьи:
 >>
 195. What are some advanced Kubernetes deployment patterns?
 <<
+
+
+
+>>
+196. What is the aggregated API server?
+<<
+>>
+197. How do you implement admission webhooks?
+<<
+>>
+198. What are device plugins and how do they work?
+<<
+>>
+199. How do you implement pod preemption?
+<<
+>>
+200. What is the cluster autoscaler and how does it decide to scale?
+<<
+>>
+201. How do you implement advanced scheduling constraints?
+<<
