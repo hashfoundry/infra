@@ -1,252 +1,385 @@
-# 147. Как реализовать canary развертывания?
+# 147. Как реализовать canary развертывания
 
-## 🎯 Вопрос
-Как реализовать canary развертывания?
+## 🎯 **Основные концепции:**
 
-## 💡 Ответ
+| Аспект | Традиционное развертывание | Canary развертывание |
+|--------|---------------------------|---------------------|
+| **Стратегия выкатки** | Все сразу (Big Bang) | Постепенное увеличение трафика |
+| **Риск** | Высокий (влияет на всех пользователей) | Низкий (влияет на малую часть) |
+| **Время обнаружения проблем** | После полной выкатки | На ранней стадии |
+| **Откат** | Сложный и долгий | Быстрый и простой |
+| **Мониторинг** | Базовый | Расширенный с метриками |
+| **Автоматизация** | Ограниченная | Полная автоматизация с анализом |
+| **Тестирование в продакшене** | Отсутствует | Контролируемое тестирование |
+| **Распределение трафика** | 100% на новую версию | Градуальное: 5% → 25% → 50% → 100% |
+| **Время развертывания** | Быстрое | Постепенное |
+| **Сложность настройки** | Простая | Средняя/высокая |
+| **Требования к инфраструктуре** | Минимальные | Дополнительные ресурсы |
+| **Observability** | Базовая | Детальная с A/B сравнением |
 
-Canary развертывания позволяют постепенно переводить трафик на новую версию приложения, минимизируя риски и обеспечивая быстрый откат при проблемах.
+## 🏆 **Canary развертывания - что это такое?**
 
-### 🏗️ Основные принципы Canary развертывания
+**Canary развертывания** — это стратегия постепенного развертывания новой версии приложения, при которой трафик переключается на новую версию поэтапно (например, 5% → 25% → 50% → 100%), что позволяет обнаружить проблемы на раннем этапе и быстро откатиться к стабильной версии при необходимости.
 
-#### 1. **Постепенное увеличение трафика**
+### **Этапы Canary развертывания:**
+1. **Подготовка** - развертывание новой версии рядом со стабильной
+2. **Начальная фаза** - направление 5-10% трафика на новую версию
+3. **Мониторинг** - анализ метрик (error rate, latency, throughput)
+4. **Постепенное увеличение** - пошаговое увеличение трафика при успешных метриках
+5. **Полная миграция** - переключение 100% трафика на новую версию
+6. **Очистка** - удаление старой версии
+
+## 📊 **Практические примеры из вашего HA кластера:**
+
+### **1. Анализ текущих развертываний:**
+```bash
+# Проверка существующих Deployment'ов
+kubectl get deployments -A -o wide
+
+# Анализ стратегий развертывания
+kubectl get deployments -A -o json | jq -r '
+  .items[] | 
+  "\(.metadata.namespace)/\(.metadata.name): \(.spec.strategy.type // "RollingUpdate")"
+'
+
+# Поиск Argo Rollouts (если установлен)
+kubectl get rollouts -A 2>/dev/null || echo "Argo Rollouts не установлен"
+
+# Проверка Ingress для возможного canary routing
+kubectl get ingress -A -o json | jq -r '
+  .items[] | 
+  select(.metadata.annotations | has("nginx.ingress.kubernetes.io/canary")) | 
+  "\(.metadata.namespace)/\(.metadata.name): Canary enabled"
+'
+
+# Анализ Service Mesh (Istio) для traffic splitting
+kubectl get virtualservices -A 2>/dev/null || echo "Istio VirtualServices не найдены"
+kubectl get destinationrules -A 2>/dev/null || echo "Istio DestinationRules не найдены"
+
+# Проверка ArgoCD Applications для progressive delivery
+kubectl get applications -n argocd -o json | jq -r '
+  .items[] | 
+  select(.spec.source.helm.parameters[]?.name == "canary.enabled") | 
+  "\(.metadata.name): Canary configured"
+' 2>/dev/null || echo "ArgoCD Applications без canary конфигурации"
 ```
-Стадии Canary развертывания:
-┌─────────────┬─────────────┬─────────────┬─────────────┐
-│   Stable    │   Canary    │   Canary    │   Canary    │
-│    100%     │     5%      │     25%     │    100%     │
-│             │   Stable    │   Stable    │             │
-│             │     95%     │     75%     │      0%     │
-└─────────────┴─────────────┴─────────────┴─────────────┘
+
+### **2. Проверка готовности для Canary развертываний:**
+```bash
+# Анализ метрик и мониторинга
+kubectl get servicemonitors -A -o custom-columns="NAMESPACE:.metadata.namespace,NAME:.metadata.name,ENDPOINTS:.spec.endpoints[*].port"
+
+# Проверка Prometheus для сбора метрик
+kubectl get pods -n monitoring | grep prometheus
+
+# Анализ health checks в приложениях
+kubectl get pods -A -o json | jq -r '
+  .items[] | 
+  select(.spec.containers[].readinessProbe and .spec.containers[].livenessProbe) | 
+  "\(.metadata.namespace)/\(.metadata.name): Has health checks"
+'
+
+# Проверка HPA для автомасштабирования
+kubectl get hpa -A
+
+# Анализ ресурсов для canary pods
+kubectl top nodes
+kubectl top pods -A --sort-by=cpu
 ```
 
-#### 2. **Мониторинг и автоматический откат**
+### **3. Тестирование сетевой готовности:**
+```bash
+# Проверка Load Balancer и Ingress
+kubectl get services -A --field-selector spec.type=LoadBalancer
+
+# Тестирование DNS резолюции для service discovery
+kubectl run dns-test --rm -i --restart=Never --image=busybox -- \
+  nslookup argocd-server.argocd.svc.cluster.local
+
+# Проверка сетевых политик
+kubectl get networkpolicies -A
+
+# Анализ endpoints для балансировки нагрузки
+kubectl get endpoints -A -o json | jq -r '
+  .items[] | 
+  select(.subsets[].addresses | length > 1) | 
+  "\(.metadata.namespace)/\(.metadata.name): \(.subsets[].addresses | length) endpoints"
+'
+```
+
+## 🛠️ **Comprehensive Canary Implementation:**
+
+### **1. Argo Rollouts - Advanced Canary Strategy:**
 ```yaml
-# Пример конфигурации с метриками
-canary:
-  analysis:
-    threshold: 5
-    interval: 1m
-    metrics:
-    - name: success-rate
-      threshold: 99
-    - name: latency
-      threshold: 500ms
-```
-
-### 🛠️ Реализация с Kubernetes
-
-#### 1. **Ручное Canary с двумя Deployment**
-```yaml
-# stable-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: myapp-stable
-  labels:
-    app: myapp
-    version: stable
-spec:
-  replicas: 9
-  selector:
-    matchLabels:
-      app: myapp
-      version: stable
-  template:
-    metadata:
-      labels:
-        app: myapp
-        version: stable
-    spec:
-      containers:
-      - name: myapp
-        image: myapp:v1.0.0
-        ports:
-        - containerPort: 8080
----
-# canary-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: myapp-canary
-  labels:
-    app: myapp
-    version: canary
-spec:
-  replicas: 1  # 10% трафика (1 из 10 подов)
-  selector:
-    matchLabels:
-      app: myapp
-      version: canary
-  template:
-    metadata:
-      labels:
-        app: myapp
-        version: canary
-    spec:
-      containers:
-      - name: myapp
-        image: myapp:v2.0.0
-        ports:
-        - containerPort: 8080
-```
-
-```yaml
-# service.yaml - общий сервис для обеих версий
+# k8s/canary/argo-rollouts-setup.yaml
 apiVersion: v1
-kind: Service
+kind: Namespace
 metadata:
-  name: myapp-service
+  name: argo-rollouts
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argo-rollouts
+  namespace: argo-rollouts
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argo-rollouts
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints", "persistentvolumeclaims", "events", "configmaps", "secrets"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets", "replicasets", "statefulsets"]
+  verbs: ["*"]
+- apiGroups: ["argoproj.io"]
+  resources: ["rollouts", "rollouts/status", "experiments", "analysistemplates", "clusteranalysistemplates", "analysisruns"]
+  verbs: ["*"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+- apiGroups: ["networking.istio.io"]
+  resources: ["virtualservices", "destinationrules"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argo-rollouts
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argo-rollouts
+subjects:
+- kind: ServiceAccount
+  name: argo-rollouts
+  namespace: argo-rollouts
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argo-rollouts-controller
+  namespace: argo-rollouts
 spec:
+  replicas: 2
   selector:
-    app: myapp  # Выбирает поды обеих версий
-  ports:
-  - port: 80
-    targetPort: 8080
+    matchLabels:
+      app.kubernetes.io/name: argo-rollouts-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argo-rollouts-controller
+    spec:
+      serviceAccountName: argo-rollouts
+      containers:
+      - name: argo-rollouts
+        image: quay.io/argoproj/argo-rollouts:v1.6.0
+        command:
+        - /manager
+        args:
+        - --leader-elect
+        - --prometheus-listen-port=8090
+        - --klogs-level=0
+        - --log-level=info
+        - --log-format=text
+        ports:
+        - name: metrics
+          containerPort: 8090
+          protocol: TCP
+        - name: healthz
+          containerPort: 8080
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: healthz
+          initialDelaySeconds: 30
+          periodSeconds: 20
+          successThreshold: 1
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /metrics
+            port: metrics
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 4
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 999
 ```
 
-#### 2. **Скрипт для управления Canary**
-```bash
-#!/bin/bash
-# canary-deploy.sh
-
-APP_NAME="myapp"
-NAMESPACE="production"
-NEW_VERSION="$1"
-CANARY_PERCENTAGE="$2"
-
-if [ -z "$NEW_VERSION" ] || [ -z "$CANARY_PERCENTAGE" ]; then
-    echo "Usage: $0 <new-version> <canary-percentage>"
-    exit 1
-fi
-
-echo "🚀 Запуск Canary развертывания $NEW_VERSION с $CANARY_PERCENTAGE% трафика"
-
-# Вычисление количества реплик
-TOTAL_REPLICAS=10
-CANARY_REPLICAS=$((TOTAL_REPLICAS * CANARY_PERCENTAGE / 100))
-STABLE_REPLICAS=$((TOTAL_REPLICAS - CANARY_REPLICAS))
-
-echo "Stable replicas: $STABLE_REPLICAS, Canary replicas: $CANARY_REPLICAS"
-
-# Обновление Canary deployment
-kubectl set image deployment/$APP_NAME-canary \
-  $APP_NAME=myregistry/$APP_NAME:$NEW_VERSION \
-  -n $NAMESPACE
-
-kubectl scale deployment/$APP_NAME-canary \
-  --replicas=$CANARY_REPLICAS \
-  -n $NAMESPACE
-
-kubectl scale deployment/$APP_NAME-stable \
-  --replicas=$STABLE_REPLICAS \
-  -n $NAMESPACE
-
-# Ожидание готовности
-kubectl rollout status deployment/$APP_NAME-canary -n $NAMESPACE
-kubectl rollout status deployment/$APP_NAME-stable -n $NAMESPACE
-
-echo "✅ Canary развертывание завершено"
-```
-
-### 📊 Примеры из нашего кластера
-
-#### Проверка текущих развертываний:
-```bash
-kubectl get deployments -n production -l app=myapp
-```
-
-#### Мониторинг распределения трафика:
-```bash
-kubectl get pods -n production -l app=myapp --show-labels
-```
-
-#### Проверка метрик через Prometheus:
-```bash
-kubectl port-forward svc/prometheus-server 9090:80 -n monitoring
-# Затем открыть http://localhost:9090
-```
-
-### 🎯 Автоматизированное Canary с Argo Rollouts
-
-#### 1. **Установка Argo Rollouts**
-```bash
-kubectl create namespace argo-rollouts
-kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
-```
-
-#### 2. **Rollout конфигурация**
+### **2. HashFoundry Canary Rollout Configuration:**
 ```yaml
-# rollout.yaml
+# k8s/canary/hashfoundry-rollout.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: myapp-rollout
+  name: hashfoundry-webapp-rollout
+  namespace: hashfoundry-production
+  labels:
+    app.kubernetes.io/name: hashfoundry-webapp
+    app.kubernetes.io/component: rollout
 spec:
   replicas: 10
   strategy:
     canary:
-      steps:
-      - setWeight: 10
-      - pause: {duration: 1m}
-      - setWeight: 20
-      - pause: {duration: 1m}
-      - setWeight: 40
-      - pause: {duration: 1m}
-      - setWeight: 60
-      - pause: {duration: 1m}
-      - setWeight: 80
-      - pause: {duration: 1m}
-      canaryService: myapp-canary-service
-      stableService: myapp-stable-service
-      trafficRouting:
-        nginx:
-          stableIngress: myapp-stable-ingress
-          annotationPrefix: nginx.ingress.kubernetes.io
-          additionalIngressAnnotations:
-            canary-by-header: X-Canary
+      maxSurge: "25%"
+      maxUnavailable: 0
       analysis:
         templates:
-        - templateName: success-rate
+        - templateName: hashfoundry-success-rate
+        - templateName: hashfoundry-latency-check
         startingStep: 2
         args:
         - name: service-name
-          value: myapp-canary-service
+          value: hashfoundry-webapp-canary
+        - name: namespace
+          value: hashfoundry-production
+      steps:
+      - setWeight: 5
+      - pause: {duration: 2m}
+      - setWeight: 10
+      - pause: {duration: 2m}
+      - setWeight: 20
+      - pause: {duration: 5m}
+      - setWeight: 40
+      - pause: {duration: 10m}
+      - setWeight: 60
+      - pause: {duration: 10m}
+      - setWeight: 80
+      - pause: {duration: 10m}
+      canaryService: hashfoundry-webapp-canary
+      stableService: hashfoundry-webapp-stable
+      trafficRouting:
+        nginx:
+          stableIngress: hashfoundry-webapp-stable
+          annotationPrefix: nginx.ingress.kubernetes.io
+          additionalIngressAnnotations:
+            canary-by-header: X-Canary
+            canary-by-cookie: canary-user
+      scaleDownDelaySeconds: 30
+      abortScaleDownDelaySeconds: 30
   selector:
     matchLabels:
-      app: myapp
+      app.kubernetes.io/name: hashfoundry-webapp
   template:
     metadata:
       labels:
-        app: myapp
+        app.kubernetes.io/name: hashfoundry-webapp
+        app.kubernetes.io/version: "{{.Values.image.tag}}"
     spec:
       containers:
-      - name: myapp
-        image: myapp:v1.0.0
+      - name: webapp
+        image: hashfoundry/webapp:v1.0.0
         ports:
-        - containerPort: 8080
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        - name: VERSION
+          value: "{{.Values.image.tag}}"
         livenessProbe:
           httpGet:
             path: /health
-            port: 8080
+            port: http
           initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
           httpGet:
             path: /ready
-            port: 8080
+            port: http
           initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1001
+  revisionHistoryLimit: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hashfoundry-webapp-stable
+  namespace: hashfoundry-production
+  labels:
+    app.kubernetes.io/name: hashfoundry-webapp
+    app.kubernetes.io/component: stable-service
+spec:
+  selector:
+    app.kubernetes.io/name: hashfoundry-webapp
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hashfoundry-webapp-canary
+  namespace: hashfoundry-production
+  labels:
+    app.kubernetes.io/name: hashfoundry-webapp
+    app.kubernetes.io/component: canary-service
+spec:
+  selector:
+    app.kubernetes.io/name: hashfoundry-webapp
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  type: ClusterIP
 ```
 
-#### 3. **AnalysisTemplate для автоматической оценки**
+### **3. Analysis Templates для автоматической оценки:**
 ```yaml
-# analysis-template.yaml
+# k8s/canary/analysis-templates.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
-  name: success-rate
+  name: hashfoundry-success-rate
+  namespace: hashfoundry-production
 spec:
   args:
   - name: service-name
+  - name: namespace
   metrics:
   - name: success-rate
     interval: 1m
@@ -255,14 +388,54 @@ spec:
     failureLimit: 3
     provider:
       prometheus:
-        address: http://prometheus-server.monitoring.svc.cluster.local
+        address: http://prometheus-server.monitoring.svc.cluster.local:80
         query: |
           sum(rate(
-            http_requests_total{job="{{args.service-name}}",status!~"5.."}[1m]
+            http_requests_total{
+              job="{{args.service-name}}",
+              namespace="{{args.namespace}}",
+              status!~"5.."
+            }[2m]
           )) / 
           sum(rate(
-            http_requests_total{job="{{args.service-name}}"}[1m]
+            http_requests_total{
+              job="{{args.service-name}}",
+              namespace="{{args.namespace}}"
+            }[2m]
           ))
+  - name: error-rate
+    interval: 1m
+    count: 5
+    successCondition: result[0] <= 0.05
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus-server.monitoring.svc.cluster.local:80
+        query: |
+          sum(rate(
+            http_requests_total{
+              job="{{args.service-name}}",
+              namespace="{{args.namespace}}",
+              status=~"5.."
+            }[2m]
+          )) / 
+          sum(rate(
+            http_requests_total{
+              job="{{args.service-name}}",
+              namespace="{{args.namespace}}"
+            }[2m]
+          ))
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: hashfoundry-latency-check
+  namespace: hashfoundry-production
+spec:
+  args:
+  - name: service-name
+  - name: namespace
+  metrics:
   - name: avg-response-time
     interval: 1m
     count: 5
@@ -270,357 +443,174 @@ spec:
     failureLimit: 3
     provider:
       prometheus:
-        address: http://prometheus-server.monitoring.svc.cluster.local
+        address: http://prometheus-server.monitoring.svc.cluster.local:80
         query: |
           histogram_quantile(0.95,
-            sum(rate(http_request_duration_seconds_bucket{job="{{args.service-name}}"}[1m])) by (le)
+            sum(rate(
+              http_request_duration_seconds_bucket{
+                job="{{args.service-name}}",
+                namespace="{{args.namespace}}"
+              }[2m]
+            )) by (le)
+          )
+  - name: p99-response-time
+    interval: 1m
+    count: 5
+    successCondition: result[0] <= 1.0
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus-server.monitoring.svc.cluster.local:80
+        query: |
+          histogram_quantile(0.99,
+            sum(rate(
+              http_request_duration_seconds_bucket{
+                job="{{args.service-name}}",
+                namespace="{{args.namespace}}"
+              }[2m]
+            )) by (le)
+          )
+  - name: memory-usage
+    interval: 1m
+    count: 5
+    successCondition: result[0] <= 400000000  # 400MB
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus-server.monitoring.svc.cluster.local:80
+        query: |
+          avg(
+            container_memory_usage_bytes{
+              pod=~"hashfoundry-webapp-rollout-.*",
+              namespace="{{args.namespace}}",
+              container="webapp"
+            }
+          )
+  - name: cpu-usage
+    interval: 1m
+    count: 5
+    successCondition: result[0] <= 0.8  # 80% CPU
+    failureLimit: 3
+    provider:
+      prometheus:
+        address: http://prometheus-server.monitoring.svc.cluster.local:80
+        query: |
+          avg(
+            rate(container_cpu_usage_seconds_total{
+              pod=~"hashfoundry-webapp-rollout-.*",
+              namespace="{{args.namespace}}",
+              container="webapp"
+            }[2m])
           )
 ```
 
-### 🌐 Canary с Ingress Controller
-
-#### 1. **NGINX Ingress Canary**
+### **4. NGINX Ingress Canary Configuration:**
 ```yaml
-# stable-ingress.yaml
+# k8s/canary/nginx-ingress-canary.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: myapp-stable
+  name: hashfoundry-webapp-stable
+  namespace: hashfoundry-production
   annotations:
     kubernetes.io/ingress.class: nginx
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
+  tls:
+  - hosts:
+    - app.hashfoundry.com
+    secretName: hashfoundry-webapp-tls
   rules:
-  - host: myapp.example.com
+  - host: app.hashfoundry.com
     http:
       paths:
-      - path: /
+      - path: /(.*)
         pathType: Prefix
         backend:
           service:
-            name: myapp-stable-service
+            name: hashfoundry-webapp-stable
             port:
               number: 80
 ---
-# canary-ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: myapp-canary
+  name: hashfoundry-webapp-canary
+  namespace: hashfoundry-production
   annotations:
     kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/canary: "true"
-    nginx.ingress.kubernetes.io/canary-weight: "10"
+    nginx.ingress.kubernetes.io/canary-weight: "0"
+    nginx.ingress.kubernetes.io/canary-by-header: "X-Canary"
+    nginx.ingress.kubernetes.io/canary-by-header-value: "true"
+    nginx.ingress.kubernetes.io/canary-by-cookie: "canary-user"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
 spec:
+  tls:
+  - hosts:
+    - app.hashfoundry.com
+    secretName: hashfoundry-webapp-tls
   rules:
-  - host: myapp.example.com
+  - host: app.hashfoundry.com
     http:
       paths:
-      - path: /
+      - path: /(.*)
         pathType: Prefix
         backend:
           service:
-            name: myapp-canary-service
+            name: hashfoundry-webapp-canary
             port:
               number: 80
 ```
 
-#### 2. **Istio Service Mesh Canary**
-```yaml
-# virtual-service.yaml
-apiVersion: networking.istio.io/v1alpha3
-kind: VirtualService
-metadata:
-  name: myapp
-spec:
-  hosts:
-  - myapp.example.com
-  http:
-  - match:
-    - headers:
-        canary:
-          exact: "true"
-    route:
-    - destination:
-        host: myapp-service
-        subset: canary
-  - route:
-    - destination:
-        host: myapp-service
-        subset: stable
-      weight: 90
-    - destination:
-        host: myapp-service
-        subset: canary
-      weight: 10
----
-# destination-rule.yaml
-apiVersion: networking.istio.io/v1alpha3
-kind: DestinationRule
-metadata:
-  name: myapp
-spec:
-  host: myapp-service
-  subsets:
-  - name: stable
-    labels:
-      version: stable
-  - name: canary
-    labels:
-      version: canary
-```
+## 🎓 **Заключение:**
 
-### 🎪 CI/CD интеграция Canary
+**Canary развертывания** обеспечивают безопасный и контролируемый способ выкатки новых версий приложений с минимальными рисками.
 
-#### 1. **GitHub Actions с Argo Rollouts**
-```yaml
-# .github/workflows/canary-deploy.yml
-name: Canary Deployment
+### **🔑 Ключевые преимущества:**
+1. **Снижение рисков** - проблемы затрагивают только малую часть пользователей
+2. **Быстрое обнаружение** - проблемы выявляются на ранней стадии
+3. **Автоматический откат** - система может автоматически вернуться к стабильной версии
+4. **Постепенная миграция** - плавный переход без простоев
+5. **A/B тестирование** - возможность сравнения версий в реальных условиях
+6. **Мониторинг в реальном времени** - детальная аналитика производительности
 
-on:
-  push:
-    branches: [main]
+### **🛠️ Основные инструменты:**
+- **Argo Rollouts** - продвинутые стратегии развертывания
+- **NGINX Ingress** - управление трафиком на уровне Ingress
+- **Istio Service Mesh** - сложная маршрутизация трафика
+- **Prometheus + Grafana** - мониторинг и алертинг
+- **Flagger** - автоматизация canary развертываний
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    
-    - name: Setup kubectl
-      uses: azure/setup-kubectl@v1
-    
-    - name: Install Argo Rollouts CLI
-      run: |
-        curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
-        chmod +x kubectl-argo-rollouts-linux-amd64
-        sudo mv kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
-    
-    - name: Build and push image
-      run: |
-        docker build -t myapp:${{ github.sha }} .
-        docker push myregistry/myapp:${{ github.sha }}
-    
-    - name: Update rollout image
-      run: |
-        kubectl argo rollouts set image myapp-rollout \
-          myapp=myregistry/myapp:${{ github.sha }} \
-          -n production
-    
-    - name: Wait for rollout
-      run: |
-        kubectl argo rollouts get rollout myapp-rollout -n production --watch
-    
-    - name: Promote if successful
-      run: |
-        kubectl argo rollouts promote myapp-rollout -n production
-```
-
-#### 2. **Jenkins Pipeline с автоматическим откатом**
-```groovy
-// Jenkinsfile
-pipeline {
-    agent any
-    
-    environment {
-        APP_NAME = 'myapp'
-        NAMESPACE = 'production'
-        REGISTRY = 'myregistry'
-    }
-    
-    stages {
-        stage('Build') {
-            steps {
-                sh '''
-                    docker build -t ${REGISTRY}/${APP_NAME}:${BUILD_NUMBER} .
-                    docker push ${REGISTRY}/${APP_NAME}:${BUILD_NUMBER}
-                '''
-            }
-        }
-        
-        stage('Deploy Canary') {
-            steps {
-                sh '''
-                    kubectl argo rollouts set image ${APP_NAME}-rollout \
-                      ${APP_NAME}=${REGISTRY}/${APP_NAME}:${BUILD_NUMBER} \
-                      -n ${NAMESPACE}
-                '''
-            }
-        }
-        
-        stage('Monitor Canary') {
-            steps {
-                script {
-                    timeout(time: 10, unit: 'MINUTES') {
-                        sh '''
-                            kubectl argo rollouts get rollout ${APP_NAME}-rollout \
-                              -n ${NAMESPACE} --watch
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Promote or Abort') {
-            steps {
-                script {
-                    def rolloutStatus = sh(
-                        script: "kubectl argo rollouts status ${APP_NAME}-rollout -n ${NAMESPACE}",
-                        returnStatus: true
-                    )
-                    
-                    if (rolloutStatus == 0) {
-                        echo "✅ Canary успешен, продвижение..."
-                        sh "kubectl argo rollouts promote ${APP_NAME}-rollout -n ${NAMESPACE}"
-                    } else {
-                        echo "❌ Canary неуспешен, откат..."
-                        sh "kubectl argo rollouts abort ${APP_NAME}-rollout -n ${NAMESPACE}"
-                        error("Canary deployment failed")
-                    }
-                }
-            }
-        }
-    }
-    
-    post {
-        failure {
-            sh '''
-                kubectl argo rollouts abort ${APP_NAME}-rollout -n ${NAMESPACE}
-                kubectl argo rollouts undo ${APP_NAME}-rollout -n ${NAMESPACE}
-            '''
-        }
-    }
-}
-```
-
-### 📈 Мониторинг Canary развертываний
-
-#### 1. **Grafana Dashboard для Canary**
-```json
-{
-  "dashboard": {
-    "title": "Canary Deployment Monitoring",
-    "panels": [
-      {
-        "title": "Success Rate by Version",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "sum(rate(http_requests_total{job=\"myapp\",status!~\"5..\"}[5m])) by (version) / sum(rate(http_requests_total{job=\"myapp\"}[5m])) by (version) * 100"
-          }
-        ]
-      },
-      {
-        "title": "Response Time by Version",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"myapp\"}[5m])) by (le, version))"
-          }
-        ]
-      },
-      {
-        "title": "Traffic Distribution",
-        "type": "piechart",
-        "targets": [
-          {
-            "expr": "sum(rate(http_requests_total{job=\"myapp\"}[5m])) by (version)"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-#### 2. **Алерты для Canary**
-```yaml
-# prometheus-rules.yaml
-apiVersion: monitoring.coreos.com/v1
-kind: PrometheusRule
-metadata:
-  name: canary-alerts
-spec:
-  groups:
-  - name: canary
-    rules:
-    - alert: CanaryHighErrorRate
-      expr: |
-        (
-          sum(rate(http_requests_total{job="myapp",version="canary",status=~"5.."}[5m])) /
-          sum(rate(http_requests_total{job="myapp",version="canary"}[5m]))
-        ) > 0.05
-      for: 2m
-      labels:
-        severity: critical
-      annotations:
-        summary: "Canary version has high error rate"
-        description: "Canary version error rate is {{ $value | humanizePercentage }}"
-    
-    - alert: CanaryHighLatency
-      expr: |
-        histogram_quantile(0.95,
-          sum(rate(http_request_duration_seconds_bucket{job="myapp",version="canary"}[5m])) by (le)
-        ) > 0.5
-      for: 2m
-      labels:
-        severity: warning
-      annotations:
-        summary: "Canary version has high latency"
-        description: "Canary 95th percentile latency is {{ $value }}s"
-```
-
-### 🔄 Автоматический откат
-
-#### 1. **Скрипт мониторинга и отката**
+### **🎯 Основные команды для изучения в вашем HA кластере:**
 ```bash
-#!/bin/bash
-# canary-monitor.sh
+# Анализ текущих развертываний
+kubectl get deployments -A -o wide
+kubectl get rollouts -A
 
-APP_NAME="myapp"
-NAMESPACE="production"
-PROMETHEUS_URL="http://prometheus-server.monitoring.svc.cluster.local"
+# Проверка готовности для canary
+kubectl get servicemonitors -A
+kubectl get ingress -A
 
-echo "🔍 Мониторинг Canary развертывания..."
+# Мониторинг canary развертываний
+kubectl argo rollouts get rollout hashfoundry-webapp-rollout -n hashfoundry-production
+kubectl argo rollouts status hashfoundry-webapp-rollout -n hashfoundry-production
 
-while true; do
-    # Проверка error rate
-    ERROR_RATE=$(curl -s "${PROMETHEUS_URL}/api/v1/query" \
-        --data-urlencode "query=sum(rate(http_requests_total{job=\"${APP_NAME}\",version=\"canary\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"${APP_NAME}\",version=\"canary\"}[5m]))" \
-        | jq -r '.data.result[0].value[1] // "0"')
-    
-    # Проверка latency
-    LATENCY=$(curl -s "${PROMETHEUS_URL}/api/v1/query" \
-        --data-urlencode "query=histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"${APP_NAME}\",version=\"canary\"}[5m])) by (le))" \
-        | jq -r '.data.result[0].value[1] // "0"')
-    
-    echo "Error rate: ${ERROR_RATE}, Latency: ${LATENCY}s"
-    
-    # Проверка пороговых значений
-    if (( $(echo "$ERROR_RATE > 0.05" | bc -l) )); then
-        echo "❌ Высокий error rate, откат Canary..."
-        kubectl argo rollouts abort ${APP_NAME}-rollout -n ${NAMESPACE}
-        exit 1
-    fi
-    
-    if (( $(echo "$LATENCY > 0.5" | bc -l) )); then
-        echo "❌ Высокая задержка, откат Canary..."
-        kubectl argo rollouts abort ${APP_NAME}-rollout -n ${NAMESPACE}
-        exit 1
-    fi
-    
-    sleep 30
-done
+# Управление canary
+kubectl argo rollouts promote hashfoundry-webapp-rollout -n hashfoundry-production
+kubectl argo rollouts abort hashfoundry-webapp-rollout -n hashfoundry-production
 ```
 
-### 📋 Лучшие практики Canary развертываний
+### **🚀 Следующие шаги:**
+1. Установите Argo Rollouts в ваш HA кластер
+2. Настройте мониторинг метрик с Prometheus
+3. Создайте Analysis Templates для автоматической оценки
+4. Внедрите canary развертывания для критических приложений
+5. Настройте алертинг для быстрого реагирования на проблемы
 
-- ✅ **Начинайте с малого процента** (5-10%)
-- ✅ **Мониторьте ключевые метрики** (error rate, latency, throughput)
-- ✅ **Автоматизируйте откат** при превышении пороговых значений
-- ✅ **Используйте feature flags** для дополнительного контроля
-- ✅ **Тестируйте в staging** перед production
-- ✅ **Документируйте процесс** отката
-- ✅ **Уведомляйте команду** о статусе развертывания
-- ✅ **Сохраняйте логи** для анализа
-
-Canary развертывания обеспечивают безопасный способ выкатки новых версий с минимальным риском для пользователей и возможностью быстрого отката при проблемах.
+**Помните:** Canary развертывания требуют хорошего мониторинга и четко определенных метрик успеха для эффективной работы!
