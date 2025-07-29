@@ -16,3 +16,6 @@
 - session affinity и прочие affinity
 - `kubectl get lease kube-controller-manager -n kube-system -o yaml`
 - `kubectl explain deployment`
+- `kubectl get resourcequotas -A`, QoS Classes, мониторинг CPU throttling, мониторинг OOMKilled события, vertical pod autoscaler
+- `kubectl logs <pod-name> --previous` - посмотреть логи с предыдущего запуска, статусы в которых может находиться под, kubectl debug <pod-name> -it --image=busybox --target=<container-name>
+- **посмотреть цены на RunPod**
