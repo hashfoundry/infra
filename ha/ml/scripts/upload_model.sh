@@ -10,7 +10,7 @@ set -e
 BUCKET_NAME="hashfoundry-ml-models"
 MODEL_PATH="iris-classifier/v1"
 LOCAL_MODEL_DIR="../iris-classifier"
-REGION="fra1"  # Frankfurt region
+REGION="nyc3"  # New York region
 
 # Colors for output
 RED='\033[0;31m'
@@ -72,11 +72,12 @@ check_auth() {
 create_bucket() {
     print_status "Checking if bucket '$BUCKET_NAME' exists..."
     
-    if doctl spaces ls | grep -q "$BUCKET_NAME"; then
+    # Try to list bucket contents to check if it exists
+    if aws s3 ls "s3://$BUCKET_NAME" --endpoint-url "https://$REGION.digitaloceanspaces.com" --profile digitalocean &> /dev/null; then
         print_success "Bucket '$BUCKET_NAME' already exists"
     else
         print_status "Creating bucket '$BUCKET_NAME'..."
-        doctl spaces create "$BUCKET_NAME" --region "$REGION"
+        aws s3 mb "s3://$BUCKET_NAME" --endpoint-url "https://$REGION.digitaloceanspaces.com" --profile digitalocean
         print_success "Bucket '$BUCKET_NAME' created successfully"
     fi
 }
