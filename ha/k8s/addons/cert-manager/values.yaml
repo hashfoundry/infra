@@ -1,0 +1,60 @@
+cert-manager:
+  # Install CRDs as part of the Helm release
+  installCRDs: true
+  
+  # Namespace for cert-manager
+  namespace: cert-manager
+  
+  # Resource requests and limits
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  
+  # Webhook configuration
+  webhook:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  
+  # CA Injector configuration
+  cainjector:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+  
+  # Pod security context
+  podSecurityContext:
+    fsGroup: 1000
+  
+  # Node selector for HA deployment
+  nodeSelector: {}
+  
+  # Tolerations
+  tolerations: []
+  
+  # Affinity rules
+  affinity: {}
+  
+  # Enable prometheus monitoring
+  prometheus:
+    enabled: false
+    servicemonitor:
+      enabled: false

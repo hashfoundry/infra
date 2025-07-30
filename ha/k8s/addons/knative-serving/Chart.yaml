@@ -1,0 +1,11 @@
+apiVersion: v2
+name: knative-serving
+description: A Helm chart for Knative Serving
+type: application
+version: 0.1.0
+appVersion: "1.11.0"
+
+dependencies:
+  - name: knative-serving
+    version: 1.11.0
+    repository: https://knative.github.io/serving

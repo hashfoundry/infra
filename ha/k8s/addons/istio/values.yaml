@@ -1,0 +1,96 @@
+# Istio Base configuration
+base:
+  # Enable validation webhook
+  validationURL: ""
+  
+# Istio Control Plane (istiod) configuration
+istiod:
+  # Pilot configuration
+  pilot:
+    # Resource requests and limits
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    
+    # Environment variables
+    env:
+      # Enable external name alias
+      EXTERNAL_ISTIOD: false
+      # Pilot trace sampling
+      PILOT_TRACE_SAMPLING: 1.0
+      # Enable workload entry autoregistration
+      PILOT_ENABLE_WORKLOAD_ENTRY_AUTOREGISTRATION: true
+    
+    # Node selector for HA deployment
+    nodeSelector: {}
+    
+    # Tolerations
+    tolerations: []
+    
+    # Affinity rules for HA
+    affinity: {}
+  
+  # Global mesh configuration
+  meshConfig:
+    # Default HTTP timeout
+    defaultHttpTimeout: 30s
+    # Proxy metadata
+    proxyMetadata: {}
+    # Trust domain
+    trustDomain: cluster.local
+  
+  # Global configuration
+  global:
+    # Mesh ID
+    meshID: mesh1
+    # Multi-cluster configuration
+    meshNetworks: {}
+    # Network name
+    network: ""
+    
+    # Proxy configuration
+    proxy:
+      # Resources for sidecar proxies
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+      
+      # Proxy log level
+      logLevel: warning
+      
+      # Component log level
+      componentLogLevel: "misc:error"
+    
+    # Image pull policy
+    imagePullPolicy: IfNotPresent
+    
+    # Image pull secrets
+    imagePullSecrets: []
+    
+    # Default node selector
+    defaultNodeSelector: {}
+    
+    # Default tolerations
+    defaultTolerations: []
+    
+    # Logging configuration
+    logging:
+      level: "default:info"
+    
+    # Proxy init configuration
+    proxy_init:
+      resources:
+        requests:
+          cpu: 10m
+          memory: 10Mi
+        limits:
+          cpu: 100m
+          memory: 50Mi
