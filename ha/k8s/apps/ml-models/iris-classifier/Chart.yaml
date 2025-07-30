@@ -1,0 +1,19 @@
+apiVersion: v2
+name: iris-classifier
+description: A Helm chart for Iris Classifier InferenceService
+type: application
+version: 0.1.0
+appVersion: "v1"
+
+keywords:
+  - machine-learning
+  - kserve
+  - inference
+  - scikit-learn
+
+maintainers:
+  - name: HashFoundry Infrastructure Team
+    email: infra@hashfoundry.com
+
+annotations:
+  category: Machine Learning

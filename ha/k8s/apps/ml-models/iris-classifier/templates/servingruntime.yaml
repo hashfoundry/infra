@@ -1,0 +1,43 @@
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: sklearn-runtime
+  namespace: ml-models
+spec:
+  supportedModelFormats:
+    - name: sklearn
+      version: "1"
+      autoSelect: true
+  containers:
+    - name: kserve-container
+      image: kserve/sklearnserver:v0.11.0
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 1
+          memory: 2Gi
+      ports:
+        - containerPort: 8080
+          protocol: TCP
+      readinessProbe:
+        httpGet:
+          path: /v1/models
+          port: 8080
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 3
+      livenessProbe:
+        httpGet:
+          path: /v1/models
+          port: 8080
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+  protocolVersions:
+    - v1
+    - v2
+  multiModel: false

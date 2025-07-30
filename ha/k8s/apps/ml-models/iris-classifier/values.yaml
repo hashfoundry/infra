@@ -1,0 +1,50 @@
+# Iris Classifier InferenceService Configuration
+
+# Model configuration
+model:
+  name: iris-classifier
+  version: v1
+  framework: sklearn
+  runtimeVersion: "1.3.0"
+  
+# Storage configuration
+storage:
+  uri: "s3://hashfoundry-ml-models/iris-classifier/v1"
+  endpoint: "https://nyc3.digitaloceanspaces.com"
+  region: "nyc3"
+  
+# Resource configuration
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Scaling configuration
+scaling:
+  minReplicas: 1
+  maxReplicas: 3
+  
+# Canary deployment
+canary:
+  trafficPercent: 0
+
+# Security configuration
+security:
+  serviceAccountName: default
+
+# Protocol configuration
+protocol:
+  version: v1
+
+# Environment specific settings
+environment: production
+
+# Labels
+labels:
+  app: iris-classifier
+  version: v1
+  component: ml-model
+  framework: sklearn

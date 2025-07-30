@@ -1,0 +1,62 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: iris-classifier
+  namespace: ml-models
+  labels:
+    app: iris-classifier
+    version: v1
+    component: ml-model
+  annotations:
+    serving.kserve.io/s3-endpoint: "https://nyc3.digitaloceanspaces.com"
+    serving.kserve.io/s3-region: "nyc3"
+    serving.kserve.io/s3-usehttps: "1"
+    serving.kserve.io/s3-verifyssl: "1"
+spec:
+  predictor:
+    serviceAccountName: kserve-sa
+    model:
+      modelFormat:
+        name: sklearn
+      storageUri: "s3://hashfoundry-ml-models/iris-classifier/v1"
+      
+      # Resource requirements
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+      
+      # Environment variables for S3 access
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: storage-config
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: storage-config
+              key: AWS_SECRET_ACCESS_KEY
+        - name: AWS_ENDPOINT_URL
+          valueFrom:
+            secretKeyRef:
+              name: storage-config
+              key: AWS_ENDPOINT_URL
+        - name: AWS_REGION
+          valueFrom:
+            secretKeyRef:
+              name: storage-config
+              key: AWS_REGION
+        - name: S3_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: storage-config
+              key: AWS_ENDPOINT_URL
+        - name: S3_USE_HTTPS
+          value: "1"
+        - name: S3_VERIFY_SSL
+          value: "1"
