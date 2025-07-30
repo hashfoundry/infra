@@ -11,6 +11,9 @@ spec:
   containers:
     - name: kserve-container
       image: kserve/sklearnserver:v0.11.0
+      args:
+        - --model_dir=/mnt/models
+        - --model_name=iris-classifier
       resources:
         requests:
           cpu: 100m
@@ -23,7 +26,7 @@ spec:
           protocol: TCP
       readinessProbe:
         httpGet:
-          path: /v1/models
+          path: /v1/models/iris-classifier
           port: 8080
         initialDelaySeconds: 10
         periodSeconds: 5
@@ -31,7 +34,7 @@ spec:
         failureThreshold: 3
       livenessProbe:
         httpGet:
-          path: /v1/models
+          path: /v1/models/iris-classifier
           port: 8080
         initialDelaySeconds: 30
         periodSeconds: 10

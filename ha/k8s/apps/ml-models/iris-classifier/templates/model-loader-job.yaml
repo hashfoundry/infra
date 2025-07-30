@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: iris-model-loader
+  namespace: ml-models
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: model-loader
+        image: python:3.9-slim
+        command:
+        - /bin/bash
+        - -c
+        - |
+          pip install boto3
+          python3 << 'EOF'
+          import boto3
+          import os
+          
+          # S3 credentials
+          s3 = boto3.client(
+              's3',
+              endpoint_url='https://nyc3.digitaloceanspaces.com',
+              aws_access_key_id='DO007AHBUXBFMYPYU6JC',
+              aws_secret_access_key='p3Bkyzf7gEnlBofQHBVZSw7weFUJyLS2LbgnaPv9TQ0',
+              region_name='nyc3'
+          )
+          
+          # Download model files
+          bucket = 'hashfoundry-ml-models'
+          prefix = 'iris-classifier/v1/'
+          local_dir = '/mnt/models/'
+          
+          # Create directory
+          os.makedirs(local_dir, exist_ok=True)
+          
+          # List and download files
+          response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+          for obj in response.get('Contents', []):
+              key = obj['Key']
+              filename = key.replace(prefix, '')
+              if filename:  # Skip empty filenames
+                  local_path = os.path.join(local_dir, filename)
+                  print(f"Downloading {key} to {local_path}")
+                  s3.download_file(bucket, key, local_path)
+          
+          print("Model download completed!")
+          EOF
+        volumeMounts:
+        - name: model-storage
+          mountPath: /mnt/models
+      volumes:
+      - name: model-storage
+        persistentVolumeClaim:
+          claimName: iris-model-storage
