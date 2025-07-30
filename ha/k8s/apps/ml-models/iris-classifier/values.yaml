@@ -48,3 +48,24 @@ labels:
   version: v1
   component: ml-model
   framework: sklearn
+
+# Ingress configuration
+ingress:
+  enabled: true
+  host: iris-classifier.ml.hashfoundry.local
+  className: nginx
+  tls:
+    enabled: true
+    secretName: iris-classifier-tls
+
+# Namespace
+namespace: ml-models
+
+# S3 Configuration for model loader
+s3:
+  endpoint: "https://nyc3.digitaloceanspaces.com"
+  region: "nyc3"
+  bucket: "hashfoundry-ml-models"
+  prefix: "iris-classifier/v1/"
+  accessKeyId: "DO007AHBUXBFMYPYU6JC"
+  secretAccessKey: "p3Bkyzf7gEnlBofQHBVZSw7weFUJyLS2LbgnaPv9TQ0"
