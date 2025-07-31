@@ -1,698 +1,1259 @@
 # 164. Как реализовать стратегии disaster recovery?
 
-## 🎯 Вопрос
-Как реализовать стратегии disaster recovery?
+## 🎯 **Что такое Disaster Recovery для Kubernetes?**
 
-## 💡 Ответ
+**Disaster Recovery (DR) для Kubernetes** — это комплексная стратегия и набор процедур для быстрого восстановления работоспособности кластера и приложений после катастрофических сбоев, включающая multi-region репликацию, автоматизированный failover, backup/restore процедуры и непрерывное тестирование для обеспечения минимальных RTO и RPO.
 
-Disaster Recovery (DR) в Kubernetes включает комплексную стратегию восстановления после катастрофических сбоев, охватывающую backup данных, репликацию кластеров, автоматизацию восстановления и тестирование процедур для обеспечения минимального RTO и RPO.
+## 🏗️ **Основные компоненты DR стратегии:**
 
-### 🏗️ Архитектура Disaster Recovery
+### **1. Multi-Region Architecture (Мульти-региональная архитектура)**
+- **Primary Cluster** - основной рабочий кластер
+- **Secondary Cluster** - резервный кластер в другом регионе
+- **Backup Storage** - централизованное хранилище backup
+- **DNS Failover** - автоматическое переключение трафика
 
-#### 1. **Схема DR стратегии**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                Disaster Recovery Strategy                   │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │  Primary    │  │  Secondary  │  │   Backup    │         │
-│  │  Cluster    │  │   Cluster   │  │  Storage    │         │
-│  │   (fra1)    │  │   (ams3)    │  │  (Spaces)   │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │ Monitoring  │  │ Automation  │  │  Testing    │         │
-│  │ & Alerting  │  │ & Failover  │  │ & Validation│         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. RTO/RPO Targets (Цели восстановления)**
+- **RTO (Recovery Time Objective)** - максимальное время восстановления
+- **RPO (Recovery Point Objective)** - максимальная потеря данных
+- **Availability Targets** - целевые показатели доступности
+- **Service Tiers** - классификация сервисов по критичности
 
-#### 2. **DR метрики и цели**
-```yaml
-# DR метрики и цели
-disaster_recovery_metrics:
-  rto_targets:
-    critical_services: "< 15 минут"
-    important_services: "< 1 час"
-    standard_services: "< 4 часа"
-    
-  rpo_targets:
-    critical_data: "< 5 минут"
-    important_data: "< 30 минут"
-    standard_data: "< 4 часа"
-    
-  availability_targets:
-    tier_1: "99.99% (52 минуты downtime/год)"
-    tier_2: "99.9% (8.7 часов downtime/год)"
-    tier_3: "99% (3.65 дня downtime/год)"
-```
+### **3. Automation & Monitoring (Автоматизация и мониторинг)**
+- **Health Checks** - проверки состояния кластера
+- **Automated Failover** - автоматическое переключение
+- **Alert Management** - управление уведомлениями
+- **Recovery Orchestration** - оркестрация восстановления
 
-### 📊 Примеры из нашего кластера
+## 📊 **Практические примеры из вашего HA кластера:**
 
-#### Проверка DR готовности:
+### **1. Анализ текущей DR готовности:**
 ```bash
-# Проверка состояния кластера
+# Проверка состояния primary кластера
 kubectl cluster-info
-
-# Проверка критичных компонентов
 kubectl get nodes -o wide
-kubectl get pods -n kube-system
+kubectl get pods --all-namespaces --field-selector=status.phase!=Running
+
+# Анализ критичных компонентов
+kubectl get pods -n kube-system -o custom-columns=NAME:.metadata.name,STATUS:.status.phase,NODE:.spec.nodeName
 
 # Проверка backup систем
 kubectl get pods -n velero
-kubectl get backups -n velero
+kubectl get backups -n velero --sort-by=.metadata.creationTimestamp
+
+# Анализ persistent volumes
+kubectl get pv -o custom-columns=NAME:.metadata.name,STATUS:.status.phase,STORAGECLASS:.spec.storageClassName,SIZE:.spec.capacity.storage
 ```
 
-### 🌐 Multi-Region DR стратегия
+### **2. Мониторинг DR метрик:**
+```bash
+# Проверка доступности etcd
+kubectl get --raw /healthz/etcd
 
-#### 1. **Настройка вторичного кластера**
-```yaml
-# secondary-cluster-config.yaml
-# Terraform конфигурация для вторичного кластера
-resource "digitalocean_kubernetes_cluster" "secondary" {
-  name    = "hashfoundry-dr"
-  region  = "ams3"                       # Другой регион для DR
+# Анализ производительности кластера
+kubectl top nodes
+kubectl top pods --all-namespaces --sort-by=cpu
+
+# Проверка сетевой связности
+kubectl get svc -n ingress-nginx
+kubectl get ingress --all-namespaces
+```
+
+### **3. Проверка backup готовности:**
+```bash
+# Анализ последних backup
+velero backup get --sort-by=.metadata.creationTimestamp
+velero backup describe $(velero backup get -o name | tail -1)
+
+# Проверка backup locations
+velero backup-location get
+velero snapshot-location get
+
+# Анализ размера backup
+kubectl get backups -n velero -o custom-columns=NAME:.metadata.name,STATUS:.status.phase,SIZE:.status.totalItems,CREATED:.metadata.creationTimestamp
+```
+
+## 🔄 **Демонстрация реализации DR стратегии:**
+
+### **1. Создание Multi-Region DR архитектуры:**
+```bash
+# Создать скрипт multi-region-dr-setup.sh
+cat << 'EOF' > multi-region-dr-setup.sh
+#!/bin/bash
+
+echo "🌐 Настройка Multi-Region Disaster Recovery"
+echo "=========================================="
+
+# Настройка переменных
+PRIMARY_CLUSTER="hashfoundry-ha"
+DR_CLUSTER="hashfoundry-dr"
+PRIMARY_REGION="fra1"
+DR_REGION="ams3"
+BACKUP_BUCKET="hashfoundry-backup"
+
+# Функция логирования
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+# Функция проверки зависимостей
+check_dependencies() {
+    log "🔍 Проверка зависимостей..."
+    
+    # Проверка инструментов
+    for tool in kubectl doctl terraform helm; do
+        if ! command -v $tool &> /dev/null; then
+            log "❌ $tool не найден"
+            exit 1
+        fi
+    done
+    
+    # Проверка переменных окружения
+    if [ -z "$DO_TOKEN" ]; then
+        log "❌ DO_TOKEN не установлен"
+        exit 1
+    fi
+    
+    log "✅ Все зависимости проверены"
+}
+
+# Функция создания DR кластера
+create_dr_cluster() {
+    log "🏗️ Создание DR кластера..."
+    
+    # Создание Terraform конфигурации для DR
+    cat << TERRAFORM_EOF > dr-cluster.tf
+# DR Cluster Configuration
+resource "digitalocean_kubernetes_cluster" "dr_cluster" {
+  name    = "$DR_CLUSTER"
+  region  = "$DR_REGION"
   version = "1.31.9-do.2"
   
   node_pool {
     name       = "dr-worker-pool"
     size       = "s-2vcpu-4gb"
-    node_count = 2                       # Меньше узлов для экономии
+    node_count = 3
     
     auto_scale = true
     min_nodes  = 2
-    max_nodes  = 6
+    max_nodes  = 8
+    
+    labels = {
+      environment = "disaster-recovery"
+      cluster     = "$DR_CLUSTER"
+    }
+    
+    taint {
+      key    = "disaster-recovery"
+      value  = "true"
+      effect = "NoSchedule"
+    }
   }
   
-  tags = ["disaster-recovery", "secondary"]
+  tags = ["disaster-recovery", "secondary", "ha"]
 }
 
-# VPC для изоляции DR кластера
+# VPC для DR кластера
 resource "digitalocean_vpc" "dr_vpc" {
-  name     = "hashfoundry-dr-vpc"
-  region   = "ams3"
+  name     = "$DR_CLUSTER-vpc"
+  region   = "$DR_REGION"
   ip_range = "10.20.0.0/16"
+  
+  tags = ["disaster-recovery"]
 }
----
-# ArgoCD конфигурация для DR кластера
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: dr-cluster-sync
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/hashfoundry/infra.git
-    targetRevision: main
-    path: ha/k8s
-  destination:
-    server: https://dr-cluster-api-endpoint
-    namespace: default
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-    - CreateNamespace=true
-```
 
-#### 2. **Скрипт настройки DR кластера**
-```bash
-#!/bin/bash
-# dr-cluster-setup.sh
+# Load Balancer для DR кластера
+resource "digitalocean_loadbalancer" "dr_lb" {
+  name   = "$DR_CLUSTER-lb"
+  region = "$DR_REGION"
+  vpc_uuid = digitalocean_vpc.dr_vpc.id
+  
+  forwarding_rule {
+    entry_protocol  = "https"
+    entry_port      = 443
+    target_protocol = "https"
+    target_port     = 443
+    tls_passthrough = true
+  }
+  
+  forwarding_rule {
+    entry_protocol  = "http"
+    entry_port      = 80
+    target_protocol = "http"
+    target_port     = 80
+  }
+  
+  healthcheck {
+    protocol               = "http"
+    port                   = 80
+    path                   = "/healthz"
+    check_interval_seconds = 10
+    response_timeout_seconds = 5
+    unhealthy_threshold    = 3
+    healthy_threshold      = 2
+  }
+  
+  tags = ["disaster-recovery"]
+}
 
-echo "🌐 Настройка DR кластера"
+# Outputs
+output "dr_cluster_id" {
+  value = digitalocean_kubernetes_cluster.dr_cluster.id
+}
 
-# Переменные
-PRIMARY_CLUSTER="hashfoundry-ha"
-DR_CLUSTER="hashfoundry-dr"
-DR_REGION="ams3"
+output "dr_cluster_endpoint" {
+  value = digitalocean_kubernetes_cluster.dr_cluster.endpoint
+}
 
-# Создание DR кластера
-setup_dr_cluster() {
-    echo "🏗️ Создание DR кластера..."
+output "dr_lb_ip" {
+  value = digitalocean_loadbalancer.dr_lb.ip
+}
+TERRAFORM_EOF
     
     # Применение Terraform конфигурации
-    cd terraform/
-    terraform plan -var="cluster_name=$DR_CLUSTER" -var="region=$DR_REGION"
-    terraform apply -auto-approve
+    terraform init
+    terraform plan -var="do_token=$DO_TOKEN"
+    terraform apply -auto-approve -var="do_token=$DO_TOKEN"
     
     # Получение kubeconfig для DR кластера
     doctl kubernetes cluster kubeconfig save $DR_CLUSTER
     
-    echo "✅ DR кластер создан"
+    log "✅ DR кластер создан"
 }
 
-# Настройка репликации
-setup_replication() {
-    echo "🔄 Настройка репликации..."
+# Функция настройки DR кластера
+setup_dr_cluster() {
+    log "⚙️ Настройка DR кластера..."
     
-    # Установка Velero в DR кластер
-    kubectl config use-context do-ams3-$DR_CLUSTER
+    # Переключение на DR кластер
+    kubectl config use-context do-$DR_REGION-$DR_CLUSTER
     
+    # Создание namespace для DR
+    kubectl create namespace disaster-recovery --dry-run=client -o yaml | kubectl apply -f -
+    
+    # Установка базовых компонентов
+    install_dr_components
+    
+    # Настройка tolerations для DR узлов
+    setup_dr_tolerations
+    
+    log "✅ DR кластер настроен"
+}
+
+# Функция установки DR компонентов
+install_dr_components() {
+    log "📦 Установка DR компонентов..."
+    
+    # Установка NGINX Ingress
+    helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+    helm repo update
+    
+    helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+        --namespace ingress-nginx \
+        --create-namespace \
+        --set controller.replicaCount=2 \
+        --set controller.nodeSelector."kubernetes\.io/os"=linux \
+        --set controller.tolerations[0].key=disaster-recovery \
+        --set controller.tolerations[0].value=true \
+        --set controller.tolerations[0].effect=NoSchedule \
+        --set controller.service.type=LoadBalancer \
+        --set controller.service.annotations."service\.beta\.kubernetes\.io/do-loadbalancer-name"=$DR_CLUSTER-lb
+    
+    # Установка Velero для DR
+    install_velero_dr
+    
+    # Установка мониторинга
+    install_monitoring_dr
+    
+    log "✅ DR компоненты установлены"
+}
+
+# Функция установки Velero для DR
+install_velero_dr() {
+    log "📥 Установка Velero для DR..."
+    
+    # Создание credentials
+    cat > /tmp/credentials-velero-dr << CRED_EOF
+[default]
+aws_access_key_id=${DO_SPACES_ACCESS_KEY}
+aws_secret_access_key=${DO_SPACES_SECRET_KEY}
+CRED_EOF
+    
+    # Установка Velero
     velero install \
         --provider aws \
-        --plugins velero/velero-plugin-for-aws:v1.8.1 \
-        --bucket hashfoundry-backup \
-        --secret-file ./credentials-velero \
-        --backup-location-config region=ams3,s3ForcePathStyle="true",s3Url=https://ams3.digitaloceanspaces.com
+        --plugins velero/velero-plugin-for-aws:v1.8.1,digitalocean/velero-plugin:v1.1.0 \
+        --bucket $BACKUP_BUCKET \
+        --secret-file /tmp/credentials-velero-dr \
+        --backup-location-config region=$DR_REGION,s3ForcePathStyle="true",s3Url=https://$DR_REGION.digitaloceanspaces.com \
+        --snapshot-location-config region=$DR_REGION \
+        --use-volume-snapshots=true \
+        --use-node-agent
     
-    echo "✅ Репликация настроена"
+    # Настройка tolerations для Velero
+    kubectl patch deployment velero -n velero -p '{"spec":{"template":{"spec":{"tolerations":[{"key":"disaster-recovery","value":"true","effect":"NoSchedule"}]}}}}'
+    
+    rm -f /tmp/credentials-velero-dr
+    log "✅ Velero для DR установлен"
 }
 
-# Синхронизация конфигураций
-sync_configurations() {
-    echo "⚙️ Синхронизация конфигураций..."
+# Функция установки мониторинга для DR
+install_monitoring_dr() {
+    log "📊 Установка мониторинга для DR..."
     
-    # Копирование критичных ConfigMaps и Secrets
-    kubectl config use-context do-fra1-$PRIMARY_CLUSTER
-    kubectl get configmaps --all-namespaces -o yaml > primary-configmaps.yaml
-    kubectl get secrets --all-namespaces -o yaml > primary-secrets.yaml
+    # Создание namespace
+    kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
     
-    # Применение в DR кластере
-    kubectl config use-context do-ams3-$DR_CLUSTER
-    kubectl apply -f primary-configmaps.yaml
-    kubectl apply -f primary-secrets.yaml
+    # Установка Prometheus для DR
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
     
-    echo "✅ Конфигурации синхронизированы"
+    helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
+        --namespace monitoring \
+        --set prometheus.prometheusSpec.nodeSelector."kubernetes\.io/os"=linux \
+        --set prometheus.prometheusSpec.tolerations[0].key=disaster-recovery \
+        --set prometheus.prometheusSpec.tolerations[0].value=true \
+        --set prometheus.prometheusSpec.tolerations[0].effect=NoSchedule \
+        --set grafana.nodeSelector."kubernetes\.io/os"=linux \
+        --set grafana.tolerations[0].key=disaster-recovery \
+        --set grafana.tolerations[0].value=true \
+        --set grafana.tolerations[0].effect=NoSchedule \
+        --set prometheus.prometheusSpec.retention=7d \
+        --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.storageClassName=do-block-storage \
+        --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=20Gi
+    
+    log "✅ Мониторинг для DR установлен"
 }
 
-# Тестирование DR
-test_dr_cluster() {
-    echo "🧪 Тестирование DR кластера..."
+# Функция настройки tolerations
+setup_dr_tolerations() {
+    log "🔧 Настройка tolerations для DR..."
     
-    kubectl config use-context do-ams3-$DR_CLUSTER
+    # Создание DaemonSet для настройки узлов
+    cat << DAEMONSET_EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dr-node-setup
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: dr-node-setup
+  template:
+    metadata:
+      labels:
+        name: dr-node-setup
+    spec:
+      tolerations:
+      - key: disaster-recovery
+        value: "true"
+        effect: NoSchedule
+      hostNetwork: true
+      hostPID: true
+      containers:
+      - name: node-setup
+        image: alpine:latest
+        command: ["/bin/sh"]
+        args: ["-c", "while true; do sleep 3600; done"]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: host-root
+          mountPath: /host
+      volumes:
+      - name: host-root
+        hostPath:
+          path: /
+      nodeSelector:
+        kubernetes.io/os: linux
+DAEMONSET_EOF
     
-    # Проверка доступности узлов
-    kubectl get nodes
+    log "✅ Tolerations настроены"
+}
+
+# Функция создания DNS failover
+setup_dns_failover() {
+    log "🌐 Настройка DNS failover..."
+    
+    # Получение IP адресов
+    PRIMARY_LB_IP=$(kubectl config use-context do-$PRIMARY_REGION-$PRIMARY_CLUSTER && kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    DR_LB_IP=$(kubectl config use-context do-$DR_REGION-$DR_CLUSTER && kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    
+    # Создание DNS записей
+    doctl compute domain records create hashfoundry.com \
+        --record-type A \
+        --record-name api \
+        --record-data $PRIMARY_LB_IP \
+        --record-ttl 300 \
+        --record-priority 10
+    
+    doctl compute domain records create hashfoundry.com \
+        --record-type A \
+        --record-name api-dr \
+        --record-data $DR_LB_IP \
+        --record-ttl 300
+    
+    log "✅ DNS failover настроен"
+    log "Primary: api.hashfoundry.com -> $PRIMARY_LB_IP"
+    log "DR: api-dr.hashfoundry.com -> $DR_LB_IP"
+}
+
+# Функция тестирования DR
+test_dr_setup() {
+    log "🧪 Тестирование DR настройки..."
+    
+    # Переключение на DR кластер
+    kubectl config use-context do-$DR_REGION-$DR_CLUSTER
+    
+    # Проверка узлов
+    kubectl get nodes -o wide
+    
+    # Проверка подов
+    kubectl get pods --all-namespaces
     
     # Тестовое развертывание
-    kubectl run dr-test --image=nginx --port=80
+    kubectl run dr-test --image=nginx:alpine --port=80
     kubectl expose pod dr-test --type=LoadBalancer --port=80
     
-    echo "✅ DR кластер протестирован"
+    # Ожидание получения внешнего IP
+    log "⏳ Ожидание внешнего IP..."
+    kubectl wait --for=condition=ready pod/dr-test --timeout=300s
+    
+    # Получение внешнего IP
+    EXTERNAL_IP=$(kubectl get svc dr-test -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    log "🌐 Тестовый сервис доступен: http://$EXTERNAL_IP"
+    
+    # Очистка тестовых ресурсов
+    kubectl delete pod dr-test
+    kubectl delete svc dr-test
+    
+    log "✅ DR тестирование завершено"
 }
 
-# Основная логика
-case "$1" in
-    setup)
-        setup_dr_cluster
-        ;;
-    replication)
-        setup_replication
-        ;;
-    sync)
-        sync_configurations
-        ;;
-    test)
-        test_dr_cluster
-        ;;
-    all)
-        setup_dr_cluster
-        setup_replication
-        sync_configurations
-        test_dr_cluster
-        ;;
-    *)
-        echo "Использование: $0 {setup|replication|sync|test|all}"
-        exit 1
-        ;;
-esac
+# Основная логика выполнения
+main() {
+    log "🚀 Запуск настройки Multi-Region DR"
+    
+    check_dependencies
+    create_dr_cluster
+    setup_dr_cluster
+    setup_dns_failover
+    test_dr_setup
+    
+    log "🎉 MULTI-REGION DR УСПЕШНО НАСТРОЕН!"
+    log "📋 Следующие шаги:"
+    log "  1. Настройте автоматический failover"
+    log "  2. Создайте DR runbooks"
+    log "  3. Проведите DR drill"
+    log "  4. Настройте мониторинг DR метрик"
+}
+
+# Обработка ошибок
+trap 'log "❌ Ошибка при настройке DR"; exit 1' ERR
+
+# Запуск основной функции
+main "$@"
+EOF
+
+chmod +x multi-region-dr-setup.sh
 ```
 
-### 🔄 Автоматизация Failover
-
-#### 1. **Мониторинг и автоматический failover**
-```yaml
-# dr-monitoring.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: dr-monitoring-config
-  namespace: monitoring
-data:
-  prometheus.yml: |
-    global:
-      scrape_interval: 15s
-      evaluation_interval: 15s
-    
-    rule_files:
-    - "/etc/prometheus/rules/*.yml"
-    
-    scrape_configs:
-    - job_name: 'kubernetes-cluster-health'
-      kubernetes_sd_configs:
-      - role: endpoints
-      relabel_configs:
-      - source_labels: [__meta_kubernetes_service_name]
-        action: keep
-        regex: kubernetes
-    
-    - job_name: 'dr-cluster-health'
-      static_configs:
-      - targets: ['dr-cluster-endpoint:443']
-      metrics_path: /healthz
-      scheme: https
----
-# DR алерты
-apiVersion: monitoring.coreos.com/v1
-kind: PrometheusRule
-metadata:
-  name: disaster-recovery-alerts
-  namespace: monitoring
-spec:
-  groups:
-  - name: disaster-recovery
-    rules:
-    - alert: PrimaryClusterDown
-      expr: up{job="kubernetes-cluster-health"} == 0
-      for: 5m
-      labels:
-        severity: critical
-        component: cluster
-      annotations:
-        summary: "Primary cluster is down"
-        description: "Primary Kubernetes cluster has been down for more than 5 minutes"
-        runbook_url: "https://docs.hashfoundry.com/runbooks/cluster-failover"
-    
-    - alert: EtcdClusterUnhealthy
-      expr: etcd_server_has_leader == 0
-      for: 2m
-      labels:
-        severity: critical
-        component: etcd
-      annotations:
-        summary: "etcd cluster is unhealthy"
-        description: "etcd cluster has no leader for more than 2 minutes"
-    
-    - alert: HighPodFailureRate
-      expr: rate(kube_pod_container_status_restarts_total[5m]) > 0.1
-      for: 10m
-      labels:
-        severity: warning
-        component: pods
-      annotations:
-        summary: "High pod failure rate detected"
-        description: "Pod restart rate is {{ $value }} per second"
----
-# Webhook для автоматического failover
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: failover-webhook
-  namespace: monitoring
-data:
-  webhook.py: |
-    #!/usr/bin/env python3
-    import json
-    import subprocess
-    import requests
-    from flask import Flask, request
-    
-    app = Flask(__name__)
-    
-    @app.route('/webhook', methods=['POST'])
-    def handle_alert():
-        alert_data = request.get_json()
-        
-        for alert in alert_data.get('alerts', []):
-            if alert['labels'].get('alertname') == 'PrimaryClusterDown':
-                trigger_failover()
-        
-        return 'OK'
-    
-    def trigger_failover():
-        print("🚨 Triggering automatic failover...")
-        
-        # Переключение DNS на DR кластер
-        subprocess.run([
-            'doctl', 'compute', 'domain', 'records', 'update',
-            'hashfoundry.com', '--record-type', 'A',
-            '--record-name', 'api', '--record-data', 'DR_CLUSTER_IP'
-        ])
-        
-        # Уведомление команды
-        send_notification("Primary cluster failed. Automatic failover initiated.")
-    
-    def send_notification(message):
-        # Slack/Teams уведомление
-        webhook_url = "SLACK_WEBHOOK_URL"
-        payload = {"text": f"🚨 DR Alert: {message}"}
-        requests.post(webhook_url, json=payload)
-    
-    if __name__ == '__main__':
-        app.run(host='0.0.0.0', port=5000)
-```
-
-#### 2. **Скрипт автоматизации failover**
+### **2. Создание автоматизированного failover:**
 ```bash
+# Создать скрипт automated-failover.sh
+cat << 'EOF' > automated-failover.sh
 #!/bin/bash
-# automated-failover.sh
 
-echo "🚨 Автоматизированный Failover"
+echo "🚨 Автоматизированный Disaster Recovery Failover"
+echo "=============================================="
 
-# Переменные
+# Настройка переменных
 PRIMARY_CLUSTER="hashfoundry-ha"
 DR_CLUSTER="hashfoundry-dr"
-BACKUP_BUCKET="hashfoundry-backup"
-NOTIFICATION_WEBHOOK="$SLACK_WEBHOOK_URL"
+PRIMARY_REGION="fra1"
+DR_REGION="ams3"
+DOMAIN="hashfoundry.com"
+SLACK_WEBHOOK="$SLACK_WEBHOOK_URL"
 
-# Проверка состояния primary кластера
-check_primary_health() {
-    echo "🔍 Проверка состояния primary кластера..."
+# Функция логирования
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+}
+
+# Функция отправки уведомлений
+send_notification() {
+    local severity="$1"
+    local message="$2"
     
-    kubectl config use-context do-fra1-$PRIMARY_CLUSTER
+    log "$severity $message"
+    
+    # Отправка в Slack
+    if [ -n "$SLACK_WEBHOOK" ]; then
+        local color="good"
+        case $severity in
+            "🚨") color="danger" ;;
+            "⚠️") color="warning" ;;
+            "✅") color="good" ;;
+        esac
+        
+        curl -X POST -H 'Content-type: application/json' \
+            --data "{\"attachments\":[{\"color\":\"$color\",\"text\":\"$severity DR Alert: $message\",\"ts\":$(date +%s)}]}" \
+            "$SLACK_WEBHOOK" >/dev/null 2>&1
+    fi
+    
+    # Отправка метрик в Prometheus
+    if [ -n "$PROMETHEUS_PUSHGATEWAY" ]; then
+        echo "dr_failover_event{severity=\"$severity\",message=\"$message\"} 1" | \
+            curl --data-binary @- "$PROMETHEUS_PUSHGATEWAY/metrics/job/dr_failover" >/dev/null 2>&1
+    fi
+}
+
+# Функция проверки состояния primary кластера
+check_primary_health() {
+    log "🔍 Проверка состояния primary кластера..."
+    
+    # Переключение на primary кластер
+    kubectl config use-context do-$PRIMARY_REGION-$PRIMARY_CLUSTER >/dev/null 2>&1
     
     # Проверка API server
-    if ! kubectl cluster-info &>/dev/null; then
-        echo "❌ Primary кластер недоступен"
+    if ! timeout 30 kubectl cluster-info >/dev/null 2>&1; then
+        log "❌ Primary API server недоступен"
         return 1
     fi
     
     # Проверка etcd
-    if ! kubectl get --raw /healthz/etcd &>/dev/null; then
-        echo "❌ etcd недоступен"
+    if ! timeout 15 kubectl get --raw /healthz/etcd >/dev/null 2>&1; then
+        log "❌ etcd недоступен"
         return 1
     fi
     
     # Проверка критичных подов
-    critical_pods=$(kubectl get pods -n kube-system --field-selector=status.phase!=Running -o name | wc -l)
-    if [ "$critical_pods" -gt 3 ]; then
-        echo "❌ Слишком много неработающих критичных подов: $critical_pods"
+    local failed_pods=$(kubectl get pods -n kube-system --field-selector=status.phase!=Running --no-headers 2>/dev/null | wc -l)
+    if [ "$failed_pods" -gt 5 ]; then
+        log "❌ Слишком много неработающих критичных подов: $failed_pods"
         return 1
     fi
     
-    echo "✅ Primary кластер здоров"
+    # Проверка узлов
+    local not_ready_nodes=$(kubectl get nodes --no-headers 2>/dev/null | grep -v Ready | wc -l)
+    if [ "$not_ready_nodes" -gt 1 ]; then
+        log "❌ Слишком много неготовых узлов: $not_ready_nodes"
+        return 1
+    fi
+    
+    # Проверка ingress controller
+    if ! kubectl get pods -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx --field-selector=status.phase=Running >/dev/null 2>&1; then
+        log "❌ Ingress controller недоступен"
+        return 1
+    fi
+    
+    log "✅ Primary кластер здоров"
     return 0
 }
 
-# Инициация failover
-initiate_failover() {
-    echo "🚨 Инициация failover на DR кластер..."
-    
-    # Уведомление о начале failover
-    send_notification "🚨 DISASTER RECOVERY: Initiating failover to DR cluster"
+# Функция проверки состояния DR кластера
+check_dr_health() {
+    log "🔍 Проверка состояния DR кластера..."
     
     # Переключение на DR кластер
-    kubectl config use-context do-ams3-$DR_CLUSTER
+    kubectl config use-context do-$DR_REGION-$DR_CLUSTER >/dev/null 2>&1
     
-    # Восстановление из последнего backup
-    restore_from_backup
+    # Проверка API server
+    if ! timeout 30 kubectl cluster-info >/dev/null 2>&1; then
+        log "❌ DR API server недоступен"
+        return 1
+    fi
     
-    # Обновление DNS записей
-    update_dns_records
+    # Проверка узлов
+    local ready_nodes=$(kubectl get nodes --no-headers 2>/dev/null | grep Ready | wc -l)
+    if [ "$ready_nodes" -lt 2 ]; then
+        log "❌ Недостаточно готовых узлов в DR кластере: $ready_nodes"
+        return 1
+    fi
+    
+    log "✅ DR кластер готов к failover"
+    return 0
+}
+
+# Функция создания emergency backup
+create_emergency_backup() {
+    log "💾 Создание emergency backup..."
+    
+    # Переключение на primary кластер
+    kubectl config use-context do-$PRIMARY_REGION-$PRIMARY_CLUSTER >/dev/null 2>&1
+    
+    # Создание emergency backup через Velero
+    local backup_name="emergency-backup-$(date +%Y%m%d-%H%M%S)"
+    
+    if timeout 300 velero backup create $backup_name \
+        --include-namespaces argocd,monitoring,default \
+        --wait >/dev/null 2>&1; then
+        log "✅ Emergency backup создан: $backup_name"
+        echo $backup_name
+    else
+        log "⚠️ Не удалось создать emergency backup"
+        echo ""
+    fi
+}
+
+# Функция инициации failover
+initiate_failover() {
+    log "🚨 Инициация failover на DR кластер..."
+    
+    send_notification "🚨" "Primary cluster failure detected. Initiating failover to DR cluster."
+    
+    # Создание emergency backup (если возможно)
+    local backup_name=$(create_emergency_backup)
+    
+    # Переключение на DR кластер
+    kubectl config use-context do-$DR_REGION-$DR_CLUSTER
     
     # Масштабирование DR кластера
     scale_dr_cluster
     
-    # Проверка работоспособности
-    verify_dr_cluster
-    
-    send_notification "✅ DISASTER RECOVERY: Failover completed successfully"
-}
-
-# Восстановление из backup
-restore_from_backup() {
-    echo "🔄 Восстановление из backup..."
-    
-    # Получение последнего backup
-    latest_backup=$(velero backup get -o json | jq -r '.items | sort_by(.metadata.creationTimestamp) | last | .metadata.name')
-    
-    if [ "$latest_backup" != "null" ]; then
-        echo "📦 Восстановление из backup: $latest_backup"
-        velero restore create dr-restore-$(date +%s) --from-backup $latest_backup
-        
-        # Ожидание завершения восстановления
-        kubectl wait --for=condition=Completed restore/dr-restore-$(date +%s) --timeout=600s
+    # Восстановление из backup
+    if [ -n "$backup_name" ]; then
+        restore_from_backup "$backup_name"
     else
-        echo "⚠️ Backup не найден, развертывание с нуля"
-        deploy_from_scratch
+        restore_from_latest_backup
     fi
+    
+    # Обновление DNS записей
+    update_dns_records
+    
+    # Развертывание критичных сервисов
+    deploy_critical_services
+    
+    # Проверка работоспособности
+    verify_dr_services
+    
+    send_notification "✅" "Failover completed successfully. Services are running on DR cluster."
 }
 
-# Обновление DNS записей
-update_dns_records() {
-    echo "🌐 Обновление DNS записей..."
-    
-    # Получение внешнего IP DR кластера
-    DR_EXTERNAL_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-    
-    # Обновление A записи
-    doctl compute domain records update hashfoundry.com \
-        --record-type A \
-        --record-name api \
-        --record-data $DR_EXTERNAL_IP \
-        --record-ttl 300
-    
-    echo "✅ DNS обновлен: api.hashfoundry.com -> $DR_EXTERNAL_IP"
-}
-
-# Масштабирование DR кластера
+# Функция масштабирования DR кластера
 scale_dr_cluster() {
-    echo "📈 Масштабирование DR кластера..."
+    log "📈 Масштабирование DR кластера..."
     
     # Увеличение количества узлов
     doctl kubernetes cluster node-pool update $DR_CLUSTER dr-worker-pool \
         --count 6 \
         --auto-scale \
         --min-nodes 3 \
-        --max-nodes 12
+        --max-nodes 12 >/dev/null 2>&1
     
-    # Масштабирование критичных сервисов
-    kubectl scale deployment -n kube-system coredns --replicas=3
-    kubectl scale deployment -n ingress-nginx ingress-nginx-controller --replicas=3
-    
-    echo "✅ DR кластер масштабирован"
-}
-
-# Проверка работоспособности DR кластера
-verify_dr_cluster() {
-    echo "✅ Проверка работоспособности DR кластера..."
-    
-    # Проверка узлов
-    ready_nodes=$(kubectl get nodes --no-headers | grep Ready | wc -l)
-    echo "Готовых узлов: $ready_nodes"
-    
-    # Проверка критичных подов
-    kubectl get pods -n kube-system
-    kubectl get pods -n ingress-nginx
-    
-    # Тест доступности приложений
-    test_application_availability
-    
-    echo "✅ DR кластер работоспособен"
-}
-
-# Тест доступности приложений
-test_application_availability() {
-    echo "🧪 Тестирование доступности приложений..."
-    
-    # Список критичных сервисов для проверки
-    services=(
-        "https://api.hashfoundry.com/health"
-        "https://app.hashfoundry.com"
-        "https://monitoring.hashfoundry.com"
-    )
-    
-    for service in "${services[@]}"; do
-        if curl -f -s "$service" > /dev/null; then
-            echo "✅ $service доступен"
-        else
-            echo "❌ $service недоступен"
+    # Ожидание готовности узлов
+    log "⏳ Ожидание готовности узлов..."
+    for i in {1..30}; do
+        local ready_nodes=$(kubectl get nodes --no-headers | grep Ready | wc -l)
+        if [ "$ready_nodes" -ge 4 ]; then
+            log "✅ DR кластер масштабирован: $ready_nodes узлов готово"
+            break
         fi
+        sleep 10
     done
 }
 
-# Развертывание с нуля
-deploy_from_scratch() {
-    echo "🏗️ Развертывание с нуля..."
+# Функция восстановления из backup
+restore_from_backup() {
+    local backup_name="$1"
+    log "🔄 Восстановление из backup: $backup_name"
     
-    # Применение базовых манифестов
-    kubectl apply -f ../k8s/addons/
+    # Создание restore
+    local restore_name="dr-restore-$(date +%s)"
+    velero restore create $restore_name --from-backup $backup_name >/dev/null 2>&1
     
-    # Ожидание готовности базовых сервисов
-    kubectl wait --for=condition=ready pod -l app=nginx-ingress --timeout=300s
-    kubectl wait --for=condition=ready pod -l app=argocd-server --timeout=300s
+    # Ожидание завершения restore
+    log "⏳ Ожидание завершения restore..."
+    for i in {1..60}; do
+        local status=$(velero restore get $restore_name -o json 2>/dev/null | jq -r '.status.phase' 2>/dev/null)
+        if [ "$status" = "Completed" ]; then
+            log "✅ Restore завершен успешно"
+            return 0
+        elif [ "$status" = "Failed" ]; then
+            log "❌ Restore завершился с ошибкой"
+            return 1
+        fi
+        sleep 10
+    done
+    
+    log "⚠️ Restore не завершился в ожидаемое время"
+    return 1
 }
 
-# Отправка уведомлений
-send_notification() {
-    local message="$1"
-    echo "📢 $message"
+# Функция восстановления из последнего backup
+restore_from_latest_backup() {
+    log "🔄 Восстановление из последнего backup..."
     
-    if [ -n "$NOTIFICATION_WEBHOOK" ]; then
-        curl -X POST -H 'Content-type: application/json' \
-            --data "{\"text\":\"$message\"}" \
-            "$NOTIFICATION_WEBHOOK"
+    # Получение последнего backup
+    local latest_backup=$(velero backup get -o json 2>/dev/null | jq -r '.items | sort_by(.metadata.creationTimestamp) | last | .metadata.name' 2>/dev/null)
+    
+    if [ "$latest_backup" != "null" ] && [ -n "$latest_backup" ]; then
+        restore_from_backup "$latest_backup"
+    else
+        log "⚠️ Backup не найден, развертывание с нуля"
+        deploy_from_scratch
     fi
 }
 
-# Основная логика
-main() {
-    echo "🔍 Запуск DR мониторинга..."
+# Функция обновления DNS записей
+update_dns_records() {
+    log "🌐 Обновление DNS записей..."
+    
+    # Получение внешнего IP DR кластера
+    local dr_external_ip=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+    
+    if [ -n "$dr_external_ip" ]; then
+        # Обновление A записи для переключения трафика
+        doctl compute domain records update $DOMAIN \
+            --record-type A \
+            --record-name api \
+            --record-data $dr_external_ip \
+            --record-ttl 60 >/dev/null 2>&1
+        
+        log "✅ DNS обновлен: api.$DOMAIN -> $dr_external_ip"
+    else
+        log "❌ Не удалось получить внешний IP DR кластера"
+    fi
+}
+
+# Функция развертывания критичных сервисов
+deploy_critical_services() {
+    log "🚀 Развертывание критичных сервисов..."
+    
+    # Развертывание ArgoCD
+    deploy_argocd_dr
+    
+    # Развертывание мониторинга
+    deploy_monitoring_dr
+    
+    # Развертывание приложений
+    deploy_applications_dr
+    
+    log "✅ Критичные сервисы развернуты"
+}
+
+# Функция развертывания ArgoCD для DR
+deploy_argocd_dr() {
+    log "📦 Развертывание ArgoCD для DR..."
+    
+    # Создание namespace
+    kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+    
+    # Установка ArgoCD
+    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml >/dev/null 2>&1
+    
+    # Ожидание готовности
+    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s >/dev/null 2>&1
+    
+    log "✅ ArgoCD развернут"
+}
+
+# Функция развертывания мониторинга для DR
+deploy_monitoring_dr() {
+    log "📊 Развертывание мониторинга для DR..."
+    
+    # Проверка существования мониторинга
+    if kubectl get namespace monitoring >/dev/null 2>&1; then
+        log "✅ Мониторинг уже развернут"
+        return 0
+    fi
+    
+    # Создание namespace
+    kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+    
+    # Базовая конфигурация Prometheus
+    kubectl apply -f - << PROMETHEUS_EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      tolerations:
+      - key: disaster-recovery
+        value: "true"
+        effect: NoSchedule
+      containers:
+      - name: prometheus
+        image: prom/prometheus:latest
+        ports:
+        - containerPort: 9090
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+PROMETHEUS_EOF
+    
+    log "✅ Мониторинг для DR развернут"
+}
+
+# Функция развертывания приложений для DR
+deploy_applications_dr() {
+    log "🚀 Развертывание приложений для DR..."
+    
+    # Развертывание тестового приложения
+    kubectl apply -f - << APP_EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hashfoundry-app
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hashfoundry-app
+  template:
+    metadata:
+      labels:
+        app: hashfoundry-app
+    spec:
+      tolerations:
+      - key: disaster-recovery
+        value: "true"
+        effect: NoSchedule
+      containers:
+      - name: app
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hashfoundry-app
+  namespace: default
+spec:
+  selector:
+    app: hashfoundry-app
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP
+APP_EOF
+    
+    log "✅ Приложения для DR развернуты"
+}
+
+# Функция развертывания с нуля
+deploy_from_scratch() {
+    log "🏗️ Развертывание с нуля..."
+    
+    # Развертывание базовых сервисов
+    deploy_critical_services
+    
+    # Создание базовых конфигураций
+    kubectl apply -f - << CONFIG_EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dr-config
+  namespace: default
+data:
+  environment: "disaster-recovery"
+  cluster: "$DR_CLUSTER"
+  region: "$DR_REGION"
+  deployment_time: "$(date)"
+CONFIG_EOF
+    
+    log "✅ Развертывание с нуля завершено"
+}
+
+# Функция проверки работоспособности DR сервисов
+verify_dr_services() {
+    log "✅ Проверка работоспособности DR сервисов..."
+    
+    # Проверка узлов
+    local ready_nodes=$(kubectl get nodes --no-headers | grep Ready | wc -l)
+    log "Готовых узлов: $ready_nodes"
+    
+    # Проверка критичных подов
+    log "Критичные поды:"
+    kubectl get pods -n kube-system --field-selector=status.phase=Running
+    kubectl get pods -n ingress-nginx --field-selector=status.phase=Running
+    
+    # Тест доступности сервисов
+    test_service_availability
+    
+    log "✅ DR сервисы работоспособны"
+}
+
+# Функция тестирования доступности сервисов
+test_service_availability() {
+    log "🧪 Тестирование доступности сервисов..."
+    
+    # Получение внешнего IP
+    local external_ip=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+    
+    if [ -n "$external_ip" ]; then
+        log "🌐 Внешний IP DR кластера: $external_ip"
+        
+        # Тест HTTP доступности
+        if curl -f -s "http://$external_ip" >/dev/null 2>&1; then
+            log "✅ HTTP доступность подтверждена"
+        else
+            log "⚠️ HTTP недоступен"
+        fi
+    else
+        log "⚠️ Внешний IP не получен"
+    fi
+}
+
+# Функция мониторинга DR
+monitor_dr_health() {
+    log "📊 Запуск мониторинга DR..."
     
     while true; do
         if ! check_primary_health; then
-            echo "🚨 Primary кластер недоступен, инициация failover..."
-            initiate_failover
-            break
+            log "🚨 Primary кластер недоступен!"
+            
+            if check_dr_health; then
+                log "🚨 Инициация автоматического failover..."
+                initiate_failover
+                break
+            else
+                log "❌ DR кластер также недоступен!"
+                send_notification "🚨" "Both primary and DR clusters are unavailable!"
+            fi
+        else
+            log "✅ Primary кластер работает нормально"
         fi
         
-        echo "✅ Primary кластер работает нормально"
         sleep 60  # Проверка каждую минуту
     done
 }
 
-# Запуск в зависимости от аргумента
-case "$1" in
-    monitor)
-        main
-        ;;
-    failover)
-        initiate_failover
-        ;;
-    test)
-        verify_dr_cluster
-        ;;
-    *)
-        echo "Использование: $0 {monitor|failover|test}"
-        exit 1
-        ;;
-esac
+# Функция восстановления primary кластера
+restore_primary_cluster() {
+    log "🔄 Восстановление primary кластера..."
+    
+    send_notification "🔄" "Starting primary cluster recovery process."
+    
+    # Переключение обратно на primary
+    kubectl config use-context do-$PRIMARY_REGION-$PRIMARY_CLUSTER
+    
+    # Проверка состояния primary
+    if check_primary_health; then
+        log "✅ Primary кластер восстановлен"
+        
+        # Создание backup текущего состояния DR
+        create_dr_backup
+        
+        # Переключение DNS обратно
+        switch_dns_to_primary
+        
+        # Масштабирование DR кластера обратно
+        scale_down_dr_cluster
+        
+        send_notification "✅" "Primary cluster recovery completed. Traffic switched back."
+    else
+        log "❌ Primary кластер все еще недоступен"
+        send_notification "⚠️" "Primary cluster recovery failed. Continuing on DR cluster."
+    fi
+}
+
+# Функция создания backup DR состояния
+create_dr_backup() {
+    log "💾 Создание backup DR состояния..."
+    
+    kubectl config use-context do-$DR_REGION-$DR_CLUSTER
+    
+    local dr_backup_name="dr-state-backup-$(date +%Y%m%d-%H%M%S)"
+    velero backup create $dr_backup_name \
+        --include-namespaces default,monitoring,argocd \
+        --wait >/dev/null 2>&1
+    
+    log "✅ DR backup создан: $dr_backup_name"
+}
+
+# Функция переключения DNS на primary
+switch_dns_to_primary() {
+    log "🌐 Переключение DNS на primary кластер..."
+    
+    kubectl config use-context do-$PRIMARY_REGION-$PRIMARY_CLUSTER
+    local primary_ip=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+    
+    if [ -n "$primary_ip" ]; then
+        doctl compute domain records update $DOMAIN \
+            --record-type A \
+            --record-name api \
+            --record-data $primary_ip \
+            --record-ttl 300 >/dev/null 2>&1
+        
+        log "✅ DNS переключен на primary: api.$DOMAIN -> $primary_ip"
+    fi
+}
+
+# Функция масштабирования DR кластера вниз
+scale_down_dr_cluster() {
+    log "📉 Масштабирование DR кластера вниз..."
+    
+    doctl kubernetes cluster node-pool update $DR_CLUSTER dr-worker-pool \
+        --count 2 \
+        --auto-scale \
+        --min-nodes 2 \
+        --max-nodes 4 >/dev/null 2>&1
+    
+    log "✅ DR кластер масштабирован вниз"
+}
+
+# Основная логика выполнения
+main() {
+    case "$1" in
+        monitor)
+            log "🔍 Запуск мониторинга DR..."
+            monitor_dr_health
+            ;;
+        failover)
+            log "🚨 Принудительный failover..."
+            if check_dr_health; then
+                initiate_failover
+            else
+                log "❌ DR кластер недоступен для failover"
+                exit 1
+            fi
+            ;;
+        restore)
+            log "🔄 Восстановление primary кластера..."
+            restore_primary_cluster
+            ;;
+        test)
+            log "🧪 Тестирование DR готовности..."
+            check_primary_health
+            check_dr_health
+            verify_dr_services
+            ;;
+        *)
+            echo "Использование: $0 {monitor|failover|restore|test}"
+            echo "  monitor  - Непрерывный мониторинг и автоматический failover"
+            echo "  failover - Принудительный failover на DR кластер"
+            echo "  restore  - Восстановление primary кластера"
+            echo "  test     - Тестирование DR готовности"
+            exit 1
+            ;;
+    esac
+}
+
+# Обработка ошибок
+trap 'send_notification "❌" "DR script error occurred"; exit 1' ERR
+
+# Запуск основной функции
+main "$@"
+EOF
+
+chmod +x automated-failover.sh
 ```
 
-### 📋 DR процедуры и runbooks
+## 📊 **Архитектура Disaster Recovery:**
 
-#### 1. **Runbook для disaster recovery**
-```yaml
-# dr-runbook.yaml
-disaster_recovery_runbook:
-  incident_classification:
-    p1_critical:
-      description: "Полная недоступность primary кластера"
-      rto_target: "15 минут"
-      escalation: "Немедленно"
-      actions:
-        - "Активация автоматического failover"
-        - "Уведомление всех stakeholders"
-        - "Переключение DNS на DR кластер"
-    
-    p2_major:
-      description: "Частичная недоступность критичных сервисов"
-      rto_target: "1 час"
-      escalation: "В течение 30 минут"
-      actions:
-        - "Анализ причин сбоя"
-        - "Попытка восстановления primary"
-        - "Подготовка к failover"
-    
-    p3_minor:
-      description: "Деградация производительности"
-      rto_target: "4 часа"
-      escalation: "В течение 2 часов"
-      actions:
-        - "Мониторинг ситуации"
-        - "Масштабирование ресурсов"
-        - "Планирование maintenance"
-  
-  recovery_procedures:
-    step_1_assessment:
-      - "Оценка масштаба инцидента"
-      - "Определение затронутых сервисов"
-      - "Проверка доступности DR кластера"
-    
-    step_2_communication:
-      - "Уведомление команды DevOps"
-      - "Информирование stakeholders"
-      - "Создание incident ticket"
-    
-    step_3_failover:
-      - "Выполнение backup критичных данных"
-      - "Активация DR кластера"
-      - "Переключение трафика"
-    
-    step_4_verification:
-      - "Проверка работоспособности сервисов"
-      - "Тестирование критичных функций"
-      - "Мониторинг производительности"
-    
-    step_5_communication:
-      - "Уведомление о восстановлении"
-      - "Документирование инцидента"
-      - "Планирование post-mortem"
+```
+┌─────────────────────────────────────────────────────────────┐
+│                Multi-Region DR Architecture                 │
+├─────────────────────────────────────────────────────────────┤
+│  Primary Region (fra1)          DR Region (ams3)           │
+│  ┌─────────────────────┐        ┌─────────────────────┐     │
+│  │  Primary Cluster    │        │   DR Cluster        │     │
+│  │  ├── Control Plane  │◄──────►│  ├── Control Plane  │     │
+│  │  ├── Worker Nodes   │        │  ├── Worker Nodes   │     │
+│  │  ├── ArgoCD         │        │  ├── ArgoCD (Sync)  │     │
+│  │  ├── Monitoring     │        │  ├── Monitoring     │     │
+│  │  └── Applications   │        │  └── Applications   │     │
+│  └─────────────────────┘        └─────────────────────┘     │
+│           │                              │                  │
+│           ▼                              ▼                  │
+│  ┌─────────────────────┐        ┌─────────────────────┐     │
+│  │   Load Balancer     │        │   Load Balancer     │     │
+│  │   (Primary LB)      │        │   (DR LB)           │     │
+│  └─────────────────────┘        └─────────────────────┘     │
+│           │                              │                  │
+│           ▼                              ▼                  │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │              DNS Failover Management                    │ │
+│  │  api.hashfoundry.com → Primary LB (Normal)             │ │
+│  │  api.hashfoundry.com → DR LB (Failover)                │ │
+│  └─────────────────────────────────────────────────────────┘ │
+├─────────────────────────────────────────────────────────────┤
+│  Shared Components                                          │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │  Backup Storage (Digital Ocean Spaces)                 │ │
+│  │  ├── etcd snapshots                                    │ │
+│  │  ├── Application data                                  │ │
+│  │  ├── Configuration backups                             │ │
+│  │  └── Volume snapshots                                  │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │  Monitoring & Alerting                                 │ │
+│  │  ├── Health checks                                     │ │
+│  │  ├── Automated failover triggers                       │ │
+│  │  ├── Slack/Teams notifications                         │ │
+│  │  └── Prometheus metrics                                │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 🎯 Лучшие практики DR
+## 🎯 **Матрица DR стратегий:**
 
-#### 1. **Стратегия DR планирования**
-```yaml
-dr_planning_strategy:
-  risk_assessment:
-    natural_disasters:
-      probability: "Low"
-      impact: "High"
-      mitigation: "Multi-region deployment"
+### **1. RTO/RPO цели по уровням сервисов:**
+| Tier | Сервисы | RTO | RPO | Стратегия | Стоимость |
+|------|---------|-----|-----|-----------|-----------|
+| Tier 1 | API, Auth, etcd | < 15 мин | < 5 мин | Hot Standby | Высокая |
+| Tier 2 | Web App, Monitoring | < 1 час | < 30 мин | Warm Standby | Средняя |
+| Tier 3 | Analytics, Reports | < 4 часа | < 4 часа | Cold Standby | Низкая |
+
+### **2. Команды для мониторинга DR:**
+```bash
+# Создать скрипт dr-monitoring.sh
+cat << 'EOF' > dr-monitoring.sh
+#!/bin/bash
+
+echo "📊 Мониторинг DR готовности"
+echo "=========================="
+
+# Функция проверки DR метрик
+check_dr_metrics() {
+    echo "🔍 Проверка DR метрик:"
     
-    hardware_failures:
-      probability: "Medium"
-      impact: "Medium"
-      mitigation: "Redundancy and monitoring"
+    # Проверка последних backup
+    echo "📦 Последние backup:"
+    velero backup get --sort-by=.metadata.creationTimestamp | tail -5
     
-    human_errors:
-      probability: "High"
-      impact: "Medium"
-      mitigation: "Automation and procedures"
+    # Проверка состояния кластеров
+    echo -e "\n🏗️ Состояние кластеров:"
     
-    cyber_attacks:
-      probability: "Medium"
-      impact: "High"
-      mitigation: "Security measures and backups"
-  
-  recovery_tiers:
-    tier_1_critical:
-      services: ["API Gateway", "Authentication", "Database"]
-      rto: "< 15 minutes"
-      rpo: "< 5 minutes"
-      strategy: "Hot standby"
+    # Primary кластер
+    kubectl config use-context do-fra1-hashfoundry-ha >/dev/null 2>&1
+    PRIMARY_NODES=$(kubectl get nodes --no-headers | grep Ready | wc -l)
+    PRIMARY_PODS=$(kubectl get pods --all-namespaces --field-selector=status.phase=Running --no-headers | wc -l)
+    echo "Primary: $PRIMARY_NODES узлов, $PRIMARY_PODS подов"
     
-    tier_2_important:
-      services: ["Web Application", "Monitoring", "Logging"]
-      rto: "< 1 hour"
-      rpo: "< 30 minutes"
-      strategy: "Warm standby"
+    # DR кластер
+    kubectl config use-context do-ams3-hashfoundry-dr >/dev/null 2>&1
+    DR_NODES=$(kubectl get nodes --no-headers | grep Ready | wc -l)
+    DR_PODS=$(kubectl get pods --all-namespaces --field-selector=status.phase=Running --no-headers | wc -l)
+    echo "DR: $DR_NODES узлов, $DR_PODS подов"
     
-    tier_3_standard:
-      services: ["Analytics", "Reporting", "Development"]
-      rto: "< 4 hours"
-      rpo: "< 4 hours"
-      strategy: "Cold standby"
+    # Проверка backup возраста
+    echo -e "\n⏰ Возраст последнего backup:"
+    LATEST_BACKUP=$(velero backup get -o json | jq -r '.items | sort_by(.metadata.creationTimestamp) | last | .metadata.creationTimestamp')
+    if [ "$LATEST_BACKUP" != "null" ]; then
+        BACKUP_AGE=$(( $(date +%s) - $(date -d "$LATEST_BACKUP" +%s) ))
+        BACKUP_AGE_MIN=$((BACKUP_AGE / 60))
+        echo "Последний backup: $BACKUP_AGE_MIN минут назад"
+        
+        if [ $BACKUP_AGE -gt 3600 ]; then
+            echo "⚠️ WARNING: Backup старше 1 часа"
+        else
+            echo "✅ Backup актуален"
+        fi
+    else
+        echo "❌ Backup не найден"
+    fi
+}
+
+# Функция проверки DNS конфигурации
+check_dns_config() {
+    echo -e "\n🌐 Проверка DNS конфигурации:"
+    
+    # Проверка текущих DNS записей
+    API_IP=$(dig +short api.hashfoundry.com)
+    echo "api.hashfoundry.com -> $API_IP"
+    
+    # Проверка доступности
+    if curl -f -s "http://$API_IP" >/dev/null 2>&1; then
+        echo "✅ API доступен"
+    else
+        echo "❌ API недоступен"
+    fi
+}
+
+# Функция проверки автоматизации
+check_automation() {
+    echo -e "\n🤖 Проверка автоматизации:"
+    
+    # Проверка CronJob для backup
+    BACKUP_JOBS=$(kubectl get cronjobs --all-namespaces --no-headers | grep backup | wc -l)
+    echo "Backup CronJobs: $BACKUP_JOBS"
+    
+    # Проверка мониторинга
+    MONITORING_PODS=$(kubectl get pods -n monitoring --field-selector=status.phase=Running --no-headers | wc -l)
+    echo "Мониторинг подов: $MONITORING_PODS"
+    
+    # Проверка алертов
+    if kubectl get prometheusrules -n monitoring disaster-recovery-alerts >/dev/null 2>&1; then
+        echo "✅ DR алерты настроены"
+    else
+        echo "⚠️ DR алерты не найдены"
+    fi
+}
+
+# Основная функция
+main() {
+    echo "🚀 ЗАПУСК DR МОНИТОРИНГА"
+    echo "======================="
+    
+    check_dr_metrics
+    check_dns_config
+    check_automation
+    
+    echo -e "\n💡 РЕКОМЕНДАЦИИ:"
+    echo "1. Регулярно тестируйте DR процедуры"
+    echo "2. Обновляйте DR runbooks"
+    echo "3. Мониторьте RTO/RPO метрики"
+    echo "4. Проводите DR drills ежемесячно"
+    
+    echo -e "\n✅ DR МОНИТОРИНГ ЗАВЕРШЕН!"
+}
+
+# Запуск мониторинга
+main
+EOF
+
+chmod +x dr-monitoring.sh
 ```
 
-#### 2. **Чек-лист DR готовности**
-```yaml
-dr_readiness_checklist:
-  infrastructure:
-    - "✅ DR кластер развернут и настроен"
-    - "✅ Сетевая связность между регионами"
-    - "✅ Backup системы работают"
-    - "✅ Мониторинг DR компонентов настроен"
-  
-  procedures:
-    - "✅ DR runbooks созданы и актуальны"
-    - "✅ Команда обучена процедурам DR"
-    - "✅ Контакты для эскалации определены"
-    - "✅ Автоматизация failover настроена"
-  
-  testing:
-    - "✅ Регулярные DR тесты проводятся"
-    - "✅ Backup восстановление тестируется"
-    - "✅ RTO/RPO цели проверяются"
-    - "✅ Результаты тестов документируются"
-  
-  compliance:
-    - "✅ Соответствие регуляторным требованиям"
-    - "✅ Аудит DR процедур проведен"
-    - "✅ Документация актуальна"
-    - "✅ Метрики DR отслеживаются"
-```
+## 🎯 **Best Practices для Disaster Recovery:**
 
-Эффективная стратегия disaster recovery обеспечивает быстрое восстановление сервисов после катастрофических сбоев и минимизирует влияние на бизнес-процессы.
+### **1. Планирование DR**
+- Определите критичность сервисов и RTO/RPO цели
+- Создайте multi-region архитектуру
+- Настройте автоматизированный backup
+- Разработайте детальные runbooks
+
+### **2. Автоматизация DR**
+- Настройте автоматический health monitoring
+- Реализуйте automated failover
+- Создайте DNS failover механизмы
+- Интегрируйте с системами уведомлений
+
+### **3. Тестирование DR**
+- Проводите регулярные DR drills
+- Тестируйте restore процедуры
+- Проверяйте RTO/RPO соответствие
+- Документируйте результаты тестов
+
+### **4. Мониторинг и улучшение**
+- Отслеживайте DR метрики
+- Анализируйте инциденты
+- Обновляйте процедуры
+- Обучайте команду
+
+**Эффективная стратегия Disaster Recovery обеспечивает быстрое восстановление сервисов после катастрофических сбоев и минимизирует влияние на бизнес-процессы!**
