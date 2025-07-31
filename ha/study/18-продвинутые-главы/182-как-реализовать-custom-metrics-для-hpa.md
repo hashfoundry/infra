@@ -1,131 +1,34 @@
 # 182. Как реализовать custom metrics для HPA?
 
-## 🎯 Вопрос
-Как реализовать custom metrics для HPA?
+## 🎯 **Что такое Custom Metrics для HPA?**
 
-## 💡 Ответ
+**Custom Metrics для HPA** — это механизм автомасштабирования приложений на основе специфических метрик приложения или внешних систем, а не только CPU/Memory. Реализуется через Custom Metrics API и External Metrics API, позволяя HPA принимать решения на основе бизнес-метрик.
 
-Custom metrics для HPA позволяют масштабировать приложения на основе специфических метрик приложения или внешних систем, а не только CPU/Memory. Это достигается через Metrics API, Custom Metrics API и External Metrics API, которые предоставляют гибкую архитектуру для интеграции любых источников метрик с Kubernetes HPA.
+## 🏗️ **Основные типы метрик для HPA:**
 
-### 🏗️ Архитектура Custom Metrics
+### **1. Resource Metrics**
+- Стандартные ресурсные метрики (CPU, Memory)
+- Источник: metrics-server
+- Простая настройка и использование
 
-#### 1. **Схема Custom Metrics Architecture**
-```
-┌─────────────────────────────────────────────────────────────┐
-│              Custom Metrics Architecture                   │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                    HPA Controller                       │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Resource  │    │   Custom    │    │  External   │ │ │
-│  │  │   Metrics   │    │   Metrics   │    │   Metrics   │ │ │
-│  │  │    API      │    │     API     │    │     API     │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│           │                     │                     │      │
-│           ▼                     ▼                     ▼      │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Metrics Adapters                        │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │ Prometheus  │    │   Custom    │    │  External   │ │ │
-│  │  │  Adapter    │    │  Adapter    │    │  Adapter    │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│           │                     │                     │      │
-│           ▼                     ▼                     ▼      │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Metrics Sources                         │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │ Prometheus  │    │ Application │    │   Cloud     │ │ │
-│  │  │   Server    │    │   Metrics   │    │  Provider   │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Grafana   │    │   Custom    │    │    SaaS     │ │ │
-│  │  │   Metrics   │    │  Exporters  │    │  Services   │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. Custom Metrics**
+- Метрики из кластера (pods, objects)
+- Источник: custom metrics adapter
+- Специфические метрики приложений
 
-#### 2. **Типы Metrics APIs**
-```yaml
-# Типы Metrics APIs для HPA
-metrics_apis:
-  resource_metrics:
-    description: "Стандартные ресурсные метрики (CPU, Memory)"
-    source: "metrics-server"
-    examples:
-      - "cpu utilization"
-      - "memory utilization"
-    
-  custom_metrics:
-    description: "Метрики из кластера (pods, objects)"
-    source: "custom metrics adapter"
-    examples:
-      - "requests per second"
-      - "queue length"
-      - "database connections"
-    
-  external_metrics:
-    description: "Метрики из внешних систем"
-    source: "external metrics adapter"
-    examples:
-      - "cloud provider metrics"
-      - "SaaS service metrics"
-      - "external monitoring systems"
+### **3. External Metrics**
+- Метрики из внешних систем
+- Источник: external metrics adapter
+- Cloud provider метрики, SaaS сервисы
 
-# Конфигурация HPA с разными типами метрик
-hpa_configuration:
-  resource_based:
-    apiVersion: autoscaling/v2
-    kind: HorizontalPodAutoscaler
-    spec:
-      metrics:
-      - type: Resource
-        resource:
-          name: cpu
-          target:
-            type: Utilization
-            averageUtilization: 70
-  
-  custom_metrics:
-    apiVersion: autoscaling/v2
-    kind: HorizontalPodAutoscaler
-    spec:
-      metrics:
-      - type: Pods
-        pods:
-          metric:
-            name: requests_per_second
-          target:
-            type: AverageValue
-            averageValue: "100"
-  
-  external_metrics:
-    apiVersion: autoscaling/v2
-    kind: HorizontalPodAutoscaler
-    spec:
-      metrics:
-      - type: External
-        external:
-          metric:
-            name: queue_messages_ready
-            selector:
-              matchLabels:
-                queue: worker_tasks
-          target:
-            type: AverageValue
-            averageValue: "30"
-```
+## 📊 **Практические примеры из вашего HA кластера:**
 
-### 📊 Примеры из нашего кластера
-
-#### Проверка metrics APIs:
+### **1. Проверка metrics APIs:**
 ```bash
-# Проверка доступных metrics APIs
+# Доступные metrics APIs
 kubectl api-versions | grep metrics
 
-# Проверка metrics-server
+# Metrics-server для resource metrics
 kubectl get pods -n kube-system -l k8s-app=metrics-server
 
 # Проверка custom metrics API
@@ -135,11 +38,53 @@ kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1"
 kubectl get --raw "/apis/external.metrics.k8s.io/v1beta1"
 ```
 
-### 🔧 Реализация Custom Metrics
+### **2. HPA в мониторинге:**
+```bash
+# Существующие HPA
+kubectl get hpa --all-namespaces
 
-#### 1. **Prometheus Adapter для Custom Metrics**
-```yaml
-# prometheus-adapter-config.yaml
+# HPA для ArgoCD (если есть)
+kubectl describe hpa -n argocd
+
+# Prometheus метрики для HPA
+kubectl get --raw /metrics | grep hpa_controller
+```
+
+### **3. Prometheus как источник custom metrics:**
+```bash
+# Prometheus в monitoring namespace
+kubectl get pods -n monitoring -l app=prometheus
+
+# Доступные метрики в Prometheus
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80
+# Открыть http://localhost:9090/api/v1/label/__name__/values
+```
+
+### **4. Создание HPA с resource metrics:**
+```bash
+# Простой HPA для тестирования
+kubectl create deployment test-app --image=nginx --replicas=1
+
+# Установка resource requests
+kubectl patch deployment test-app -p '{"spec":{"template":{"spec":{"containers":[{"name":"nginx","resources":{"requests":{"cpu":"100m","memory":"128Mi"}}}]}}}}'
+
+# Создание HPA
+kubectl autoscale deployment test-app --cpu-percent=50 --min=1 --max=10
+
+# Проверка HPA
+kubectl get hpa test-app
+
+# Очистка
+kubectl delete hpa test-app
+kubectl delete deployment test-app
+```
+
+## 🔄 **Настройка Prometheus Adapter:**
+
+### **1. Конфигурация Prometheus Adapter:**
+```bash
+# Создание ConfigMap для Prometheus Adapter
+cat << EOF | kubectl apply -f -
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -150,13 +95,10 @@ data:
     rules:
     # HTTP requests per second
     - seriesQuery: 'http_requests_total{namespace!="",pod!=""}'
-      seriesFilters: []
       resources:
         overrides:
-          namespace:
-            resource: namespace
-          pod:
-            resource: pod
+          namespace: {resource: namespace}
+          pod: {resource: pod}
       name:
         matches: "^http_requests_total"
         as: "requests_per_second"
@@ -164,714 +106,24 @@ data:
     
     # Queue length metric
     - seriesQuery: 'queue_length{namespace!="",pod!=""}'
-      seriesFilters: []
       resources:
         overrides:
-          namespace:
-            resource: namespace
-          pod:
-            resource: pod
+          namespace: {resource: namespace}
+          pod: {resource: pod}
       name:
         matches: "^queue_length"
         as: "queue_length"
       metricsQuery: 'avg(<<.Series>>{<<.LabelMatchers>>}) by (<<.GroupBy>>)'
-    
-    # Database connections
-    - seriesQuery: 'db_connections_active{namespace!="",pod!=""}'
-      seriesFilters: []
-      resources:
-        overrides:
-          namespace:
-            resource: namespace
-          pod:
-            resource: pod
-      name:
-        matches: "^db_connections_active"
-        as: "database_connections"
-      metricsQuery: 'sum(<<.Series>>{<<.LabelMatchers>>}) by (<<.GroupBy>>)'
-    
-    # Custom business metric
-    - seriesQuery: 'business_transactions_per_minute{namespace!="",pod!=""}'
-      seriesFilters: []
-      resources:
-        overrides:
-          namespace:
-            resource: namespace
-          pod:
-            resource: pod
-      name:
-        matches: "^business_transactions_per_minute"
-        as: "business_transactions"
-      metricsQuery: 'sum(rate(<<.Series>>{<<.LabelMatchers>>}[1m])) by (<<.GroupBy>>)'
+EOF
 
----
-# Prometheus Adapter Deployment
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: prometheus-adapter
-  namespace: monitoring
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: prometheus-adapter
-  template:
-    metadata:
-      labels:
-        app: prometheus-adapter
-    spec:
-      serviceAccountName: prometheus-adapter
-      containers:
-      - name: prometheus-adapter
-        image: k8s.gcr.io/prometheus-adapter/prometheus-adapter:v0.11.0
-        args:
-        - --cert-dir=/var/run/serving-cert
-        - --config=/etc/adapter/config.yaml
-        - --logtostderr=true
-        - --prometheus-url=http://prometheus.monitoring.svc:9090/
-        - --metrics-relist-interval=1m
-        - --v=4
-        - --secure-port=6443
-        ports:
-        - containerPort: 6443
-          name: https
-        volumeMounts:
-        - name: config
-          mountPath: /etc/adapter/
-          readOnly: true
-        - name: tmp-vol
-          mountPath: /tmp
-        - name: serving-cert
-          mountPath: /var/run/serving-cert
-          readOnly: true
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 250m
-            memory: 256Mi
-      volumes:
-      - name: config
-        configMap:
-          name: adapter-config
-      - name: tmp-vol
-        emptyDir: {}
-      - name: serving-cert
-        secret:
-          secretName: prometheus-adapter-certs
-
----
-# Service для Prometheus Adapter
-apiVersion: v1
-kind: Service
-metadata:
-  name: prometheus-adapter
-  namespace: monitoring
-spec:
-  ports:
-  - name: https
-    port: 443
-    targetPort: 6443
-  selector:
-    app: prometheus-adapter
-
----
-# APIService для Custom Metrics
-apiVersion: apiregistration.k8s.io/v1
-kind: APIService
-metadata:
-  name: v1beta1.custom.metrics.k8s.io
-spec:
-  service:
-    name: prometheus-adapter
-    namespace: monitoring
-  group: custom.metrics.k8s.io
-  version: v1beta1
-  insecureSkipTLSVerify: true
-  groupPriorityMinimum: 100
-  versionPriority: 100
+# Проверка конфигурации
+kubectl describe configmap adapter-config -n monitoring
 ```
 
-#### 2. **Custom Application Metrics**
-```go
-// custom-metrics-exporter.go
-package main
-
-import (
-    "fmt"
-    "log"
-    "math/rand"
-    "net/http"
-    "time"
-    
-    "github.com/prometheus/client_golang/prometheus"
-    "github.com/prometheus/client_golang/prometheus/promhttp"
-)
-
-// Custom metrics для приложения
-var (
-    // HTTP requests per second
-    httpRequestsTotal = prometheus.NewCounterVec(
-        prometheus.CounterOpts{
-            Name: "http_requests_total",
-            Help: "Total number of HTTP requests",
-        },
-        []string{"method", "endpoint", "status"},
-    )
-    
-    // Queue length
-    queueLength = prometheus.NewGaugeVec(
-        prometheus.GaugeOpts{
-            Name: "queue_length",
-            Help: "Current queue length",
-        },
-        []string{"queue_name"},
-    )
-    
-    // Database connections
-    dbConnectionsActive = prometheus.NewGaugeVec(
-        prometheus.GaugeOpts{
-            Name: "db_connections_active",
-            Help: "Number of active database connections",
-        },
-        []string{"database"},
-    )
-    
-    // Business transactions
-    businessTransactions = prometheus.NewCounterVec(
-        prometheus.CounterOpts{
-            Name: "business_transactions_per_minute",
-            Help: "Business transactions processed per minute",
-        },
-        []string{"transaction_type"},
-    )
-    
-    // Response time histogram
-    responseTime = prometheus.NewHistogramVec(
-        prometheus.HistogramOpts{
-            Name:    "http_request_duration_seconds",
-            Help:    "HTTP request duration in seconds",
-            Buckets: prometheus.DefBuckets,
-        },
-        []string{"method", "endpoint"},
-    )
-    
-    // Custom resource utilization
-    customResourceUtilization = prometheus.NewGaugeVec(
-        prometheus.GaugeOpts{
-            Name: "custom_resource_utilization",
-            Help: "Custom resource utilization percentage",
-        },
-        []string{"resource_type"},
-    )
-)
-
-func init() {
-    // Регистрация метрик
-    prometheus.MustRegister(httpRequestsTotal)
-    prometheus.MustRegister(queueLength)
-    prometheus.MustRegister(dbConnectionsActive)
-    prometheus.MustRegister(businessTransactions)
-    prometheus.MustRegister(responseTime)
-    prometheus.MustRegister(customResourceUtilization)
-}
-
-// Симуляция метрик приложения
-func simulateMetrics() {
-    ticker := time.NewTicker(5 * time.Second)
-    defer ticker.Stop()
-    
-    for {
-        select {
-        case <-ticker.C:
-            // Симуляция HTTP requests
-            methods := []string{"GET", "POST", "PUT", "DELETE"}
-            endpoints := []string{"/api/users", "/api/orders", "/api/products"}
-            statuses := []string{"200", "404", "500"}
-            
-            for i := 0; i < rand.Intn(10)+1; i++ {
-                method := methods[rand.Intn(len(methods))]
-                endpoint := endpoints[rand.Intn(len(endpoints))]
-                status := statuses[rand.Intn(len(statuses))]
-                
-                httpRequestsTotal.WithLabelValues(method, endpoint, status).Inc()
-                
-                // Response time
-                duration := rand.Float64() * 2.0 // 0-2 seconds
-                responseTime.WithLabelValues(method, endpoint).Observe(duration)
-            }
-            
-            // Симуляция queue length
-            queueLength.WithLabelValues("worker_queue").Set(float64(rand.Intn(100)))
-            queueLength.WithLabelValues("email_queue").Set(float64(rand.Intn(50)))
-            
-            // Симуляция database connections
-            dbConnectionsActive.WithLabelValues("postgres").Set(float64(rand.Intn(20) + 5))
-            dbConnectionsActive.WithLabelValues("redis").Set(float64(rand.Intn(10) + 2))
-            
-            // Симуляция business transactions
-            transactionTypes := []string{"payment", "order", "user_registration"}
-            for _, txType := range transactionTypes {
-                for i := 0; i < rand.Intn(5)+1; i++ {
-                    businessTransactions.WithLabelValues(txType).Inc()
-                }
-            }
-            
-            // Симуляция custom resource utilization
-            customResourceUtilization.WithLabelValues("gpu").Set(float64(rand.Intn(100)))
-            customResourceUtilization.WithLabelValues("memory_cache").Set(float64(rand.Intn(100)))
-        }
-    }
-}
-
-// HTTP handler для health check
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-    w.WriteHeader(http.StatusOK)
-    fmt.Fprintf(w, "OK")
-}
-
-// HTTP handler для бизнес-логики
-func businessHandler(w http.ResponseWriter, r *http.Request) {
-    start := time.Now()
-    
-    // Симуляция обработки запроса
-    time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
-    
-    // Запись метрик
-    httpRequestsTotal.WithLabelValues(r.Method, r.URL.Path, "200").Inc()
-    responseTime.WithLabelValues(r.Method, r.URL.Path).Observe(time.Since(start).Seconds())
-    
-    w.WriteHeader(http.StatusOK)
-    fmt.Fprintf(w, "Business logic processed")
-}
-
-func main() {
-    // Запуск симуляции метрик
-    go simulateMetrics()
-    
-    // HTTP handlers
-    http.HandleFunc("/health", healthHandler)
-    http.HandleFunc("/api/business", businessHandler)
-    http.Handle("/metrics", promhttp.Handler())
-    
-    log.Println("Starting custom metrics exporter on :8080")
-    log.Fatal(http.ListenAndServe(":8080", nil))
-}
-```
-
-#### 3. **HPA с Custom Metrics**
-```yaml
-# hpa-custom-metrics.yaml
-
-# HPA на основе HTTP requests per second
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: web-app-hpa-rps
-  namespace: production
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: web-app
-  minReplicas: 2
-  maxReplicas: 20
-  metrics:
-  - type: Pods
-    pods:
-      metric:
-        name: requests_per_second
-      target:
-        type: AverageValue
-        averageValue: "50"  # 50 RPS per pod
-  behavior:
-    scaleUp:
-      stabilizationWindowSeconds: 60
-      policies:
-      - type: Percent
-        value: 100
-        periodSeconds: 15
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      policies:
-      - type: Percent
-        value: 10
-        periodSeconds: 60
-
----
-# HPA на основе queue length
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: worker-hpa-queue
-  namespace: production
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: worker
-  minReplicas: 1
-  maxReplicas: 10
-  metrics:
-  - type: Pods
-    pods:
-      metric:
-        name: queue_length
-      target:
-        type: AverageValue
-        averageValue: "10"  # 10 messages per pod
-  behavior:
-    scaleUp:
-      stabilizationWindowSeconds: 30
-      policies:
-      - type: Pods
-        value: 2
-        periodSeconds: 60
-    scaleDown:
-      stabilizationWindowSeconds: 600
-      policies:
-      - type: Pods
-        value: 1
-        periodSeconds: 180
-
----
-# HPA с комбинированными метриками
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: api-hpa-combined
-  namespace: production
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: api-service
-  minReplicas: 3
-  maxReplicas: 50
-  metrics:
-  # CPU utilization
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  # Memory utilization
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
-  # Custom metric: requests per second
-  - type: Pods
-    pods:
-      metric:
-        name: requests_per_second
-      target:
-        type: AverageValue
-        averageValue: "100"
-  # Custom metric: database connections
-  - type: Pods
-    pods:
-      metric:
-        name: database_connections
-      target:
-        type: AverageValue
-        averageValue: "5"
-  behavior:
-    scaleUp:
-      stabilizationWindowSeconds: 60
-      policies:
-      - type: Percent
-        value: 50
-        periodSeconds: 60
-      - type: Pods
-        value: 5
-        periodSeconds: 60
-      selectPolicy: Max
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      policies:
-      - type: Percent
-        value: 10
-        periodSeconds: 60
-
----
-# External metrics HPA (например, для SQS queue)
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: sqs-worker-hpa
-  namespace: production
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: sqs-worker
-  minReplicas: 1
-  maxReplicas: 20
-  metrics:
-  - type: External
-    external:
-      metric:
-        name: sqs_messages_visible
-        selector:
-          matchLabels:
-            queue: "worker-tasks"
-      target:
-        type: AverageValue
-        averageValue: "5"  # 5 messages per pod
-```
-
-### 🔧 External Metrics Adapter
-
-#### 1. **CloudWatch Metrics Adapter**
-```yaml
-# cloudwatch-adapter.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: cloudwatch-adapter
-  namespace: monitoring
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: cloudwatch-adapter
-  template:
-    metadata:
-      labels:
-        app: cloudwatch-adapter
-    spec:
-      serviceAccountName: cloudwatch-adapter
-      containers:
-      - name: cloudwatch-adapter
-        image: chankh/k8s-cloudwatch-adapter:latest
-        env:
-        - name: AWS_REGION
-          value: "us-west-2"
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: aws-credentials
-              key: access-key-id
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: aws-credentials
-              key: secret-access-key
-        ports:
-        - containerPort: 6443
-          name: https
-        volumeMounts:
-        - name: tmp-vol
-          mountPath: /tmp
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 250m
-            memory: 256Mi
-      volumes:
-      - name: tmp-vol
-        emptyDir: {}
-
----
-# Service для CloudWatch Adapter
-apiVersion: v1
-kind: Service
-metadata:
-  name: cloudwatch-adapter
-  namespace: monitoring
-spec:
-  ports:
-  - name: https
-    port: 443
-    targetPort: 6443
-  selector:
-    app: cloudwatch-adapter
-
----
-# APIService для External Metrics
-apiVersion: apiregistration.k8s.io/v1
-kind: APIService
-metadata:
-  name: v1beta1.external.metrics.k8s.io
-spec:
-  service:
-    name: cloudwatch-adapter
-    namespace: monitoring
-  group: external.metrics.k8s.io
-  version: v1beta1
-  insecureSkipTLSVerify: true
-  groupPriorityMinimum: 100
-  versionPriority: 100
-```
-
-### 📊 Мониторинг и отладка HPA
-
-#### 1. **HPA Monitoring Script**
+### **2. Развертывание Prometheus Adapter:**
 ```bash
-#!/bin/bash
-# hpa-monitoring.sh
-
-echo "📊 Мониторинг HPA с Custom Metrics"
-
-# Проверка HPA статуса
-check_hpa_status() {
-    echo "=== HPA Status ==="
-    
-    # Список всех HPA
-    kubectl get hpa --all-namespaces
-    
-    # Детальная информация о HPA
-    kubectl describe hpa --all-namespaces
-    
-    # HPA events
-    kubectl get events --all-namespaces --field-selector reason=SuccessfulRescale
-    kubectl get events --all-namespaces --field-selector reason=FailedGetScale
-}
-
-# Проверка custom metrics
-check_custom_metrics() {
-    echo "=== Custom Metrics ==="
-    
-    # Доступные custom metrics
-    kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq .
-    
-    # Конкретные метрики
-    kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/production/pods/*/requests_per_second" | jq .
-    kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/production/pods/*/queue_length" | jq .
-}
-
-# Проверка external metrics
-check_external_metrics() {
-    echo "=== External Metrics ==="
-    
-    # Доступные external metrics
-    kubectl get --raw "/apis/external.metrics.k8s.io/v1beta1" | jq .
-    
-    # Конкретные external метрики
-    kubectl get --raw "/apis/external.metrics.k8s.io/v1beta1/namespaces/production/sqs_messages_visible" | jq .
-}
-
-# Отладка конкретного HPA
-debug_hpa() {
-    local hpa_name=$1
-    local namespace=$2
-    
-    echo "=== Debugging HPA: $namespace/$hpa_name ==="
-    
-    # Детальная информация
-    kubectl describe hpa $hpa_name -n $namespace
-    
-    # События HPA
-    kubectl get events -n $namespace --field-selector involvedObject.name=$hpa_name
-    
-    # Текущие метрики
-    kubectl get hpa $hpa_name -n $namespace -o yaml | grep -A 20 currentMetrics
-    
-    # Target deployment
-    local target=$(kubectl get hpa $hpa_name -n $namespace -o jsonpath='{.spec.scaleTargetRef.name}')
-    kubectl describe deployment $target -n $namespace
-    
-    # Pods metrics
-    kubectl top pods -n $namespace -l app=$target
-}
-
-# Тестирование HPA
-test_hpa_scaling() {
-    local hpa_name=$1
-    local namespace=$2
-    
-    echo "=== Testing HPA Scaling: $namespace/$hpa_name ==="
-    
-    # Получение target deployment
-    local target=$(kubectl get hpa $hpa_name -n $namespace -o jsonpath='{.spec.scaleTargetRef.name}')
-    
-    echo "Текущее количество реплик:"
-    kubectl get deployment $target -n $namespace -o jsonpath='{.spec.replicas}'
-    
-    echo "Генерация нагрузки..."
-    # Здесь можно добавить команды для генерации нагрузки
-    
-    echo "Мониторинг изменений в течение 5 минут..."
-    for i in {1..30}; do
-        echo "Минута $i:"
-        kubectl get hpa $hpa_name -n $namespace
-        kubectl get deployment $target -n $namespace -o jsonpath='{.spec.replicas}'
-        sleep 10
-    done
-}
-
-# Анализ производительности HPA
-analyze_hpa_performance() {
-    echo "=== HPA Performance Analysis ==="
-    
-    # HPA controller metrics
-    kubectl get --raw /metrics | grep hpa_controller
-    
-    # Время принятия решений
-    kubectl get --raw /metrics | grep hpa_controller_reconcile_duration
-    
-    # Ошибки HPA
-    kubectl get --raw /metrics | grep hpa_controller_reconcile_errors_total
-}
-
-case "$1" in
-    status)
-        check_hpa_status
-        ;;
-    custom)
-        check_custom_metrics
-        ;;
-    external)
-        check_external_metrics
-        ;;
-    debug)
-        debug_hpa $2 $3
-        ;;
-    test)
-        test_hpa_scaling $2 $3
-        ;;
-    performance)
-        analyze_hpa_performance
-        ;;
-    all)
-        check_hpa_status
-        check_custom_metrics
-        check_external_metrics
-        analyze_hpa_performance
-        ;;
-    *)
-        echo "Использование: $0 {status|custom|external|debug|test|performance|all} [hpa-name] [namespace]"
-        exit 1
-        ;;
-esac
-```
-
-### 🔧 Развертывание Custom Metrics Stack
-
-#### 1. **Deployment Script**
-```bash
-#!/bin/bash
-# deploy-custom-metrics.sh
-
-echo "🚀 Развертывание Custom Metrics Stack"
-
-# Установка Prometheus Adapter
-deploy_prometheus_adapter() {
-    echo "📊 Установка Prometheus Adapter"
-    
-    # Создание namespace
-    kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
-    
-    # Создание ServiceAccount и RBAC
-    kubectl apply -f - <<EOF
+# ServiceAccount и RBAC
+cat << EOF | kubectl apply -f -
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -903,23 +155,22 @@ subjects:
   name: prometheus-adapter
   namespace: monitoring
 EOF
-    
-    # Создание конфигурации
-    kubectl apply -f prometheus-adapter-config.yaml
-    
-    echo "✅ Prometheus Adapter установлен"
-}
 
-# Развертывание sample приложения с метриками
-deploy_sample_app() {
-    echo "🔧 Развертывание sample приложения"
-    
-    kubectl apply -f - <<EOF
+# Проверка RBAC
+kubectl describe clusterrole prometheus-adapter
+```
+
+## 🔧 **Демонстрация Custom Metrics HPA:**
+
+### **1. Приложение с custom метриками:**
+```bash
+# Создание приложения с метриками
+cat << EOF | kubectl apply -f -
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: custom-metrics-app
-  namespace: production
+  namespace: default
 spec:
   replicas: 2
   selector:
@@ -936,10 +187,12 @@ spec:
     spec:
       containers:
       - name: app
-        image: custom-metrics-exporter:latest
+        image: nginx:alpine
         ports:
         - containerPort: 8080
           name: metrics
+        - containerPort: 80
+          name: http
         resources:
           requests:
             cpu: 100m
@@ -947,6 +200,337 @@ spec:
           limits:
             cpu: 500m
             memory: 512Mi
-        env:
-        - name: PORT
-          value: "8080"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: custom-metrics-app
+  namespace: default
+spec:
+  selector:
+    app: custom-metrics-app
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+EOF
+
+# Проверка развертывания
+kubectl get pods -l app=custom-metrics-app
+kubectl get svc custom-metrics-app
+```
+
+### **2. HPA с custom метриками:**
+```bash
+# HPA на основе requests per second
+cat << EOF | kubectl apply -f -
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: custom-metrics-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: custom-metrics-app
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "50"
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+EOF
+
+# Проверка HPA
+kubectl describe hpa custom-metrics-hpa
+kubectl get hpa custom-metrics-hpa -w
+```
+
+### **3. Тестирование нагрузки:**
+```bash
+# Генерация нагрузки для тестирования HPA
+kubectl run load-generator --image=busybox --restart=Never -- \
+  /bin/sh -c "while true; do wget -q -O- http://custom-metrics-app.default.svc.cluster.local; done"
+
+# Мониторинг HPA в реальном времени
+kubectl get hpa custom-metrics-hpa -w
+
+# Проверка масштабирования
+kubectl get pods -l app=custom-metrics-app -w
+
+# Остановка нагрузки
+kubectl delete pod load-generator
+
+# Очистка
+kubectl delete hpa custom-metrics-hpa
+kubectl delete deployment custom-metrics-app
+kubectl delete svc custom-metrics-app
+```
+
+## 📈 **Мониторинг HPA с Custom Metrics:**
+
+### **1. HPA метрики:**
+```bash
+# Port forward к Prometheus
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80
+
+# HPA метрики в Prometheus:
+# hpa_controller_reconcile_duration_seconds - время обработки HPA
+# hpa_controller_reconcile_errors_total - ошибки HPA controller
+# hpa_controller_reconciliations_total - количество обработок HPA
+```
+
+### **2. Анализ HPA событий:**
+```bash
+# События HPA
+kubectl get events --all-namespaces --field-selector reason=SuccessfulRescale
+
+# Неудачные масштабирования
+kubectl get events --all-namespaces --field-selector reason=FailedGetScale
+
+# HPA controller логи
+kubectl logs -n kube-system -l app=horizontal-pod-autoscaler
+```
+
+### **3. Custom metrics доступность:**
+```bash
+# Проверка custom metrics API
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1" | jq .
+
+# Конкретные метрики
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/default/pods/*/requests_per_second" | jq .
+
+# External metrics API
+kubectl get --raw "/apis/external.metrics.k8s.io/v1beta1" | jq .
+```
+
+## 🏭 **Custom Metrics в вашем HA кластере:**
+
+### **1. Мониторинг стека и HPA:**
+```bash
+# Prometheus метрики для HPA
+kubectl get pods -n monitoring -l app=prometheus
+
+# Grafana для визуализации HPA
+kubectl port-forward svc/grafana -n monitoring 3000:80
+
+# ArgoCD приложения с HPA
+kubectl get applications -n argocd
+```
+
+### **2. HA для Prometheus Adapter:**
+```bash
+# Prometheus Adapter в HA режиме
+kubectl get deployment prometheus-adapter -n monitoring
+
+# Масштабирование Prometheus Adapter
+kubectl scale deployment prometheus-adapter --replicas=2 -n monitoring
+
+# Проверка leader election
+kubectl describe lease prometheus-adapter -n monitoring
+```
+
+### **3. Интеграция с ArgoCD:**
+```bash
+# HPA как часть ArgoCD приложения
+kubectl get applications -n argocd -o yaml | grep -A 10 hpa
+
+# Синхронизация HPA через GitOps
+kubectl describe application monitoring -n argocd | grep -A 5 hpa
+```
+
+## 🔄 **Типы HPA метрик:**
+
+### **1. Resource-based HPA:**
+```bash
+# CPU и Memory HPA
+kubectl get hpa --all-namespaces | grep Resource
+
+# Проверка resource requests
+kubectl describe deployment -n monitoring prometheus-server | grep -A 5 Requests
+```
+
+### **2. Custom metrics HPA:**
+```bash
+# Pod-based custom metrics
+kubectl get hpa --all-namespaces -o yaml | grep -A 5 "type: Pods"
+
+# Object-based custom metrics
+kubectl get hpa --all-namespaces -o yaml | grep -A 5 "type: Object"
+```
+
+### **3. External metrics HPA:**
+```bash
+# External metrics sources
+kubectl get hpa --all-namespaces -o yaml | grep -A 5 "type: External"
+
+# Cloud provider metrics
+kubectl describe hpa | grep -A 10 external
+```
+
+## 🎯 **Архитектура Custom Metrics:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                Custom Metrics Architecture                 │
+├─────────────────────────────────────────────────────────────┤
+│  HPA Controller                                             │
+│  ├── Resource Metrics API (metrics-server)                 │
+│  ├── Custom Metrics API (prometheus-adapter)               │
+│  └── External Metrics API (cloud adapters)                 │
+├─────────────────────────────────────────────────────────────┤
+│  Metrics Adapters                                           │
+│  ├── Prometheus Adapter (custom metrics)                   │
+│  ├── CloudWatch Adapter (AWS metrics)                      │
+│  ├── Stackdriver Adapter (GCP metrics)                     │
+│  └── Custom Adapters (specific integrations)               │
+├─────────────────────────────────────────────────────────────┤
+│  Metrics Sources                                            │
+│  ├── Prometheus Server (application metrics)               │
+│  ├── Application Exporters (custom metrics)                │
+│  ├── Cloud Provider APIs (external metrics)                │
+│  └── Third-party Services (SaaS metrics)                   │
+├─────────────────────────────────────────────────────────────┤
+│  Target Applications                                        │
+│  ├── Deployments with HPA                                  │
+│  ├── StatefulSets with HPA                                 │
+│  └── Custom Resources with HPA                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 🔧 **Конфигурация HPA Behavior:**
+
+### **1. Scaling Policies:**
+```bash
+# HPA с настроенным поведением
+cat << EOF | kubectl apply -f -
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: advanced-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: test-app
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+EOF
+
+# Проверка поведения HPA
+kubectl describe hpa advanced-hpa | grep -A 20 Behavior
+```
+
+## 🚨 **Troubleshooting Custom Metrics HPA:**
+
+### **1. HPA не масштабируется:**
+```bash
+# Проверка HPA статуса
+kubectl describe hpa <hpa-name>
+
+# Проверка метрик
+kubectl get --raw "/apis/custom.metrics.k8s.io/v1beta1/namespaces/<namespace>/pods/*/requests_per_second"
+
+# HPA controller логи
+kubectl logs -n kube-system -l app=horizontal-pod-autoscaler
+```
+
+### **2. Custom metrics недоступны:**
+```bash
+# Проверка Prometheus Adapter
+kubectl get pods -n monitoring -l app=prometheus-adapter
+
+# Adapter логи
+kubectl logs -n monitoring -l app=prometheus-adapter
+
+# API service статус
+kubectl get apiservice v1beta1.custom.metrics.k8s.io
+```
+
+### **3. Медленное масштабирование:**
+```bash
+# HPA метрики производительности
+kubectl get --raw /metrics | grep hpa_controller_reconcile_duration
+
+# Stabilization windows
+kubectl describe hpa <hpa-name> | grep -A 10 stabilizationWindowSeconds
+
+# Metrics collection time
+kubectl get --raw /metrics | grep prometheus_adapter
+```
+
+## 🎯 **Best Practices для Custom Metrics HPA:**
+
+### **1. Мониторинг:**
+- Отслеживайте HPA метрики и события
+- Мониторьте доступность custom metrics
+- Проверяйте производительность adapters
+
+### **2. Конфигурация:**
+- Используйте подходящие stabilization windows
+- Настраивайте scaling policies
+- Тестируйте HPA поведение
+
+### **3. Метрики:**
+- Выбирайте релевантные метрики для масштабирования
+- Избегайте слишком чувствительных метрик
+- Комбинируйте разные типы метрик
+
+### **4. Производительность:**
+- Оптимизируйте queries в Prometheus Adapter
+- Используйте caching для external metrics
+- Мониторьте latency metrics collection
+
+**Custom Metrics HPA — это мощный инструмент для intelligent автомасштабирования на основе бизнес-метрик!**

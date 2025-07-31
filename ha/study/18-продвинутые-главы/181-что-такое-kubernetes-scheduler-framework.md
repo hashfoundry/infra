@@ -1,821 +1,118 @@
 # 181. Что такое Kubernetes scheduler framework?
 
-## 🎯 Вопрос
-Что такое Kubernetes scheduler framework?
+## 🎯 **Что такое Kubernetes Scheduler Framework?**
 
-## 💡 Ответ
+**Kubernetes Scheduler Framework** — это расширяемая архитектура планировщика, которая позволяет создавать custom scheduling plugins для реализации специфической логики размещения Pod'ов. Framework предоставляет extension points в жизненном цикле планирования без изменения core scheduler кода.
 
-Kubernetes Scheduler Framework - это расширяемая архитектура планировщика, которая позволяет разработчикам создавать custom scheduling plugins для реализации специфической логики размещения pod'ов. Framework предоставляет набор extension points в жизненном цикле планирования, где можно подключить custom логику без изменения core scheduler кода.
+## 🏗️ **Основные функции Scheduler Framework:**
 
-### 🏗️ Архитектура Scheduler Framework
+### **1. Extension Points**
+- Предоставляет точки расширения в цикле планирования
+- Позволяет подключать custom логику
+- Поддерживает различные этапы scheduling
 
-#### 1. **Схема Scheduler Framework**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                Kubernetes Scheduler Framework              │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Scheduling Cycle                         │ │
-│  │                                                         │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │    Queue    │    │   Filter    │    │    Score    │ │ │
-│  │  │   Sort      │───▶│   Plugins   │───▶│   Plugins   │ │ │
-│  │  │  Plugins    │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  │         │                   │                   │      │ │
-│  │         ▼                   ▼                   ▼      │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   PreFilter │    │   PostFilter│    │   Reserve   │ │ │
-│  │  │   Plugins   │    │   Plugins   │    │   Plugins   │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Binding Cycle                           │ │
-│  │                                                         │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Permit    │    │   PreBind   │    │    Bind     │ │ │
-│  │  │   Plugins   │───▶│   Plugins   │───▶│   Plugins   │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  │         │                   │                   │      │ │
-│  │         ▼                   ▼                   ▼      │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │  PostBind   │    │ Unreserve   │    │   Plugin    │ │ │
-│  │  │   Plugins   │    │   Plugins   │    │   Manager   │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. Plugin Architecture**
+- Модульная архитектура с plugin'ами
+- Возможность включения/отключения plugins
+- Конфигурируемые параметры plugins
 
-#### 2. **Extension Points**
-```yaml
-# Extension points в Scheduler Framework
-extension_points:
-  scheduling_cycle:
-    queue_sort:
-      description: "Сортировка pod'ов в очереди планирования"
-      interface: "QueueSortPlugin"
-      example: "Приоритизация по важности приложения"
-    
-    pre_filter:
-      description: "Предварительная фильтрация и подготовка данных"
-      interface: "PreFilterPlugin"
-      example: "Проверка ресурсов, подготовка state"
-    
-    filter:
-      description: "Фильтрация узлов по критериям"
-      interface: "FilterPlugin"
-      example: "NodeResourcesFit, NodeAffinity"
-    
-    post_filter:
-      description: "Действия при отсутствии подходящих узлов"
-      interface: "PostFilterPlugin"
-      example: "Preemption, cluster autoscaling"
-    
-    pre_score:
-      description: "Подготовка данных для scoring"
-      interface: "PreScorePlugin"
-      example: "Сбор метрик, расчет весов"
-    
-    score:
-      description: "Оценка узлов для выбора лучшего"
-      interface: "ScorePlugin"
-      example: "NodeResourcesFit, ImageLocality"
-    
-    normalize_score:
-      description: "Нормализация scores от разных plugins"
-      interface: "ScorePlugin"
-      example: "Приведение к единой шкале"
-    
-    reserve:
-      description: "Резервирование ресурсов на выбранном узле"
-      interface: "ReservePlugin"
-      example: "Обновление cache, резервирование"
-  
-  binding_cycle:
-    permit:
-      description: "Разрешение или задержка binding"
-      interface: "PermitPlugin"
-      example: "Ожидание внешних условий"
-    
-    pre_bind:
-      description: "Подготовка к binding"
-      interface: "PreBindPlugin"
-      example: "Создание volumes, network setup"
-    
-    bind:
-      description: "Привязка pod'а к узлу"
-      interface: "BindPlugin"
-      example: "Создание Binding объекта"
-    
-    post_bind:
-      description: "Действия после успешного binding"
-      interface: "PostBindPlugin"
-      example: "Уведомления, метрики"
-    
-    unreserve:
-      description: "Освобождение зарезервированных ресурсов"
-      interface: "UnreservePlugin"
-      example: "Откат резервирования при ошибке"
-```
+### **3. Scheduling Cycles**
+- Scheduling Cycle (выбор Node)
+- Binding Cycle (привязка Pod'а)
+- Асинхронная обработка
 
-### 📊 Примеры из нашего кластера
+## 📊 **Практические примеры из вашего HA кластера:**
 
-#### Проверка scheduler конфигурации:
+### **1. Scheduler в действии:**
 ```bash
-# Проверка scheduler pod'а
+# Scheduler Pod в kube-system
 kubectl get pods -n kube-system -l component=kube-scheduler
 
-# Проверка scheduler конфигурации
-kubectl get configmap -n kube-system kube-scheduler-config -o yaml
+# Конфигурация scheduler
+kubectl get configmap -n kube-system | grep scheduler
 
-# Проверка scheduler logs
+# Scheduler логи
 kubectl logs -n kube-system -l component=kube-scheduler
-
-# Проверка scheduler metrics
-kubectl get --raw /metrics | grep scheduler
 ```
 
-### 🔧 Создание Custom Scheduler Plugin
-
-#### 1. **Простой Custom Plugin**
-```go
-// custom-scheduler-plugin.go
-package main
-
-import (
-    "context"
-    "fmt"
-    "math"
-    
-    v1 "k8s.io/api/core/v1"
-    "k8s.io/apimachinery/pkg/runtime"
-    "k8s.io/kubernetes/pkg/scheduler/framework"
-)
-
-// CustomPlugin реализует custom scheduling логику
-type CustomPlugin struct {
-    handle framework.Handle
-}
-
-// Name возвращает имя plugin'а
-func (cp *CustomPlugin) Name() string {
-    return "CustomPlugin"
-}
-
-// Score реализует scoring логику
-func (cp *CustomPlugin) Score(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (int64, *framework.Status) {
-    // Получение информации об узле
-    nodeInfo, err := cp.handle.SnapshotSharedLister().NodeInfos().Get(nodeName)
-    if err != nil {
-        return 0, framework.NewStatus(framework.Error, fmt.Sprintf("getting node %q from Snapshot: %v", nodeName, err))
-    }
-    
-    node := nodeInfo.Node()
-    if node == nil {
-        return 0, framework.NewStatus(framework.Error, fmt.Sprintf("node %q not found", nodeName))
-    }
-    
-    // Custom scoring логика
-    score := cp.calculateCustomScore(pod, node, nodeInfo)
-    
-    return score, nil
-}
-
-// ScoreExtensions возвращает score extensions
-func (cp *CustomPlugin) ScoreExtensions() framework.ScoreExtensions {
-    return cp
-}
-
-// NormalizeScore нормализует scores
-func (cp *CustomPlugin) NormalizeScore(ctx context.Context, state *framework.CycleState, pod *v1.Pod, scores framework.NodeScoreList) *framework.Status {
-    var highest int64 = 0
-    for _, nodeScore := range scores {
-        if nodeScore.Score > highest {
-            highest = nodeScore.Score
-        }
-    }
-    
-    if highest == 0 {
-        return nil
-    }
-    
-    // Нормализация к шкале 0-100
-    for i, nodeScore := range scores {
-        scores[i].Score = nodeScore.Score * framework.MaxNodeScore / highest
-    }
-    
-    return nil
-}
-
-// calculateCustomScore реализует custom scoring алгоритм
-func (cp *CustomPlugin) calculateCustomScore(pod *v1.Pod, node *v1.Node, nodeInfo *framework.NodeInfo) int64 {
-    // Пример: предпочтение узлов с меньшей загрузкой CPU
-    allocatedCPU := nodeInfo.Allocatable.MilliCPU - nodeInfo.Requested.MilliCPU
-    totalCPU := nodeInfo.Allocatable.MilliCPU
-    
-    if totalCPU == 0 {
-        return 0
-    }
-    
-    // Чем больше свободного CPU, тем выше score
-    cpuUtilization := float64(allocatedCPU) / float64(totalCPU)
-    score := int64(cpuUtilization * 100)
-    
-    // Дополнительные факторы
-    if hasCustomLabel(node, "preferred-node") {
-        score += 20
-    }
-    
-    if hasGPU(node) && needsGPU(pod) {
-        score += 30
-    }
-    
-    return score
-}
-
-// hasCustomLabel проверяет наличие custom label
-func hasCustomLabel(node *v1.Node, label string) bool {
-    _, exists := node.Labels[label]
-    return exists
-}
-
-// hasGPU проверяет наличие GPU на узле
-func hasGPU(node *v1.Node) bool {
-    _, exists := node.Status.Capacity["nvidia.com/gpu"]
-    return exists
-}
-
-// needsGPU проверяет, нужен ли GPU для pod'а
-func needsGPU(pod *v1.Pod) bool {
-    for _, container := range pod.Spec.Containers {
-        if _, exists := container.Resources.Requests["nvidia.com/gpu"]; exists {
-            return true
-        }
-    }
-    return false
-}
-
-// Filter реализует filtering логику
-func (cp *CustomPlugin) Filter(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeInfo *framework.NodeInfo) *framework.Status {
-    node := nodeInfo.Node()
-    if node == nil {
-        return framework.NewStatus(framework.Error, "node not found")
-    }
-    
-    // Custom filtering логика
-    if !cp.customFilterCheck(pod, node) {
-        return framework.NewStatus(framework.Unschedulable, "custom filter failed")
-    }
-    
-    return nil
-}
-
-// customFilterCheck реализует custom filtering
-func (cp *CustomPlugin) customFilterCheck(pod *v1.Pod, node *v1.Node) bool {
-    // Пример: проверка custom requirements
-    if podRequirement, exists := pod.Annotations["custom-requirement"]; exists {
-        if nodeCapability, exists := node.Labels["custom-capability"]; exists {
-            return podRequirement == nodeCapability
-        }
-        return false
-    }
-    
-    return true
-}
-
-// New создает новый instance plugin'а
-func New(obj runtime.Object, h framework.Handle) (framework.Plugin, error) {
-    return &CustomPlugin{handle: h}, nil
-}
-```
-
-#### 2. **Plugin Configuration**
-```yaml
-# scheduler-config.yaml
-apiVersion: kubescheduler.config.k8s.io/v1beta3
-kind: KubeSchedulerConfiguration
-profiles:
-- schedulerName: custom-scheduler
-  plugins:
-    score:
-      enabled:
-      - name: CustomPlugin
-      disabled:
-      - name: NodeResourcesFit  # Отключаем default plugin
-    filter:
-      enabled:
-      - name: CustomPlugin
-  pluginConfig:
-  - name: CustomPlugin
-    args:
-      customParameter: "value"
-      weights:
-        cpuWeight: 70
-        memoryWeight: 20
-        customWeight: 10
----
-# Deployment для custom scheduler
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: custom-scheduler
-  namespace: kube-system
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: custom-scheduler
-  template:
-    metadata:
-      labels:
-        app: custom-scheduler
-    spec:
-      serviceAccountName: custom-scheduler
-      containers:
-      - name: kube-scheduler
-        image: k8s.gcr.io/kube-scheduler:v1.28.0
-        command:
-        - kube-scheduler
-        - --config=/etc/kubernetes/scheduler-config.yaml
-        - --v=2
-        volumeMounts:
-        - name: config
-          mountPath: /etc/kubernetes
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
-            memory: 512Mi
-      volumes:
-      - name: config
-        configMap:
-          name: custom-scheduler-config
----
-# ServiceAccount для custom scheduler
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: custom-scheduler
-  namespace: kube-system
----
-# ClusterRoleBinding для custom scheduler
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: custom-scheduler
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: system:kube-scheduler
-subjects:
-- kind: ServiceAccount
-  name: custom-scheduler
-  namespace: kube-system
-```
-
-### 🔧 Практические примеры plugins
-
-#### 1. **GPU Affinity Plugin**
-```go
-// gpu-affinity-plugin.go
-package main
-
-import (
-    "context"
-    "strconv"
-    
-    v1 "k8s.io/api/core/v1"
-    "k8s.io/kubernetes/pkg/scheduler/framework"
-)
-
-type GPUAffinityPlugin struct {
-    handle framework.Handle
-}
-
-func (gap *GPUAffinityPlugin) Name() string {
-    return "GPUAffinityPlugin"
-}
-
-func (gap *GPUAffinityPlugin) Score(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (int64, *framework.Status) {
-    nodeInfo, err := gap.handle.SnapshotSharedLister().NodeInfos().Get(nodeName)
-    if err != nil {
-        return 0, framework.NewStatus(framework.Error, err.Error())
-    }
-    
-    node := nodeInfo.Node()
-    
-    // Проверяем, нужен ли GPU для pod'а
-    gpuRequest := gap.getGPURequest(pod)
-    if gpuRequest == 0 {
-        return 50, nil // Нейтральный score для pod'ов без GPU
-    }
-    
-    // Получаем доступные GPU на узле
-    availableGPU := gap.getAvailableGPU(node, nodeInfo)
-    
-    if availableGPU >= gpuRequest {
-        // Предпочитаем узлы с большим количеством доступных GPU
-        score := int64(float64(availableGPU) / float64(gpuRequest) * 100)
-        if score > 100 {
-            score = 100
-        }
-        return score, nil
-    }
-    
-    return 0, nil // Недостаточно GPU
-}
-
-func (gap *GPUAffinityPlugin) getGPURequest(pod *v1.Pod) int64 {
-    var totalGPU int64
-    for _, container := range pod.Spec.Containers {
-        if gpuQuantity, exists := container.Resources.Requests["nvidia.com/gpu"]; exists {
-            totalGPU += gpuQuantity.Value()
-        }
-    }
-    return totalGPU
-}
-
-func (gap *GPUAffinityPlugin) getAvailableGPU(node *v1.Node, nodeInfo *framework.NodeInfo) int64 {
-    totalGPU, exists := node.Status.Capacity["nvidia.com/gpu"]
-    if !exists {
-        return 0
-    }
-    
-    allocatedGPU := nodeInfo.Requested.ScalarResources["nvidia.com/gpu"]
-    return totalGPU.Value() - allocatedGPU
-}
-
-func (gap *GPUAffinityPlugin) ScoreExtensions() framework.ScoreExtensions {
-    return gap
-}
-
-func (gap *GPUAffinityPlugin) NormalizeScore(ctx context.Context, state *framework.CycleState, pod *v1.Pod, scores framework.NodeScoreList) *framework.Status {
-    return nil // Используем default нормализацию
-}
-```
-
-#### 2. **Cost Optimization Plugin**
-```go
-// cost-optimization-plugin.go
-package main
-
-import (
-    "context"
-    "strconv"
-    
-    v1 "k8s.io/api/core/v1"
-    "k8s.io/kubernetes/pkg/scheduler/framework"
-)
-
-type CostOptimizationPlugin struct {
-    handle framework.Handle
-}
-
-func (cop *CostOptimizationPlugin) Name() string {
-    return "CostOptimizationPlugin"
-}
-
-func (cop *CostOptimizationPlugin) Score(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (int64, *framework.Status) {
-    nodeInfo, err := cop.handle.SnapshotSharedLister().NodeInfos().Get(nodeName)
-    if err != nil {
-        return 0, framework.NewStatus(framework.Error, err.Error())
-    }
-    
-    node := nodeInfo.Node()
-    
-    // Получаем стоимость узла из labels
-    costPerHour := cop.getNodeCostPerHour(node)
-    if costPerHour == 0 {
-        return 50, nil // Нейтральный score если стоимость неизвестна
-    }
-    
-    // Рассчитываем эффективность использования ресурсов
-    efficiency := cop.calculateResourceEfficiency(pod, nodeInfo)
-    
-    // Чем ниже стоимость и выше эффективность, тем выше score
-    score := int64((1.0 / costPerHour) * efficiency * 100)
-    if score > 100 {
-        score = 100
-    }
-    
-    return score, nil
-}
-
-func (cop *CostOptimizationPlugin) getNodeCostPerHour(node *v1.Node) float64 {
-    if costStr, exists := node.Labels["node.kubernetes.io/cost-per-hour"]; exists {
-        if cost, err := strconv.ParseFloat(costStr, 64); err == nil {
-            return cost
-        }
-    }
-    
-    // Default стоимость на основе instance type
-    if instanceType, exists := node.Labels["node.kubernetes.io/instance-type"]; exists {
-        return cop.getDefaultCost(instanceType)
-    }
-    
-    return 0
-}
-
-func (cop *CostOptimizationPlugin) getDefaultCost(instanceType string) float64 {
-    // Примерные стоимости для разных типов инстансов
-    costs := map[string]float64{
-        "t3.micro":   0.0104,
-        "t3.small":   0.0208,
-        "t3.medium":  0.0416,
-        "t3.large":   0.0832,
-        "m5.large":   0.096,
-        "m5.xlarge":  0.192,
-        "c5.large":   0.085,
-        "c5.xlarge":  0.17,
-    }
-    
-    if cost, exists := costs[instanceType]; exists {
-        return cost
-    }
-    
-    return 0.1 // Default стоимость
-}
-
-func (cop *CostOptimizationPlugin) calculateResourceEfficiency(pod *v1.Pod, nodeInfo *framework.NodeInfo) float64 {
-    // Рассчитываем, насколько эффективно pod использует ресурсы узла
-    podCPU := cop.getPodCPURequest(pod)
-    podMemory := cop.getPodMemoryRequest(pod)
-    
-    nodeCPU := nodeInfo.Allocatable.MilliCPU
-    nodeMemory := nodeInfo.Allocatable.Memory
-    
-    if nodeCPU == 0 || nodeMemory == 0 {
-        return 0
-    }
-    
-    cpuRatio := float64(podCPU) / float64(nodeCPU)
-    memoryRatio := float64(podMemory) / float64(nodeMemory)
-    
-    // Эффективность = среднее использование ресурсов
-    efficiency := (cpuRatio + memoryRatio) / 2.0
-    
-    // Предпочитаем более высокое использование ресурсов
-    return efficiency
-}
-
-func (cop *CostOptimizationPlugin) getPodCPURequest(pod *v1.Pod) int64 {
-    var totalCPU int64
-    for _, container := range pod.Spec.Containers {
-        if cpuQuantity, exists := container.Resources.Requests[v1.ResourceCPU]; exists {
-            totalCPU += cpuQuantity.MilliValue()
-        }
-    }
-    return totalCPU
-}
-
-func (cop *CostOptimizationPlugin) getPodMemoryRequest(pod *v1.Pod) int64 {
-    var totalMemory int64
-    for _, container := range pod.Spec.Containers {
-        if memQuantity, exists := container.Resources.Requests[v1.ResourceMemory]; exists {
-            totalMemory += memQuantity.Value()
-        }
-    }
-    return totalMemory
-}
-
-func (cop *CostOptimizationPlugin) ScoreExtensions() framework.ScoreExtensions {
-    return cop
-}
-
-func (cop *CostOptimizationPlugin) NormalizeScore(ctx context.Context, state *framework.CycleState, pod *v1.Pod, scores framework.NodeScoreList) *framework.Status {
-    return nil
-}
-```
-
-### 📊 Мониторинг и отладка
-
-#### 1. **Scheduler Metrics**
+### **2. Планирование ArgoCD Pod'ов:**
 ```bash
-#!/bin/bash
-# scheduler-monitoring.sh
+# ArgoCD Pod'ы и их размещение
+kubectl get pods -n argocd -o wide
 
-echo "📊 Мониторинг Kubernetes Scheduler"
+# События планирования ArgoCD
+kubectl get events -n argocd --field-selector reason=Scheduled
 
-# Получение scheduler metrics
-get_scheduler_metrics() {
-    echo "=== Scheduler Metrics ==="
-    
-    # Основные метрики планирования
-    kubectl get --raw /metrics | grep -E "(scheduler_|scheduling_)"
-    
-    # Метрики по plugin'ам
-    kubectl get --raw /metrics | grep "scheduler_plugin"
-    
-    # Метрики производительности
-    kubectl get --raw /metrics | grep "scheduler_scheduling_duration"
-}
-
-# Анализ scheduler events
-analyze_scheduler_events() {
-    echo "=== Scheduler Events ==="
-    
-    # События планирования
-    kubectl get events --all-namespaces --field-selector reason=Scheduled
-    
-    # События неудачного планирования
-    kubectl get events --all-namespaces --field-selector reason=FailedScheduling
-    
-    # События preemption
-    kubectl get events --all-namespaces --field-selector reason=Preempted
-}
-
-# Проверка scheduler performance
-check_scheduler_performance() {
-    echo "=== Scheduler Performance ==="
-    
-    # Время планирования
-    kubectl get --raw /metrics | grep "scheduler_scheduling_duration_seconds"
-    
-    # Количество pending pod'ов
-    kubectl get pods --all-namespaces --field-selector status.phase=Pending
-    
-    # Scheduler throughput
-    kubectl get --raw /metrics | grep "scheduler_pod_scheduling_attempts_total"
-}
-
-# Отладка конкретного pod'а
-debug_pod_scheduling() {
-    local pod_name=$1
-    local namespace=$2
-    
-    echo "=== Debugging Pod Scheduling: $namespace/$pod_name ==="
-    
-    # Информация о pod'е
-    kubectl describe pod $pod_name -n $namespace
-    
-    # События связанные с pod'ом
-    kubectl get events -n $namespace --field-selector involvedObject.name=$pod_name
-    
-    # Проверка node selector и affinity
-    kubectl get pod $pod_name -n $namespace -o yaml | grep -A 10 -E "(nodeSelector|affinity)"
-    
-    # Проверка доступных узлов
-    kubectl get nodes -o wide
-    
-    # Проверка taints и tolerations
-    kubectl describe nodes | grep -A 5 Taints
-}
-
-case "$1" in
-    metrics)
-        get_scheduler_metrics
-        ;;
-    events)
-        analyze_scheduler_events
-        ;;
-    performance)
-        check_scheduler_performance
-        ;;
-    debug)
-        debug_pod_scheduling $2 $3
-        ;;
-    all)
-        get_scheduler_metrics
-        analyze_scheduler_events
-        check_scheduler_performance
-        ;;
-    *)
-        echo "Использование: $0 {metrics|events|performance|debug|all} [pod-name] [namespace]"
-        exit 1
-        ;;
-esac
+# Node affinity для ArgoCD
+kubectl describe deployment argocd-server -n argocd | grep -A 5 Affinity
 ```
 
-### 🔧 Развертывание Custom Scheduler
-
-#### 1. **Скрипт развертывания**
+### **3. Мониторинг Pod'ы и scheduler:**
 ```bash
-#!/bin/bash
-# deploy-custom-scheduler.sh
+# Prometheus Pod'ы на разных Node'ах
+kubectl get pods -n monitoring -o wide
 
-echo "🚀 Развертывание Custom Scheduler"
+# Scheduler решения для Prometheus
+kubectl describe pod -n monitoring -l app=prometheus
 
-# Сборка custom scheduler
-build_scheduler() {
-    echo "🔨 Сборка custom scheduler"
-    
-    # Создание Dockerfile
-    cat <<EOF > Dockerfile
-FROM golang:1.19-alpine AS builder
+# Resource requests влияющие на планирование
+kubectl describe pod -n monitoring -l app=prometheus | grep -A 10 Requests
+```
 
-WORKDIR /app
-COPY . .
-RUN go mod tidy
-RUN CGO_ENABLED=0 GOOS=linux go build -o custom-scheduler .
+### **4. Pending Pod'ы:**
+```bash
+# Поиск pending Pod'ов
+kubectl get pods --all-namespaces --field-selector status.phase=Pending
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=builder /app/custom-scheduler .
-CMD ["./custom-scheduler"]
-EOF
-    
-    # Сборка образа
-    docker build -t custom-scheduler:latest .
-    
-    # Push в registry (если нужно)
-    # docker tag custom-scheduler:latest your-registry/custom-scheduler:latest
-    # docker push your-registry/custom-scheduler:latest
-    
-    echo "✅ Scheduler собран"
-}
+# Причины неудачного планирования
+kubectl describe pod <pending-pod> | grep -A 10 Events
 
-# Создание конфигурации
-create_config() {
-    echo "⚙️ Создание конфигурации"
-    
-    kubectl create configmap custom-scheduler-config \
-        --from-file=scheduler-config.yaml \
-        -n kube-system \
-        --dry-run=client -o yaml | kubectl apply -f -
-    
-    echo "✅ Конфигурация создана"
-}
+# Scheduler events
+kubectl get events --all-namespaces --field-selector reason=FailedScheduling
+```
 
-# Развертывание scheduler
-deploy_scheduler() {
-    echo "🚀 Развертывание scheduler"
-    
-    kubectl apply -f - <<EOF
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: custom-scheduler
-  namespace: kube-system
-  labels:
-    app: custom-scheduler
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: custom-scheduler
-  template:
-    metadata:
-      labels:
-        app: custom-scheduler
-    spec:
-      serviceAccountName: custom-scheduler
-      containers:
-      - name: custom-scheduler
-        image: custom-scheduler:latest
-        imagePullPolicy: IfNotPresent
-        command:
-        - ./custom-scheduler
-        - --config=/etc/kubernetes/scheduler-config.yaml
-        - --v=2
-        volumeMounts:
-        - name: config
-          mountPath: /etc/kubernetes
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 500m
-            memory: 512Mi
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 10259
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /healthz
-            port: 10259
-          initialDelaySeconds: 5
-          periodSeconds: 5
-      volumes:
-      - name: config
-        configMap:
-          name: custom-scheduler-config
-EOF
-    
-    echo "✅ Scheduler развернут"
-}
+## 🔄 **Extension Points в Scheduler Framework:**
 
-# Тестирование scheduler
-test_scheduler() {
-    echo "🧪 Тестирование custom scheduler"
-    
-    # Создание test pod'а
-    kubectl apply -f - <<EOF
+### **1. Scheduling Cycle:**
+```bash
+# QueueSort - сортировка Pod'ов в очереди
+# PreFilter - предварительная фильтрация
+# Filter - фильтрация Node'ов
+# PostFilter - действия при отсутствии подходящих Node'ов
+# PreScore - подготовка к scoring
+# Score - оценка Node'ов
+# NormalizeScore - нормализация scores
+# Reserve - резервирование ресурсов
+
+# Проверка scheduler метрик
+kubectl get --raw /metrics | grep scheduler_plugin
+```
+
+### **2. Binding Cycle:**
+```bash
+# Permit - разрешение binding
+# PreBind - подготовка к binding
+# Bind - привязка Pod'а к Node
+# PostBind - действия после binding
+# Unreserve - освобождение ресурсов при ошибке
+
+# Binding события
+kubectl get events --all-namespaces --field-selector reason=Binding
+```
+
+## 🔧 **Демонстрация работы Scheduler Framework:**
+
+### **1. Создание Pod'а с особыми требованиями:**
+```bash
+# Pod с node selector
+cat << EOF | kubectl apply -f -
 apiVersion: v1
 kind: Pod
 metadata:
-  name: test-custom-scheduler
-  namespace: default
+  name: test-scheduler-framework
 spec:
-  schedulerName: custom-scheduler
+  nodeSelector:
+    kubernetes.io/os: linux
   containers:
   - name: test
     image: nginx:alpine
@@ -823,46 +120,307 @@ spec:
       requests:
         cpu: 100m
         memory: 128Mi
-  restartPolicy: Never
 EOF
-    
-    # Ожидание планирования
-    echo "Ожидание планирования pod'а..."
-    kubectl wait --for=condition=PodScheduled pod/test-custom-scheduler --timeout=60s
-    
-    # Проверка результата
-    kubectl describe pod test-custom-scheduler | grep -E "(Scheduled|Events)"
-    
-    # Очистка
-    kubectl delete pod test-custom-scheduler
-    
-    echo "✅ Тестирование завершено"
-}
 
-case "$1" in
-    build)
-        build_scheduler
-        ;;
-    config)
-        create_config
-        ;;
-    deploy)
-        deploy_scheduler
-        ;;
-    test)
-        test_scheduler
-        ;;
-    all)
-        build_scheduler
-        create_config
-        deploy_scheduler
-        test_scheduler
-        ;;
-    *)
-        echo "Использование: $0 {build|config|deploy|test|all}"
-        exit 1
-        ;;
-esac
+# Отслеживание планирования
+kubectl describe pod test-scheduler-framework | grep -A 10 Events
+
+# Scheduler принял решение
+kubectl get pod test-scheduler-framework -o wide
+
+# Очистка
+kubectl delete pod test-scheduler-framework
 ```
 
-Kubernetes Scheduler Framework предоставляет мощную и гибкую архитектуру для создания custom scheduling логики, позволяя оптимизировать размещение workload'ов под специфические требования приложений и инфраструктуры.
+### **2. Pod с affinity правилами:**
+```bash
+# Pod с node affinity
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-affinity
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: kubernetes.io/arch
+            operator: In
+            values:
+            - amd64
+  containers:
+  - name: test
+    image: nginx:alpine
+EOF
+
+# Scheduler обработал affinity
+kubectl describe pod test-affinity | grep -A 5 "Node-Selectors"
+
+# Результат планирования
+kubectl get pod test-affinity -o wide
+
+# Очистка
+kubectl delete pod test-affinity
+```
+
+### **3. Resource-based scheduling:**
+```bash
+# Pod с большими resource requests
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-resources
+spec:
+  containers:
+  - name: test
+    image: nginx:alpine
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+EOF
+
+# Scheduler учел resource requirements
+kubectl describe pod test-resources | grep -A 10 "QoS Class"
+
+# Node с достаточными ресурсами
+kubectl get pod test-resources -o wide
+
+# Очистка
+kubectl delete pod test-resources
+```
+
+## 📈 **Мониторинг Scheduler Framework:**
+
+### **1. Scheduler метрики:**
+```bash
+# Port forward к Prometheus
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80
+
+# Scheduler метрики в Prometheus:
+# scheduler_scheduling_duration_seconds - время планирования
+# scheduler_plugin_execution_duration_seconds - время выполнения plugins
+# scheduler_pending_pods - количество pending Pod'ов
+# scheduler_schedule_attempts_total - попытки планирования
+```
+
+### **2. Scheduler performance:**
+```bash
+# Время планирования Pod'ов
+kubectl get --raw /metrics | grep "scheduler_scheduling_duration_seconds"
+
+# Производительность plugins
+kubectl get --raw /metrics | grep "scheduler_plugin_execution"
+
+# Throughput scheduler'а
+kubectl get --raw /metrics | grep "scheduler_schedule_attempts"
+```
+
+### **3. Анализ планирования:**
+```bash
+# События планирования
+kubectl get events --all-namespaces --field-selector reason=Scheduled --sort-by='.lastTimestamp'
+
+# Неудачные попытки
+kubectl get events --all-namespaces --field-selector reason=FailedScheduling
+
+# Preemption события
+kubectl get events --all-namespaces --field-selector reason=Preempted
+```
+
+## 🏭 **Scheduler Framework в вашем HA кластере:**
+
+### **1. High Availability Scheduler:**
+```bash
+# Scheduler работает в HA режиме
+kubectl get pods -n kube-system -l component=kube-scheduler
+
+# Leader election для scheduler
+kubectl describe lease -n kube-system kube-scheduler
+
+# Scheduler на разных control plane Node'ах
+kubectl get pods -n kube-system -l component=kube-scheduler -o wide
+```
+
+### **2. ArgoCD и Scheduler Framework:**
+```bash
+# ArgoCD Server размещение
+kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-server -o wide
+
+# Scheduler учел HA требования ArgoCD
+kubectl describe deployment argocd-server -n argocd | grep -A 5 "Pod Template"
+
+# Anti-affinity для ArgoCD HA
+kubectl get deployment argocd-server -n argocd -o yaml | grep -A 10 affinity
+```
+
+### **3. Мониторинг и Scheduler:**
+```bash
+# Prometheus Pod'ы распределены по Node'ам
+kubectl get pods -n monitoring -o wide
+
+# Scheduler обеспечил распределение нагрузки
+kubectl describe statefulset prometheus-server -n monitoring
+
+# Resource-based планирование для мониторинга
+kubectl describe pod -n monitoring -l app=prometheus | grep -A 5 Requests
+```
+
+## 🔄 **Default Plugins в Scheduler Framework:**
+
+### **1. Filtering Plugins:**
+```bash
+# NodeResourcesFit - проверка ресурсов
+# NodeAffinity - node affinity правила
+# PodTopologySpread - распределение Pod'ов
+# TaintToleration - taints и tolerations
+
+# Проверка Node ресурсов
+kubectl describe nodes | grep -A 5 "Allocated resources"
+```
+
+### **2. Scoring Plugins:**
+```bash
+# NodeResourcesFit - предпочтение Node'ов с ресурсами
+# ImageLocality - предпочтение Node'ов с образами
+# InterPodAffinity - pod affinity scoring
+# NodeAffinity - node affinity scoring
+
+# Распределение Pod'ов по Node'ам
+kubectl get pods --all-namespaces -o wide | awk '{print $8}' | sort | uniq -c
+```
+
+### **3. Binding Plugins:**
+```bash
+# DefaultBinder - стандартный binding
+# VolumeBinding - binding с учетом volumes
+
+# Volume binding события
+kubectl get events --all-namespaces --field-selector reason=VolumeBinding
+```
+
+## 🎯 **Архитектура Scheduler Framework:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                Kubernetes Scheduler Framework              │
+├─────────────────────────────────────────────────────────────┤
+│  Scheduling Queue                                           │
+│  ├── Priority Queue (Pod priority)                         │
+│  ├── QueueSort Plugin                                      │
+│  └── Pod ordering logic                                    │
+├─────────────────────────────────────────────────────────────┤
+│  Scheduling Cycle                                           │
+│  ├── PreFilter → Filter → PostFilter                      │
+│  ├── PreScore → Score → NormalizeScore                     │
+│  └── Reserve (resource reservation)                        │
+├─────────────────────────────────────────────────────────────┤
+│  Binding Cycle                                              │
+│  ├── Permit (wait/approve binding)                         │
+│  ├── PreBind → Bind → PostBind                            │
+│  └── Unreserve (cleanup on failure)                       │
+├─────────────────────────────────────────────────────────────┤
+│  Plugin Manager                                             │
+│  ├── Plugin Registry                                       │
+│  ├── Plugin Configuration                                  │
+│  ├── Extension Point Handlers                              │
+│  └── Plugin Lifecycle Management                           │
+├─────────────────────────────────────────────────────────────┤
+│  Default Plugins                                            │
+│  ├── NodeResourcesFit, NodeAffinity                       │
+│  ├── PodTopologySpread, TaintToleration                   │
+│  ├── ImageLocality, InterPodAffinity                      │
+│  └── VolumeBinding, DefaultBinder                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 🔧 **Конфигурация Scheduler Framework:**
+
+### **1. Scheduler Configuration:**
+```bash
+# Конфигурация scheduler
+kubectl get configmap -n kube-system | grep scheduler
+
+# Profiles и plugins
+kubectl describe configmap kube-scheduler-config -n kube-system
+
+# Scheduler параметры
+kubectl logs -n kube-system -l component=kube-scheduler | grep "Starting"
+```
+
+### **2. Plugin Configuration:**
+```bash
+# Включенные plugins
+kubectl get --raw /metrics | grep "scheduler_plugin" | head -10
+
+# Plugin weights и параметры
+kubectl describe configmap kube-scheduler-config -n kube-system | grep -A 10 plugins
+```
+
+## 🚨 **Troubleshooting Scheduler Framework:**
+
+### **1. Pod не планируется:**
+```bash
+# Проверить pending Pod'ы
+kubectl get pods --all-namespaces --field-selector status.phase=Pending
+
+# Причины неудачного планирования
+kubectl describe pod <pending-pod> | grep -A 20 Events
+
+# Scheduler логи
+kubectl logs -n kube-system -l component=kube-scheduler | grep ERROR
+```
+
+### **2. Медленное планирование:**
+```bash
+# Scheduler performance метрики
+kubectl get --raw /metrics | grep "scheduler_scheduling_duration"
+
+# Plugin performance
+kubectl get --raw /metrics | grep "scheduler_plugin_execution_duration"
+
+# Queue depth
+kubectl get --raw /metrics | grep "scheduler_pending_pods"
+```
+
+### **3. Неправильное размещение:**
+```bash
+# Проверить Node affinity
+kubectl describe pod <pod-name> | grep -A 10 "Node-Selectors"
+
+# Проверить resource requests
+kubectl describe pod <pod-name> | grep -A 5 Requests
+
+# Проверить taints и tolerations
+kubectl describe nodes | grep -A 3 Taints
+```
+
+## 🎯 **Best Practices для Scheduler Framework:**
+
+### **1. Мониторинг:**
+- Отслеживайте scheduler метрики
+- Мониторьте время планирования
+- Проверяйте pending Pod'ы
+
+### **2. Конфигурация:**
+- Используйте подходящие plugins
+- Настраивайте plugin weights
+- Тестируйте custom plugins
+
+### **3. Производительность:**
+- Оптимизируйте resource requests
+- Используйте node affinity разумно
+- Избегайте сложных scheduling constraints
+
+### **4. Отладка:**
+- Анализируйте scheduler события
+- Проверяйте plugin execution time
+- Мониторьте scheduler throughput
+
+**Scheduler Framework — это мощная архитектура для создания intelligent scheduling решений в Kubernetes!**
