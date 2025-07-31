@@ -1,412 +1,490 @@
 # 154. Как оптимизировать производительность etcd?
 
-## 🎯 Вопрос
-Как оптимизировать производительность etcd?
+## 🎯 **Что такое оптимизация производительности etcd?**
 
-## 💡 Ответ
+**Оптимизация производительности etcd** — это комплекс мер по улучшению скорости работы ключевого компонента Kubernetes, который хранит состояние кластера. etcd является критически важным для производительности всего кластера, поэтому его оптимизация напрямую влияет на отзывчивость API Server и стабильность кластера.
 
-etcd является критически важным компонентом Kubernetes, и его производительность напрямую влияет на производительность всего кластера. Оптимизация etcd включает настройку хранилища, сети, памяти и конфигурационных параметров.
+## 🏗️ **Основные компоненты производительности etcd:**
 
-### 🏗️ Архитектура производительности etcd
+### **1. Storage I/O (Дисковый ввод-вывод)**
+- SSD диски с высокими IOPS (>3000)
+- Низкая задержка диска (<10ms для 99-го процентиля)
+- Оптимизированная файловая система
 
-#### 1. **Схема компонентов производительности etcd**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    etcd Performance                        │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │   Storage   │  │   Network   │  │   Memory    │         │
-│  │     I/O     │  │  Latency    │  │   Usage     │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │    CPU      │  │ Compaction  │  │ Clustering  │         │
-│  │   Usage     │  │  Strategy   │  │   Topology  │         │
-│  └─────────────┘  └─────────────┘  └─────────────┘         │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. Network Latency (Сетевая задержка)**
+- RTT между узлами etcd (<1ms в одном ЦОД)
+- Высокая пропускная способность (>100 Mbps)
+- Оптимизированные сетевые буферы
 
-#### 2. **Ключевые метрики производительности**
-```yaml
-# Критические метрики etcd
-etcd_performance_metrics:
-  latency_metrics:
-    - "etcd_disk_wal_fsync_duration_seconds"
-    - "etcd_disk_backend_commit_duration_seconds"
-    - "etcd_network_peer_round_trip_time_seconds"
-    - "etcd_request_duration_seconds"
-  
-  throughput_metrics:
-    - "etcd_server_proposals_applied_total"
-    - "etcd_server_proposals_committed_total"
-    - "etcd_server_proposals_pending"
-    - "etcd_mvcc_put_total"
-  
-  resource_metrics:
-    - "etcd_mvcc_db_total_size_in_bytes"
-    - "process_resident_memory_bytes"
-    - "etcd_server_quota_backend_bytes"
-    - "etcd_cluster_version"
-```
+### **3. Memory Management (Управление памятью)**
+- Достаточный объем RAM (минимум 8GB)
+- Настройка квот базы данных
+- Управление фрагментацией
 
-### 📊 Примеры из нашего кластера
+### **4. Compaction Strategy (Стратегия компактификации)**
+- Автоматическая компактификация
+- Регулярная дефрагментация
+- Мониторинг размера базы данных
 
-#### Проверка производительности etcd:
+## 📊 **Практические примеры из вашего HA кластера:**
+
+### **1. Проверка состояния etcd:**
 ```bash
-# Проверка состояния etcd
+# Статус etcd подов в кластере
 kubectl get pods -n kube-system | grep etcd
 
-# Проверка метрик производительности
-kubectl exec -n kube-system etcd-<node-name> -- etcdctl endpoint status --write-out=table
+# Проверка состояния etcd кластера
+kubectl exec -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') -- etcdctl endpoint status --write-out=table
 
-# Проверка задержек
-kubectl exec -n kube-system etcd-<node-name> -- etcdctl check perf
+# Проверка здоровья etcd
+kubectl exec -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') -- etcdctl endpoint health --write-out=table
+
+# Информация о членах кластера
+kubectl exec -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') -- etcdctl member list --write-out=table
 ```
 
-#### Анализ размера базы данных:
+### **2. Анализ производительности etcd:**
 ```bash
 # Размер базы данных etcd
-kubectl exec -n kube-system etcd-<node-name> -- etcdctl endpoint status --write-out=json | jq '.[] | .Status.dbSize'
+kubectl exec -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') -- etcdctl endpoint status --write-out=json | jq '.[] | "DB Size: \(.Status.dbSize / 1024 / 1024)MB, In Use: \(.Status.dbSizeInUse / 1024 / 1024)MB"'
 
-# Проверка фрагментации
-kubectl exec -n kube-system etcd-<node-name> -- etcdctl defrag --cluster
+# Проверка производительности
+kubectl exec -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') -- etcdctl check perf
+
+# Анализ фрагментации
+kubectl exec -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') -- etcdctl endpoint status --write-out=json | jq '.[] | "Fragmentation: \((.Status.dbSize - .Status.dbSizeInUse) / .Status.dbSize * 100)%"'
 ```
 
-### 💾 Оптимизация хранилища
-
-#### 1. **Настройка дискового I/O**
-```yaml
-# Оптимизация etcd для SSD
-etcd_storage_optimization:
-  disk_requirements:
-    type: "SSD (предпочтительно NVMe)"
-    iops: "> 3000 IOPS"
-    latency: "< 10ms для 99-го процентиля"
-    bandwidth: "> 100 MB/s"
-  
-  filesystem_settings:
-    filesystem: "ext4 или xfs"
-    mount_options: "noatime,nodiratime"
-    scheduler: "noop или deadline для SSD"
-  
-  etcd_flags:
-    - "--quota-backend-bytes=8589934592"  # 8GB
-    - "--auto-compaction-retention=1h"
-    - "--auto-compaction-mode=periodic"
-    - "--max-request-bytes=1572864"       # 1.5MB
-```
-
-#### 2. **Конфигурация для высокой производительности**
+### **3. Мониторинг метрик etcd через Prometheus:**
 ```bash
-#!/bin/bash
-# etcd-performance-tuning.sh
+# Доступ к Prometheus для анализа etcd метрик
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
 
-echo "🔧 Настройка производительности etcd"
-
-# Оптимизация файловой системы
-echo "📁 Настройка файловой системы..."
-mount -o remount,noatime,nodiratime /var/lib/etcd
-
-# Настройка I/O scheduler для SSD
-echo noop > /sys/block/nvme0n1/queue/scheduler
-
-# Увеличение лимитов файловых дескрипторов
-echo "📊 Настройка лимитов..."
-echo "etcd soft nofile 65536" >> /etc/security/limits.conf
-echo "etcd hard nofile 65536" >> /etc/security/limits.conf
-
-# Настройка сетевых параметров
-echo "🌐 Настройка сети..."
-echo 'net.core.rmem_max = 16777216' >> /etc/sysctl.conf
-echo 'net.core.wmem_max = 16777216' >> /etc/sysctl.conf
-echo 'net.ipv4.tcp_rmem = 4096 87380 16777216' >> /etc/sysctl.conf
-echo 'net.ipv4.tcp_wmem = 4096 65536 16777216' >> /etc/sysctl.conf
-
-sysctl -p
-
-echo "✅ Настройка производительности завершена"
+# Ключевые метрики etcd:
+# etcd_disk_wal_fsync_duration_seconds - время синхронизации WAL
+# etcd_disk_backend_commit_duration_seconds - время коммита
+# etcd_request_duration_seconds - время обработки запросов
+# etcd_mvcc_db_total_size_in_bytes - размер базы данных
+# etcd_server_has_leader - наличие лидера
 ```
 
-#### 3. **Мониторинг дискового I/O**
+### **4. Проверка конфигурации etcd:**
 ```bash
-#!/bin/bash
-# etcd-io-monitoring.sh
+# Конфигурация etcd из манифеста
+kubectl get pod -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') -o yaml | grep -A 20 "command:"
 
-echo "📊 Мониторинг I/O производительности etcd"
+# Переменные окружения etcd
+kubectl exec -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') -- env | grep ETCD
 
-# Проверка задержек диска
-echo "💾 Задержки диска:"
-iostat -x 1 5 | grep -E "(Device|nvme|sda)"
-
-# Проверка использования диска etcd
-echo -e "\n📁 Использование диска etcd:"
-du -sh /var/lib/etcd
-
-# Проверка фрагментации
-echo -e "\n🔍 Проверка фрагментации:"
-kubectl exec -n kube-system etcd-$(hostname) -- etcdctl endpoint status --write-out=json | \
-jq '.[] | "DB Size: \(.Status.dbSize), DB Size in Use: \(.Status.dbSizeInUse)"'
-
-echo "✅ Мониторинг завершен"
+# Проверка версии etcd
+kubectl exec -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') -- etcdctl version
 ```
 
-### 🌐 Оптимизация сети
-
-#### 1. **Настройка сетевых параметров**
-```yaml
-# Оптимизация сети для etcd
-etcd_network_optimization:
-  cluster_topology:
-    same_datacenter: "< 1ms RTT"
-    cross_datacenter: "< 50ms RTT"
-    bandwidth: "> 100 Mbps"
-  
-  etcd_flags:
-    - "--heartbeat-interval=100"          # 100ms
-    - "--election-timeout=1000"           # 1000ms
-    - "--max-snapshots=5"
-    - "--max-wals=5"
-  
-  network_tuning:
-    tcp_keepalive: "enabled"
-    tcp_nodelay: "enabled"
-    buffer_sizes: "optimized"
-```
-
-#### 2. **Мониторинг сетевой производительности**
+### **5. Анализ событий etcd:**
 ```bash
-#!/bin/bash
-# etcd-network-monitoring.sh
+# События, связанные с etcd
+kubectl get events -n kube-system --field-selector involvedObject.name=$(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') --sort-by=.metadata.creationTimestamp
 
-echo "🌐 Мониторинг сетевой производительности etcd"
-
-# Проверка RTT между узлами etcd
-ETCD_ENDPOINTS=$(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[*].status.podIP}')
-
-for endpoint in $ETCD_ENDPOINTS; do
-    echo "📡 RTT до $endpoint:"
-    ping -c 3 $endpoint | tail -1
-done
-
-# Проверка пропускной способности
-echo -e "\n📊 Сетевая статистика:"
-kubectl exec -n kube-system etcd-$(hostname) -- netstat -i
-
-# Проверка сетевых метрик etcd
-echo -e "\n📈 Метрики сети etcd:"
-kubectl exec -n kube-system etcd-$(hostname) -- etcdctl endpoint status --write-out=json | \
-jq '.[] | "Leader: \(.Status.leader), Term: \(.Status.raftTerm)"'
-
-echo "✅ Сетевой мониторинг завершен"
+# Логи etcd для анализа производительности
+kubectl logs -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') | grep -E "slow|latency|performance" | tail -10
 ```
 
-### 🧠 Оптимизация памяти
+## 🔄 **Демонстрация оптимизации etcd:**
 
-#### 1. **Настройка использования памяти**
-```yaml
-# Оптимизация памяти etcd
-etcd_memory_optimization:
-  recommended_memory: "8GB минимум для production"
-  
-  etcd_flags:
-    - "--quota-backend-bytes=8589934592"  # 8GB квота
-    - "--auto-compaction-retention=1h"
-    - "--auto-compaction-mode=periodic"
-  
-  go_settings:
-    GOGC: "100"                           # Go GC target percentage
-    GOMEMLIMIT: "6GiB"                    # Go memory limit
-  
-  monitoring:
-    - "process_resident_memory_bytes"
-    - "go_memstats_alloc_bytes"
-    - "etcd_mvcc_db_total_size_in_bytes"
-```
-
-#### 2. **Скрипт мониторинга памяти**
+### **1. Компактификация и дефрагментация:**
 ```bash
+# Создать скрипт для компактификации etcd
+cat << 'EOF' > etcd-maintenance.sh
 #!/bin/bash
-# etcd-memory-monitoring.sh
 
-echo "🧠 Мониторинг использования памяти etcd"
+echo "🔄 Обслуживание etcd в HA кластере"
+echo "================================="
 
-# Использование памяти процессом etcd
-echo "📊 Использование памяти etcd:"
-ps aux | grep etcd | grep -v grep
+ETCD_POD=$(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}')
 
-# Размер базы данных в памяти
-echo -e "\n💾 Размер базы данных:"
-kubectl exec -n kube-system etcd-$(hostname) -- etcdctl endpoint status --write-out=json | \
-jq '.[] | "DB Size: \(.Status.dbSize / 1024 / 1024)MB, In Use: \(.Status.dbSizeInUse / 1024 / 1024)MB"'
+if [ -z "$ETCD_POD" ]; then
+    echo "❌ etcd pod не найден"
+    exit 1
+fi
 
-# Проверка фрагментации памяти
-echo -e "\n🔍 Фрагментация:"
-kubectl exec -n kube-system etcd-$(hostname) -- etcdctl endpoint status --write-out=json | \
-jq '.[] | "Fragmentation: \((.Status.dbSize - .Status.dbSizeInUse) / .Status.dbSize * 100)%"'
-
-echo "✅ Мониторинг памяти завершен"
-```
-
-### 🔄 Оптимизация компактификации
-
-#### 1. **Настройка автоматической компактификации**
-```yaml
-# Конфигурация компактификации etcd
-etcd_compaction_config:
-  auto_compaction:
-    mode: "periodic"                      # periodic или revision
-    retention: "1h"                       # Сохранять данные за последний час
-    
-  manual_compaction:
-    frequency: "daily"                    # Ежедневная ручная компактификация
-    defrag_frequency: "weekly"            # Еженедельная дефрагментация
-  
-  etcd_flags:
-    - "--auto-compaction-mode=periodic"
-    - "--auto-compaction-retention=1h"
-    - "--quota-backend-bytes=8589934592"
-```
-
-#### 2. **Скрипт автоматической компактификации**
-```bash
-#!/bin/bash
-# etcd-compaction.sh
-
-echo "🔄 Компактификация и дефрагментация etcd"
+echo "📊 Состояние до обслуживания:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl endpoint status --write-out=table
 
 # Получение текущего размера
-BEFORE_SIZE=$(kubectl exec -n kube-system etcd-$(hostname) -- etcdctl endpoint status --write-out=json | jq '.[] | .Status.dbSize')
-
-echo "📊 Размер до компактификации: $((BEFORE_SIZE / 1024 / 1024))MB"
+BEFORE_SIZE=$(kubectl exec -n kube-system $ETCD_POD -- etcdctl endpoint status --write-out=json | jq '.[] | .Status.dbSize')
+echo "💾 Размер базы до компактификации: $((BEFORE_SIZE / 1024 / 1024))MB"
 
 # Компактификация
 echo "🔄 Выполнение компактификации..."
-REVISION=$(kubectl exec -n kube-system etcd-$(hostname) -- etcdctl endpoint status --write-out=json | jq '.[] | .Status.header.revision')
-kubectl exec -n kube-system etcd-$(hostname) -- etcdctl compact $REVISION
+REVISION=$(kubectl exec -n kube-system $ETCD_POD -- etcdctl endpoint status --write-out=json | jq '.[] | .Status.header.revision')
+kubectl exec -n kube-system $ETCD_POD -- etcdctl compact $REVISION
 
-# Дефрагментация
+if [ $? -eq 0 ]; then
+    echo "✅ Компактификация выполнена успешно"
+else
+    echo "❌ Ошибка при компактификации"
+    exit 1
+fi
+
+# Дефрагментация (осторожно в продакшене!)
 echo "🔧 Выполнение дефрагментации..."
-kubectl exec -n kube-system etcd-$(hostname) -- etcdctl defrag --cluster
+kubectl exec -n kube-system $ETCD_POD -- etcdctl defrag
+
+if [ $? -eq 0 ]; then
+    echo "✅ Дефрагментация выполнена успешно"
+else
+    echo "❌ Ошибка при дефрагментации"
+fi
 
 # Проверка результата
-AFTER_SIZE=$(kubectl exec -n kube-system etcd-$(hostname) -- etcdctl endpoint status --write-out=json | jq '.[] | .Status.dbSize')
-echo "📊 Размер после компактификации: $((AFTER_SIZE / 1024 / 1024))MB"
-echo "💾 Освобождено: $(((BEFORE_SIZE - AFTER_SIZE) / 1024 / 1024))MB"
+AFTER_SIZE=$(kubectl exec -n kube-system $ETCD_POD -- etcdctl endpoint status --write-out=json | jq '.[] | .Status.dbSize')
+echo "💾 Размер базы после обслуживания: $((AFTER_SIZE / 1024 / 1024))MB"
+echo "📉 Освобождено: $(((BEFORE_SIZE - AFTER_SIZE) / 1024 / 1024))MB"
 
-echo "✅ Компактификация завершена"
+echo -e "\n📊 Состояние после обслуживания:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl endpoint status --write-out=table
+
+echo "✅ Обслуживание etcd завершено"
+EOF
+
+chmod +x etcd-maintenance.sh
 ```
 
-### 📈 Мониторинг производительности
+### **2. Мониторинг производительности etcd:**
+```bash
+# Создать скрипт мониторинга etcd
+cat << 'EOF' > etcd-performance-monitor.sh
+#!/bin/bash
 
-#### 1. **Prometheus метрики для etcd**
+echo "📊 Мониторинг производительности etcd"
+echo "===================================="
+
+ETCD_POD=$(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}')
+
+if [ -z "$ETCD_POD" ]; then
+    echo "❌ etcd pod не найден"
+    exit 1
+fi
+
+echo "🏥 Здоровье etcd кластера:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl endpoint health --write-out=table
+
+echo -e "\n📊 Статус etcd кластера:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl endpoint status --write-out=table
+
+echo -e "\n💾 Использование базы данных:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl endpoint status --write-out=json | \
+jq '.[] | "DB Size: \(.Status.dbSize / 1024 / 1024)MB, In Use: \(.Status.dbSizeInUse / 1024 / 1024)MB, Fragmentation: \((.Status.dbSize - .Status.dbSizeInUse) / .Status.dbSize * 100)%"'
+
+echo -e "\n👥 Члены кластера:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl member list --write-out=table
+
+echo -e "\n⚡ Тест производительности:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl check perf
+
+echo -e "\n📈 Ресурсы etcd pod:"
+kubectl top pod $ETCD_POD -n kube-system
+
+echo -e "\n🔍 Последние события etcd:"
+kubectl get events -n kube-system --field-selector involvedObject.name=$ETCD_POD --sort-by=.metadata.creationTimestamp | tail -5
+
+echo "✅ Мониторинг завершен"
+EOF
+
+chmod +x etcd-performance-monitor.sh
+```
+
+### **3. Анализ метрик etcd через Prometheus:**
+```bash
+# Создать скрипт для анализа метрик etcd
+cat << 'EOF' > etcd-metrics-analyzer.sh
+#!/bin/bash
+
+echo "📈 Анализ метрик etcd через Prometheus"
+echo "====================================="
+
+# Проверка доступности Prometheus
+if ! kubectl get svc prometheus-server -n monitoring &>/dev/null; then
+    echo "❌ Prometheus не найден в namespace monitoring"
+    exit 1
+fi
+
+echo "🔗 Настройка port-forward к Prometheus..."
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
+PF_PID=$!
+sleep 5
+
+echo "📊 Ключевые метрики etcd:"
+
+# Задержка синхронизации WAL
+echo -e "\n💾 Задержка синхронизации WAL (должна быть < 10ms):"
+curl -s "http://localhost:9090/api/v1/query?query=histogram_quantile(0.99,%20etcd_disk_wal_fsync_duration_seconds_bucket)" | \
+jq -r '.data.result[] | "99th percentile: \(.value[1])s"'
+
+# Задержка коммита
+echo -e "\n🔄 Задержка коммита backend (должна быть < 25ms):"
+curl -s "http://localhost:9090/api/v1/query?query=histogram_quantile(0.99,%20etcd_disk_backend_commit_duration_seconds_bucket)" | \
+jq -r '.data.result[] | "99th percentile: \(.value[1])s"'
+
+# Размер базы данных
+echo -e "\n📊 Размер базы данных etcd:"
+curl -s "http://localhost:9090/api/v1/query?query=etcd_mvcc_db_total_size_in_bytes" | \
+jq -r '.data.result[] | "Size: \(.value[1] | tonumber / 1024 / 1024)MB"'
+
+# Наличие лидера
+echo -e "\n👑 Статус лидера:"
+curl -s "http://localhost:9090/api/v1/query?query=etcd_server_has_leader" | \
+jq -r '.data.result[] | "Has leader: \(.value[1])"'
+
+# Количество предложений
+echo -e "\n📝 Скорость обработки предложений:"
+curl -s "http://localhost:9090/api/v1/query?query=rate(etcd_server_proposals_applied_total[5m])" | \
+jq -r '.data.result[] | "Proposals/sec: \(.value[1])"'
+
+# Очистка
+kill $PF_PID 2>/dev/null
+
+echo -e "\n✅ Анализ метрик завершен"
+EOF
+
+chmod +x etcd-metrics-analyzer.sh
+```
+
+## 🔧 **Скрипт комплексной диагностики etcd:**
+
+### **1. Создание диагностического скрипта:**
+```bash
+# Создать скрипт etcd-diagnostics.sh
+cat << 'EOF' > etcd-diagnostics.sh
+#!/bin/bash
+
+echo "🔍 Комплексная диагностика etcd в HA кластере"
+echo "============================================="
+
+ETCD_POD=$(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}')
+
+if [ -z "$ETCD_POD" ]; then
+    echo "❌ etcd pod не найден"
+    exit 1
+fi
+
+echo "📊 1. ОБЩАЯ ИНФОРМАЦИЯ:"
+echo "etcd Pod: $ETCD_POD"
+kubectl get pod $ETCD_POD -n kube-system -o wide
+
+echo -e "\n📊 2. ВЕРСИЯ И КОНФИГУРАЦИЯ:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl version
+
+echo -e "\n📊 3. СОСТОЯНИЕ КЛАСТЕРА:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl endpoint health --write-out=table
+kubectl exec -n kube-system $ETCD_POD -- etcdctl endpoint status --write-out=table
+
+echo -e "\n📊 4. ЧЛЕНЫ КЛАСТЕРА:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl member list --write-out=table
+
+echo -e "\n📊 5. ПРОИЗВОДИТЕЛЬНОСТЬ:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl check perf
+
+echo -e "\n📊 6. РАЗМЕР И ФРАГМЕНТАЦИЯ БАЗЫ:"
+kubectl exec -n kube-system $ETCD_POD -- etcdctl endpoint status --write-out=json | \
+jq '.[] | "DB Size: \(.Status.dbSize / 1024 / 1024)MB, In Use: \(.Status.dbSizeInUse / 1024 / 1024)MB, Fragmentation: \((.Status.dbSize - .Status.dbSizeInUse) / .Status.dbSize * 100)%"'
+
+echo -e "\n📊 7. РЕСУРСЫ POD:"
+kubectl top pod $ETCD_POD -n kube-system
+
+echo -e "\n📊 8. КОНФИГУРАЦИЯ КОМАНДЫ:"
+kubectl get pod $ETCD_POD -n kube-system -o yaml | grep -A 30 "command:" | head -20
+
+echo -e "\n📊 9. ПОСЛЕДНИЕ СОБЫТИЯ:"
+kubectl get events -n kube-system --field-selector involvedObject.name=$ETCD_POD --sort-by=.metadata.creationTimestamp | tail -5
+
+echo -e "\n📊 10. ЛОГИ (последние ошибки):"
+kubectl logs $ETCD_POD -n kube-system | grep -i "error\|warn\|slow" | tail -5
+
+echo -e "\n💡 РЕКОМЕНДАЦИИ:"
+echo "1. Размер базы должен быть < 8GB"
+echo "2. Фрагментация должна быть < 50%"
+echo "3. WAL fsync должен быть < 10ms"
+echo "4. Backend commit должен быть < 25ms"
+echo "5. Регулярно выполняйте компактификацию"
+
+echo -e "\n✅ Диагностика завершена!"
+EOF
+
+chmod +x etcd-diagnostics.sh
+```
+
+### **2. Запуск диагностики:**
+```bash
+# Выполнить диагностику
+./etcd-diagnostics.sh
+
+# Сохранить отчет
+./etcd-diagnostics.sh > etcd-diagnostics-report-$(date +%Y%m%d-%H%M%S).txt
+```
+
+## 📊 **Архитектура оптимизации etcd:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    etcd Performance Optimization           │
+├─────────────────────────────────────────────────────────────┤
+│  Storage Layer                                              │
+│  ├── SSD Disks (>3000 IOPS, <10ms latency)                │
+│  ├── Filesystem optimization (ext4/xfs, noatime)           │
+│  ├── I/O scheduler (noop/deadline for SSD)                 │
+│  └── Disk space monitoring (quota management)              │
+├─────────────────────────────────────────────────────────────┤
+│  Network Layer                                              │
+│  ├── Low latency (<1ms RTT same DC, <50ms cross DC)       │
+│  ├── High bandwidth (>100 Mbps)                            │
+│  ├── TCP optimization (keepalive, nodelay)                 │
+│  └── Network buffer tuning                                 │
+├─────────────────────────────────────────────────────────────┤
+│  Memory Management                                          │
+│  ├── Sufficient RAM (8GB+ for production)                  │
+│  ├── Database quota (8GB backend quota)                    │
+│  ├── Go GC tuning (GOGC, GOMEMLIMIT)                      │
+│  └── Memory fragmentation monitoring                       │
+├─────────────────────────────────────────────────────────────┤
+│  Compaction & Maintenance                                   │
+│  ├── Auto-compaction (periodic, 1h retention)              │
+│  ├── Regular defragmentation (weekly)                      │
+│  ├── Database size monitoring                              │
+│  └── Performance metrics tracking                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 🚨 **Мониторинг и алерты для etcd:**
+
+### **1. Критические метрики для мониторинга:**
+```bash
+# Высокая задержка WAL fsync (>10ms)
+curl -s "http://localhost:9090/api/v1/query?query=histogram_quantile(0.99,%20etcd_disk_wal_fsync_duration_seconds_bucket)%20%3E%200.01" | jq '.data.result'
+
+# Высокая задержка backend commit (>25ms)
+curl -s "http://localhost:9090/api/v1/query?query=histogram_quantile(0.99,%20etcd_disk_backend_commit_duration_seconds_bucket)%20%3E%200.025" | jq '.data.result'
+
+# Большой размер базы данных (>6GB)
+curl -s "http://localhost:9090/api/v1/query?query=etcd_mvcc_db_total_size_in_bytes%20%3E%206442450944" | jq '.data.result'
+
+# Отсутствие лидера
+curl -s "http://localhost:9090/api/v1/query?query=etcd_server_has_leader%20%3D%3D%200" | jq '.data.result'
+
+# Частые смены лидера
+curl -s "http://localhost:9090/api/v1/query?query=increase(etcd_server_leader_changes_seen_total[1h])%20%3E%203" | jq '.data.result'
+```
+
+### **2. Алерты для Prometheus:**
 ```yaml
-# etcd-performance-metrics.yaml
-apiVersion: v1
-kind: ServiceMonitor
+# etcd-alerts.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
 metadata:
-  name: etcd-performance
+  name: etcd-performance-alerts
+  namespace: monitoring
 spec:
-  selector:
-    matchLabels:
-      component: etcd
-  endpoints:
-  - port: metrics
-    interval: 15s
-    path: /metrics
----
-# Ключевые метрики производительности
-etcd_key_metrics:
-  latency:
-    - "histogram_quantile(0.99, etcd_disk_wal_fsync_duration_seconds_bucket)"
-    - "histogram_quantile(0.99, etcd_disk_backend_commit_duration_seconds_bucket)"
-    - "histogram_quantile(0.99, etcd_request_duration_seconds_bucket)"
-  
-  throughput:
-    - "rate(etcd_server_proposals_applied_total[5m])"
-    - "rate(etcd_mvcc_put_total[5m])"
-    - "rate(etcd_mvcc_delete_total[5m])"
-  
-  health:
-    - "etcd_server_has_leader"
-    - "etcd_server_leader_changes_seen_total"
-    - "etcd_cluster_version"
+  groups:
+  - name: etcd-performance
+    rules:
+    - alert: EtcdHighWALFsyncDuration
+      expr: histogram_quantile(0.99, etcd_disk_wal_fsync_duration_seconds_bucket) > 0.01
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "etcd WAL fsync duration is high"
+        description: "etcd WAL fsync 99th percentile is {{ $value }}s"
+    
+    - alert: EtcdHighBackendCommitDuration
+      expr: histogram_quantile(0.99, etcd_disk_backend_commit_duration_seconds_bucket) > 0.025
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "etcd backend commit duration is high"
+        description: "etcd backend commit 99th percentile is {{ $value }}s"
+    
+    - alert: EtcdDatabaseSizeHigh
+      expr: etcd_mvcc_db_total_size_in_bytes > 6442450944
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "etcd database size is high"
+        description: "etcd database size is {{ $value | humanize }}B"
+    
+    - alert: EtcdNoLeader
+      expr: etcd_server_has_leader == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "etcd cluster has no leader"
+        description: "etcd cluster has no leader for more than 1 minute"
 ```
 
-#### 2. **Grafana dashboard для etcd**
-```json
-{
-  "dashboard": {
-    "title": "etcd Performance Dashboard",
-    "panels": [
-      {
-        "title": "etcd Disk Sync Duration",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.99, etcd_disk_wal_fsync_duration_seconds_bucket)",
-            "legendFormat": "99th percentile"
-          }
-        ]
-      },
-      {
-        "title": "etcd Request Duration",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.99, etcd_request_duration_seconds_bucket)",
-            "legendFormat": "99th percentile"
-          }
-        ]
-      },
-      {
-        "title": "etcd Database Size",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "etcd_mvcc_db_total_size_in_bytes",
-            "legendFormat": "DB Size"
-          }
-        ]
-      }
-    ]
-  }
-}
+## 🏭 **Оптимизация etcd в вашем HA кластере:**
+
+### **1. Проверка текущей конфигурации:**
+```bash
+# Анализ конфигурации etcd в HA кластере
+kubectl get pod -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') -o yaml | grep -A 50 "command:"
+
+# Проверка ресурсов etcd
+kubectl describe pod -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') | grep -A 10 "Requests\|Limits"
+
+# Проверка volumes etcd
+kubectl describe pod -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') | grep -A 20 "Volumes:"
 ```
 
-### 🎯 Лучшие практики
+### **2. Мониторинг производительности в HA:**
+```bash
+# Производительность всех узлов etcd
+for node in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+    echo "=== Node: $node ==="
+    kubectl get pod -n kube-system --field-selector spec.nodeName=$node | grep etcd
+done
 
-#### 1. **Общие принципы оптимизации**
-- ✅ **Используйте SSD диски** с высокими IOPS
-- ✅ **Настройте автоматическую компактификацию** каждый час
-- ✅ **Мониторьте ключевые метрики** постоянно
-- ✅ **Регулярно выполняйте дефрагментацию** еженедельно
-- ✅ **Оптимизируйте сетевую топологию** для минимальной задержки
-- ✅ **Настройте достаточный объем памяти** (минимум 8GB)
-
-#### 2. **Чек-лист производительности etcd**
-```yaml
-etcd_performance_checklist:
-  storage:
-    - "✅ SSD диски с > 3000 IOPS"
-    - "✅ Задержка диска < 10ms (99-й процентиль)"
-    - "✅ Файловая система ext4/xfs с noatime"
-    - "✅ I/O scheduler noop/deadline для SSD"
-  
-  network:
-    - "✅ RTT между узлами < 1ms (same DC)"
-    - "✅ Пропускная способность > 100 Mbps"
-    - "✅ TCP keepalive включен"
-    - "✅ Оптимизированные буферы сети"
-  
-  memory:
-    - "✅ Минимум 8GB RAM для production"
-    - "✅ Квота backend 8GB"
-    - "✅ Мониторинг фрагментации"
-    - "✅ Настройка Go GC"
-  
-  configuration:
-    - "✅ Автоматическая компактификация каждый час"
-    - "✅ Еженедельная дефрагментация"
-    - "✅ Оптимизированные таймауты"
-    - "✅ Мониторинг метрик производительности"
+# Статус кластера etcd
+kubectl exec -n kube-system $(kubectl get pods -n kube-system -l component=etcd -o jsonpath='{.items[0].metadata.name}') -- etcdctl endpoint status --cluster --write-out=table
 ```
 
-Правильная оптимизация etcd критически важна для производительности всего Kubernetes кластера и требует комплексного подхода к настройке хранилища, сети, памяти и мониторинга.
+### **3. Интеграция с мониторингом:**
+```bash
+# Проверка метрик etcd в Prometheus
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
+
+# Доступ к Grafana для дашбордов etcd
+kubectl port-forward svc/grafana -n monitoring 3000:80 &
+
+# Импорт дашборда etcd в Grafana (ID: 3070)
+```
+
+## 🎯 **Best Practices для оптимизации etcd:**
+
+### **1. Хранилище:**
+- Используйте SSD диски с высокими IOPS (>3000)
+- Настройте файловую систему с опциями noatime, nodiratime
+- Мониторьте задержку диска (<10ms для 99-го процентиля)
+- Используйте I/O scheduler noop или deadline для SSD
+
+### **2. Сеть:**
+- Обеспечьте низкую задержку между узлами (<1ms в одном ЦОД)
+- Настройте высокую пропускную способность (>100 Mbps)
+- Оптимизируйте TCP параметры (keepalive, nodelay)
+- Мониторьте сетевые метрики
+
+### **3. Память:**
+- Выделите достаточно RAM (минимум 8GB для продакшена)
+- Настройте квоту базы данных (8GB)
+- Мониторьте фрагментацию памяти
+- Оптимизируйте Go GC параметры
+
+### **4. Обслуживание:**
+- Настройте автоматическую компактификацию каждый час
+- Выполняйте дефрагментацию еженедельно
+- Мониторьте размер базы данных
+- Настройте алерты на критические метрики
+
+**Оптимизация etcd — основа высокой производительности всего Kubernetes кластера!**

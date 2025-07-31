@@ -1,282 +1,225 @@
 # 152. Как оптимизировать распределение ресурсов в Kubernetes?
 
-## 🎯 Вопрос
-Как оптимизировать распределение ресурсов в Kubernetes?
+## 🎯 **Что такое оптимизация распределения ресурсов?**
 
-## 💡 Ответ
+**Оптимизация распределения ресурсов в Kubernetes** — это процесс эффективного управления CPU, памятью и другими ресурсами для обеспечения максимальной производительности при минимальных затратах. Включает настройку requests/limits, QoS классов и автомасштабирования.
 
-Оптимизация распределения ресурсов в Kubernetes включает правильную настройку requests/limits, использование QoS классов, эффективное планирование и автомасштабирование.
+## 🏗️ **Основные компоненты управления ресурсами:**
 
-### 🏗️ Основы управления ресурсами
+### **1. Resource Requests & Limits**
+- Гарантированные ресурсы (requests)
+- Максимальные ограничения (limits)
+- QoS классы (Guaranteed, Burstable, BestEffort)
 
-#### 1. **Иерархия управления ресурсами**
+### **2. Namespace-уровневые ограничения**
+- ResourceQuota для общих лимитов
+- LimitRange для значений по умолчанию
+- PriorityClass для приоритизации
+
+### **3. Автомасштабирование**
+- Horizontal Pod Autoscaler (HPA)
+- Vertical Pod Autoscaler (VPA)
+- Cluster Autoscaler
+
+### **4. Планирование размещения**
+- Node Affinity/Anti-Affinity
+- Pod Affinity/Anti-Affinity
+- Taints и Tolerations
+
+## 📊 **Практические примеры из вашего HA кластера:**
+
+### **1. Анализ текущего использования ресурсов:**
+```bash
+# Общее состояние узлов
+kubectl top nodes
+
+# Использование ресурсов по подам
+kubectl top pods --all-namespaces --sort-by=cpu
+kubectl top pods --all-namespaces --sort-by=memory
+
+# Анализ ArgoCD ресурсов
+kubectl top pods -n argocd
+kubectl describe pods -n argocd -l app.kubernetes.io/name=argocd-server | grep -A 10 "Requests\|Limits"
+
+# Анализ мониторинга ресурсов
+kubectl top pods -n monitoring
+kubectl describe pods -n monitoring -l app.kubernetes.io/name=prometheus | grep -A 10 "Requests\|Limits"
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Cluster Level                        │
-│  ┌─────────────────────────────────────────────────────┐ │
-│  │                Namespace Level                      │ │
-│  │  ┌─────────────────────────────────────────────────┐ │ │
-│  │  │                Pod Level                        │ │ │
-│  │  │  ┌─────────────────────────────────────────────┐ │ │ │
-│  │  │  │            Container Level                  │ │ │ │
-│  │  │  └─────────────────────────────────────────────┘ │ │ │
-│  │  └─────────────────────────────────────────────────┘ │ │
-│  └─────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
+
+### **2. Проверка QoS классов в кластере:**
+```bash
+# QoS классы всех подов
+kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,QOS:.status.qosClass
+
+# QoS ArgoCD подов
+kubectl get pods -n argocd -o custom-columns=NAME:.metadata.name,QOS:.status.qosClass,RESTARTS:.status.containerStatuses[*].restartCount
+
+# QoS мониторинга
+kubectl get pods -n monitoring -o custom-columns=NAME:.metadata.name,QOS:.status.qosClass,CPU-REQ:.spec.containers[*].resources.requests.cpu,MEM-REQ:.spec.containers[*].resources.requests.memory
 ```
 
-#### 2. **Типы ресурсов**
-```yaml
-# Классификация ресурсов Kubernetes
-resource_types:
-  compressible:
-    - cpu
-    - network_bandwidth
-    - disk_bandwidth
-    description: "Можно ограничить без завершения процесса"
-  
-  incompressible:
-    - memory
-    - storage
-    description: "Нельзя ограничить без завершения процесса"
-  
-  extended:
-    - nvidia.com/gpu
-    - example.com/custom-resource
-    description: "Пользовательские ресурсы"
+### **3. Анализ распределения ресурсов по узлам:**
+```bash
+# Детальная информация о распределении ресурсов
+kubectl describe nodes | grep -A 5 "Allocated resources"
+
+# Проверка доступных ресурсов
+kubectl get nodes -o custom-columns=NAME:.metadata.name,CPU-CAPACITY:.status.capacity.cpu,MEMORY-CAPACITY:.status.capacity.memory,CPU-ALLOCATABLE:.status.allocatable.cpu,MEMORY-ALLOCATABLE:.status.allocatable.memory
+
+# Поды на каждом узле
+for node in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+  echo "=== Node: $node ==="
+  kubectl get pods --all-namespaces --field-selector spec.nodeName=$node -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,CPU-REQ:.spec.containers[*].resources.requests.cpu,MEM-REQ:.spec.containers[*].resources.requests.memory
+done
 ```
 
-### 🎯 Requests и Limits
+### **4. Оптимизация ArgoCD ресурсов:**
+```bash
+# Текущие ресурсы ArgoCD
+kubectl get deployment argocd-server -n argocd -o yaml | grep -A 10 resources
 
-#### 1. **Правильная настройка requests/limits**
-```yaml
-# Оптимизированная конфигурация ресурсов
+# Мониторинг производительности ArgoCD
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-server | grep -i "memory\|cpu\|performance"
+
+# Проверка автомасштабирования ArgoCD (если настроено)
+kubectl get hpa -n argocd
+```
+
+### **5. Оптимизация Prometheus и Grafana:**
+```bash
+# Ресурсы Prometheus
+kubectl describe deployment prometheus-server -n monitoring | grep -A 10 "Requests\|Limits"
+
+# Использование хранилища Prometheus
+kubectl get pvc -n monitoring
+kubectl describe pvc prometheus-server -n monitoring
+
+# Ресурсы Grafana
+kubectl describe deployment grafana -n monitoring | grep -A 10 "Requests\|Limits"
+```
+
+## 🔄 **Демонстрация оптимизации ресурсов:**
+
+### **1. Создание оптимизированного Deployment:**
+```bash
+# Создать оптимизированное приложение
+cat << EOF | kubectl apply -f -
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: optimized-app
+  name: resource-optimized-app
+  namespace: default
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: optimized-app
+      app: resource-optimized
   template:
     metadata:
       labels:
-        app: optimized-app
+        app: resource-optimized
     spec:
       containers:
       - name: app
-        image: myapp:latest
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
         resources:
           requests:
-            cpu: 100m        # Минимальные требования
+            cpu: 100m
             memory: 128Mi
           limits:
-            cpu: 500m        # Максимальное использование
+            cpu: 500m
             memory: 512Mi
-        # Проверки готовности для оптимального планирования
         readinessProbe:
           httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 10
+            path: /
+            port: 80
+          initialDelaySeconds: 5
           periodSeconds: 5
         livenessProbe:
           httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
+            path: /
+            port: 80
+          initialDelaySeconds: 15
           periodSeconds: 10
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values: ["resource-optimized"]
+              topologyKey: kubernetes.io/hostname
+EOF
+
+# Проверить QoS класс
+kubectl get pods -l app=resource-optimized -o custom-columns=NAME:.metadata.name,QOS:.status.qosClass
+
+# Мониторинг ресурсов
+kubectl top pods -l app=resource-optimized
+
+# Очистка
+kubectl delete deployment resource-optimized-app
 ```
 
-#### 2. **Стратегии настройки ресурсов**
-```yaml
-# Различные стратегии для разных типов приложений
-strategies:
-  cpu_intensive:
-    requests:
-      cpu: "1"
-      memory: 512Mi
-    limits:
-      cpu: "2"
-      memory: 1Gi
-    description: "Для вычислительно-интенсивных задач"
-  
-  memory_intensive:
-    requests:
-      cpu: 200m
-      memory: 2Gi
-    limits:
-      cpu: 500m
-      memory: 4Gi
-    description: "Для приложений с большим потреблением памяти"
-  
-  burstable:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: "1"
-      memory: 1Gi
-    description: "Для приложений с переменной нагрузкой"
-  
-  guaranteed:
-    requests:
-      cpu: 500m
-      memory: 1Gi
-    limits:
-      cpu: 500m
-      memory: 1Gi
-    description: "Для критически важных приложений"
-```
-
-### 📊 Примеры из нашего кластера
-
-#### Анализ использования ресурсов:
+### **2. Настройка HPA для автомасштабирования:**
 ```bash
-kubectl top nodes
-kubectl top pods --all-namespaces --sort-by=cpu
-kubectl top pods --all-namespaces --sort-by=memory
-```
-
-#### Проверка QoS классов:
-```bash
-kubectl get pods -o custom-columns=NAME:.metadata.name,QOS:.status.qosClass --all-namespaces
-```
-
-#### Мониторинг распределения ресурсов:
-```bash
-kubectl describe nodes | grep -A 5 "Allocated resources"
-```
-
-### 🎪 Quality of Service (QoS) классы
-
-#### 1. **Guaranteed QoS**
-```yaml
-# Guaranteed - высший приоритет
-apiVersion: v1
-kind: Pod
+# Создать HPA для оптимизированного приложения
+cat << EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: guaranteed-pod
+  name: hpa-demo-app
+  namespace: default
 spec:
-  containers:
-  - name: app
-    image: nginx
-    resources:
-      requests:
-        cpu: 500m
-        memory: 1Gi
-      limits:
-        cpu: 500m      # Равны requests
-        memory: 1Gi    # Равны requests
-```
-
-#### 2. **Burstable QoS**
-```yaml
-# Burstable - средний приоритет
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hpa-demo
+  template:
+    metadata:
+      labels:
+        app: hpa-demo
+    spec:
+      containers:
+      - name: app
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+---
 apiVersion: v1
-kind: Pod
+kind: Service
 metadata:
-  name: burstable-pod
+  name: hpa-demo-svc
+  namespace: default
 spec:
-  containers:
-  - name: app
-    image: nginx
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 500m      # Больше requests
-        memory: 512Mi  # Больше requests
-```
-
-#### 3. **BestEffort QoS**
-```yaml
-# BestEffort - низший приоритет
-apiVersion: v1
-kind: Pod
-metadata:
-  name: besteffort-pod
-spec:
-  containers:
-  - name: app
-    image: nginx
-    # Нет requests и limits
-```
-
-### 🔧 Namespace-уровневые ограничения
-
-#### 1. **ResourceQuota**
-```yaml
-# resource-quota.yaml
-apiVersion: v1
-kind: ResourceQuota
-metadata:
-  name: compute-quota
-  namespace: production
-spec:
-  hard:
-    requests.cpu: "10"
-    requests.memory: 20Gi
-    limits.cpu: "20"
-    limits.memory: 40Gi
-    persistentvolumeclaims: "10"
-    pods: "50"
-    services: "10"
-    secrets: "20"
-    configmaps: "20"
-```
-
-#### 2. **LimitRange**
-```yaml
-# limit-range.yaml
-apiVersion: v1
-kind: LimitRange
-metadata:
-  name: resource-limits
-  namespace: production
-spec:
-  limits:
-  - type: Container
-    default:
-      cpu: 200m
-      memory: 256Mi
-    defaultRequest:
-      cpu: 100m
-      memory: 128Mi
-    min:
-      cpu: 50m
-      memory: 64Mi
-    max:
-      cpu: "2"
-      memory: 4Gi
-  - type: Pod
-    max:
-      cpu: "4"
-      memory: 8Gi
-  - type: PersistentVolumeClaim
-    min:
-      storage: 1Gi
-    max:
-      storage: 100Gi
-```
-
-### 🚀 Автомасштабирование
-
-#### 1. **Horizontal Pod Autoscaler (HPA)**
-```yaml
-# hpa-optimized.yaml
+  selector:
+    app: hpa-demo
+  ports:
+  - port: 80
+    targetPort: 80
+---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: optimized-hpa
+  name: hpa-demo
+  namespace: default
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: optimized-app
+    name: hpa-demo-app
   minReplicas: 2
   maxReplicas: 10
   metrics:
@@ -292,110 +235,290 @@ spec:
       target:
         type: Utilization
         averageUtilization: 80
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      policies:
-      - type: Percent
-        value: 50
-        periodSeconds: 60
-    scaleUp:
-      stabilizationWindowSeconds: 60
-      policies:
-      - type: Percent
-        value: 100
-        periodSeconds: 30
+EOF
+
+# Проверить HPA
+kubectl get hpa hpa-demo
+kubectl describe hpa hpa-demo
+
+# Создать нагрузку для тестирования
+kubectl run load-generator --image=busybox -it --rm -- /bin/sh -c "
+while true; do
+  wget -q -O- http://hpa-demo-svc.default.svc.cluster.local/
+  sleep 0.1
+done"
+
+# Мониторинг автомасштабирования
+watch kubectl get hpa hpa-demo
+
+# Очистка
+kubectl delete deployment hpa-demo-app
+kubectl delete svc hpa-demo-svc
+kubectl delete hpa hpa-demo
 ```
 
-#### 2. **Vertical Pod Autoscaler (VPA)**
-```yaml
-# vpa-optimized.yaml
-apiVersion: autoscaling.k8s.io/v1
-kind: VerticalPodAutoscaler
+### **3. Настройка ResourceQuota и LimitRange:**
+```bash
+# Создать namespace с ограничениями ресурсов
+kubectl create namespace resource-test
+
+# Применить ResourceQuota
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: ResourceQuota
 metadata:
-  name: optimized-vpa
+  name: compute-quota
+  namespace: resource-test
 spec:
-  targetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: optimized-app
-  updatePolicy:
-    updateMode: "Auto"
-  resourcePolicy:
-    containerPolicies:
-    - containerName: app
-      minAllowed:
-        cpu: 50m
-        memory: 64Mi
-      maxAllowed:
-        cpu: "2"
-        memory: 4Gi
-      controlledResources: ["cpu", "memory"]
+  hard:
+    requests.cpu: "2"
+    requests.memory: 4Gi
+    limits.cpu: "4"
+    limits.memory: 8Gi
+    persistentvolumeclaims: "5"
+    pods: "10"
+    services: "5"
+EOF
+
+# Применить LimitRange
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: resource-limits
+  namespace: resource-test
+spec:
+  limits:
+  - type: Container
+    default:
+      cpu: 200m
+      memory: 256Mi
+    defaultRequest:
+      cpu: 100m
+      memory: 128Mi
+    min:
+      cpu: 50m
+      memory: 64Mi
+    max:
+      cpu: "1"
+      memory: 2Gi
+  - type: Pod
+    max:
+      cpu: "2"
+      memory: 4Gi
+EOF
+
+# Проверить ограничения
+kubectl describe quota compute-quota -n resource-test
+kubectl describe limitrange resource-limits -n resource-test
+
+# Тестировать создание пода
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: resource-test
+spec:
+  containers:
+  - name: app
+    image: nginx:alpine
+    # Ресурсы будут установлены автоматически из LimitRange
+EOF
+
+# Проверить примененные ресурсы
+kubectl describe pod test-pod -n resource-test | grep -A 10 "Requests\|Limits"
+
+# Очистка
+kubectl delete namespace resource-test
 ```
 
-### 🎯 Планирование и размещение
+## 🔧 **Скрипт комплексной оптимизации ресурсов:**
 
-#### 1. **Node Affinity для оптимизации**
-```yaml
-# node-affinity-optimized.yaml
+### **1. Создание скрипта анализа:**
+```bash
+# Создать скрипт resource-optimizer.sh
+cat << 'EOF' > resource-optimizer.sh
+#!/bin/bash
+
+echo "🔧 Комплексная оптимизация ресурсов HA кластера"
+echo "=============================================="
+
+echo -e "\n📊 1. АНАЛИЗ ИСПОЛЬЗОВАНИЯ УЗЛОВ:"
+kubectl top nodes
+
+echo -e "\n📊 2. РАСПРЕДЕЛЕНИЕ РЕСУРСОВ ПО УЗЛАМ:"
+for node in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+  echo "=== Node: $node ==="
+  kubectl describe node $node | grep -A 5 "Allocated resources"
+done
+
+echo -e "\n📊 3. ТОП ПОДОВ ПО РЕСУРСАМ:"
+echo "CPU:"
+kubectl top pods --all-namespaces --sort-by=cpu | head -10
+echo -e "\nMemory:"
+kubectl top pods --all-namespaces --sort-by=memory | head -10
+
+echo -e "\n📊 4. QOS КЛАССЫ ПОДОВ:"
+kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,QOS:.status.qosClass | sort -k3
+
+echo -e "\n⚠️  5. ПОДЫ БЕЗ RESOURCE REQUESTS:"
+kubectl get pods --all-namespaces -o json | \
+jq -r '.items[] | select(.spec.containers[].resources.requests == null) | "\(.metadata.namespace)/\(.metadata.name)"'
+
+echo -e "\n⚠️  6. ПОДЫ БЕЗ RESOURCE LIMITS:"
+kubectl get pods --all-namespaces -o json | \
+jq -r '.items[] | select(.spec.containers[].resources.limits == null) | "\(.metadata.namespace)/\(.metadata.name)"'
+
+echo -e "\n📊 7. ARGOCD РЕСУРСЫ:"
+kubectl get pods -n argocd -o custom-columns=NAME:.metadata.name,QOS:.status.qosClass,CPU-REQ:.spec.containers[*].resources.requests.cpu,MEM-REQ:.spec.containers[*].resources.requests.memory,CPU-LIM:.spec.containers[*].resources.limits.cpu,MEM-LIM:.spec.containers[*].resources.limits.memory
+
+echo -e "\n📊 8. МОНИТОРИНГ РЕСУРСЫ:"
+kubectl get pods -n monitoring -o custom-columns=NAME:.metadata.name,QOS:.status.qosClass,CPU-REQ:.spec.containers[*].resources.requests.cpu,MEM-REQ:.spec.containers[*].resources.requests.memory
+
+echo -e "\n📊 9. HPA СТАТУС:"
+kubectl get hpa --all-namespaces
+
+echo -e "\n📊 10. RESOURCE QUOTAS:"
+kubectl get resourcequota --all-namespaces
+
+echo -e "\n💡 РЕКОМЕНДАЦИИ:"
+echo "1. Установите resource requests для всех подов"
+echo "2. Используйте resource limits для предотвращения noisy neighbor"
+echo "3. Настройте HPA для динамических нагрузок"
+echo "4. Применяйте ResourceQuota для изоляции namespace"
+echo "5. Мониторьте QoS классы и оптимизируйте их"
+
+echo -e "\n✅ Анализ завершен!"
+EOF
+
+chmod +x resource-optimizer.sh
+```
+
+### **2. Запуск оптимизации:**
+```bash
+# Выполнить анализ
+./resource-optimizer.sh
+
+# Сохранить отчет
+./resource-optimizer.sh > resource-optimization-report-$(date +%Y%m%d-%H%M%S).txt
+```
+
+## 📊 **Архитектура управления ресурсами:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Resource Management                     │
+├─────────────────────────────────────────────────────────────┤
+│  Cluster Level                                              │
+│  ├── Node Resources (CPU, Memory, Storage)                 │
+│  ├── Cluster Autoscaler (Node scaling)                     │
+│  └── Resource Monitoring (Prometheus, Metrics Server)      │
+├─────────────────────────────────────────────────────────────┤
+│  Namespace Level                                            │
+│  ├── ResourceQuota (Total limits per namespace)            │
+│  ├── LimitRange (Default and min/max values)               │
+│  └── PriorityClass (Pod scheduling priority)               │
+├─────────────────────────────────────────────────────────────┤
+│  Workload Level                                             │
+│  ├── Deployment/StatefulSet (Resource specifications)      │
+│  ├── HPA (Horizontal scaling based on metrics)             │
+│  ├── VPA (Vertical scaling recommendations)                │
+│  └── PDB (Pod Disruption Budget)                           │
+├─────────────────────────────────────────────────────────────┤
+│  Pod Level                                                  │
+│  ├── Resource Requests (Guaranteed resources)              │
+│  ├── Resource Limits (Maximum usage)                       │
+│  ├── QoS Classes (Guaranteed, Burstable, BestEffort)       │
+│  └── Affinity/Anti-Affinity (Placement preferences)        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 🚨 **Мониторинг и алерты для ресурсов:**
+
+### **1. Критические метрики для мониторинга:**
+```bash
+# Высокое использование CPU узлов (>80%)
+kubectl top nodes | awk 'NR>1 && $3+0 > 80 {print "⚠️ High CPU on node " $1 ": " $3}'
+
+# Высокое использование памяти узлов (>85%)
+kubectl top nodes | awk 'NR>1 && $5+0 > 85 {print "⚠️ High Memory on node " $1 ": " $5}'
+
+# Поды с частыми перезапусками (>5)
+kubectl get pods --all-namespaces -o custom-columns=NAMESPACE:.metadata.namespace,NAME:.metadata.name,RESTARTS:.status.containerStatuses[*].restartCount | awk '$3+0 > 5 {print "⚠️ High restarts: " $1 "/" $2 " (" $3 " restarts)"}'
+
+# OOMKilled события
+kubectl get events --all-namespaces --field-selector reason=OOMKilling
+
+# Поды в состоянии Pending из-за ресурсов
+kubectl get events --all-namespaces --field-selector reason=FailedScheduling
+```
+
+### **2. Prometheus запросы для ресурсов:**
+```bash
+# Доступ к Prometheus для проверки метрик
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
+
+# Ключевые запросы:
+# CPU утилизация кластера:
+# 100 - (avg(irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)
+
+# Memory утилизация кластера:
+# (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
+
+# CPU requests vs limits:
+# sum(kube_pod_container_resource_requests{resource="cpu"}) / sum(kube_pod_container_resource_limits{resource="cpu"}) * 100
+
+# Memory requests vs limits:
+# sum(kube_pod_container_resource_requests{resource="memory"}) / sum(kube_pod_container_resource_limits{resource="memory"}) * 100
+```
+
+## 🏭 **Оптимизация в вашем HA кластере:**
+
+### **1. ArgoCD оптимизация:**
+```bash
+# Проверка текущих ресурсов ArgoCD
+kubectl get deployment argocd-server -n argocd -o yaml | grep -A 15 resources
+
+# Рекомендуемая оптимизация ArgoCD Server
+cat << EOF | kubectl apply -f -
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: compute-intensive-app
+  name: argocd-server-optimized
+  namespace: argocd
 spec:
-  replicas: 3
+  replicas: 2
   selector:
     matchLabels:
-      app: compute-intensive
+      app.kubernetes.io/name: argocd-server-optimized
   template:
     metadata:
       labels:
-        app: compute-intensive
+        app.kubernetes.io/name: argocd-server-optimized
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-type
-                operator: In
-                values: ["high-cpu"]
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            preference:
-              matchExpressions:
-              - key: zone
-                operator: In
-                values: ["zone-a"]
       containers:
-      - name: app
-        image: compute-app:latest
+      - name: argocd-server
+        image: quay.io/argoproj/argocd:latest
         resources:
           requests:
-            cpu: "2"
-            memory: 1Gi
+            cpu: 250m
+            memory: 512Mi
           limits:
-            cpu: "4"
-            memory: 2Gi
-```
-
-#### 2. **Pod Anti-Affinity для распределения**
-```yaml
-# anti-affinity-optimized.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: distributed-app
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: distributed-app
-  template:
-    metadata:
-      labels:
-        app: distributed-app
-    spec:
+            cpu: 500m
+            memory: 1Gi
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -403,234 +526,62 @@ spec:
             podAffinityTerm:
               labelSelector:
                 matchExpressions:
-                - key: app
+                - key: app.kubernetes.io/name
                   operator: In
-                  values: ["distributed-app"]
+                  values: ["argocd-server-optimized"]
               topologyKey: kubernetes.io/hostname
-      containers:
-      - name: app
-        image: distributed-app:latest
-        resources:
-          requests:
-            cpu: 500m
-            memory: 512Mi
-          limits:
-            cpu: "1"
-            memory: 1Gi
+EOF
+
+# Не применять в продакшене без тестирования!
+kubectl delete deployment argocd-server-optimized -n argocd
 ```
 
-### 📈 Мониторинг и анализ
-
-#### 1. **Скрипт анализа использования ресурсов**
+### **2. Мониторинг стек оптимизация:**
 ```bash
-#!/bin/bash
-# resource-analysis.sh
+# Проверка ресурсов Prometheus
+kubectl describe deployment prometheus-server -n monitoring | grep -A 15 "Requests\|Limits"
 
-echo "🔍 Анализ использования ресурсов в кластере"
+# Проверка использования хранилища
+kubectl get pvc -n monitoring
+kubectl describe pvc prometheus-server -n monitoring | grep -E "Capacity|Used"
 
-echo "📊 Общее использование узлов:"
-kubectl top nodes
-
-echo -e "\n📊 Использование ресурсов по namespace:"
-for ns in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}'); do
-    echo "Namespace: $ns"
-    kubectl top pods -n $ns --no-headers 2>/dev/null | \
-    awk '{cpu+=$2; mem+=$3} END {print "  CPU: " cpu "m, Memory: " mem "Mi"}'
-done
-
-echo -e "\n📊 Поды с высоким использованием CPU (>500m):"
-kubectl top pods --all-namespaces --no-headers | \
-awk '$3 > 500 {print $1 "/" $2 ": " $3}'
-
-echo -e "\n📊 Поды с высоким использованием памяти (>1Gi):"
-kubectl top pods --all-namespaces --no-headers | \
-awk '$4 > 1000 {print $1 "/" $2 ": " $4 "Mi"}'
-
-echo -e "\n📊 QoS классы подов:"
-kubectl get pods --all-namespaces -o custom-columns=\
-NAMESPACE:.metadata.namespace,\
-NAME:.metadata.name,\
-QOS:.status.qosClass | \
-sort -k3
-
-echo "✅ Анализ завершен"
+# Оптимизация retention для Prometheus
+kubectl get configmap prometheus-server -n monitoring -o yaml | grep retention
 ```
 
-#### 2. **Prometheus запросы для мониторинга**
-```yaml
-# Полезные Prometheus запросы
-prometheus_queries:
-  cpu_utilization:
-    cluster: "100 * (1 - avg(irate(node_cpu_seconds_total{mode=\"idle\"}[5m])))"
-    node: "100 * (1 - avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])))"
-    pod: "rate(container_cpu_usage_seconds_total[5m]) * 100"
-  
-  memory_utilization:
-    cluster: "100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))"
-    node: "100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes))"
-    pod: "container_memory_working_set_bytes / container_spec_memory_limit_bytes * 100"
-  
-  resource_efficiency:
-    cpu_request_vs_usage: "rate(container_cpu_usage_seconds_total[5m]) / on(pod) kube_pod_container_resource_requests{resource=\"cpu\"}"
-    memory_request_vs_usage: "container_memory_working_set_bytes / on(pod) kube_pod_container_resource_requests{resource=\"memory\"}"
-```
-
-### 🔧 Оптимизация стратегий
-
-#### 1. **Профилирование приложений**
+### **3. Load Balancer оптимизация:**
 ```bash
-#!/bin/bash
-# app-profiling.sh
+# NGINX Ingress Controller ресурсы
+kubectl describe deployment ingress-nginx-controller -n ingress-nginx | grep -A 15 "Requests\|Limits"
 
-APP_NAME="$1"
-NAMESPACE="$2"
-
-if [ -z "$APP_NAME" ] || [ -z "$NAMESPACE" ]; then
-    echo "Usage: $0 <app-name> <namespace>"
-    exit 1
-fi
-
-echo "🔍 Профилирование приложения: $APP_NAME в namespace: $NAMESPACE"
-
-# Текущее использование ресурсов
-echo "📊 Текущее использование:"
-kubectl top pods -n $NAMESPACE -l app=$APP_NAME
-
-# Конфигурация ресурсов
-echo -e "\n⚙️ Конфигурация ресурсов:"
-kubectl get pods -n $NAMESPACE -l app=$APP_NAME -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{range .spec.containers[*]}  {.name}: requests={.resources.requests}, limits={.resources.limits}{"\n"}{end}{end}'
-
-# История рестартов
-echo -e "\n🔄 История рестартов:"
-kubectl get pods -n $NAMESPACE -l app=$APP_NAME -o custom-columns=NAME:.metadata.name,RESTARTS:.status.containerStatuses[0].restartCount
-
-# События
-echo -e "\n📝 Последние события:"
-kubectl get events -n $NAMESPACE --field-selector involvedObject.name=$APP_NAME --sort-by=.metadata.creationTimestamp | tail -5
-
-echo "✅ Профилирование завершено"
+# Мониторинг производительности Ingress
+kubectl top pods -n ingress-nginx
+kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx | grep -E "upstream_response_time|request_time" | tail -10
 ```
 
-#### 2. **Рекомендации по оптимизации**
-```yaml
-# Рекомендации по настройке ресурсов
-optimization_recommendations:
-  cpu_optimization:
-    - "Используйте CPU requests для гарантии ресурсов"
-    - "Устанавливайте CPU limits для предотвращения noisy neighbor"
-    - "Мониторьте CPU throttling"
-    - "Используйте CPU affinity для производительных приложений"
-  
-  memory_optimization:
-    - "Всегда устанавливайте memory limits"
-    - "Memory requests должны соответствовать реальному использованию"
-    - "Мониторьте OOMKilled события"
-    - "Используйте memory-mapped файлы для больших данных"
-  
-  scheduling_optimization:
-    - "Используйте node affinity для специализированных узлов"
-    - "Применяйте pod anti-affinity для высокой доступности"
-    - "Настройте tolerations для специальных узлов"
-    - "Используйте priority classes для критических подов"
-```
+## 🎯 **Best Practices для оптимизации ресурсов:**
 
-### 🎯 Продвинутые техники
+### **1. Планирование ресурсов:**
+- Анализируйте реальное использование перед установкой requests/limits
+- Используйте профилирование приложений для точной настройки
+- Мониторьте тренды использования ресурсов
+- Применяйте постепенную оптимизацию
 
-#### 1. **Priority Classes**
-```yaml
-# priority-classes.yaml
-apiVersion: scheduling.k8s.io/v1
-kind: PriorityClass
-metadata:
-  name: high-priority
-value: 1000
-globalDefault: false
-description: "High priority class for critical applications"
----
-apiVersion: scheduling.k8s.io/v1
-kind: PriorityClass
-metadata:
-  name: low-priority
-value: 100
-globalDefault: false
-description: "Low priority class for batch jobs"
----
-# Использование в Pod
-apiVersion: v1
-kind: Pod
-metadata:
-  name: critical-app
-spec:
-  priorityClassName: high-priority
-  containers:
-  - name: app
-    image: critical-app:latest
-    resources:
-      requests:
-        cpu: "1"
-        memory: 1Gi
-      limits:
-        cpu: "2"
-        memory: 2Gi
-```
+### **2. QoS стратегии:**
+- **Guaranteed** для критически важных приложений (ArgoCD, мониторинг)
+- **Burstable** для приложений с переменной нагрузкой
+- **BestEffort** только для некритичных batch задач
 
-#### 2. **Resource Quotas с приоритетами**
-```yaml
-# priority-resource-quota.yaml
-apiVersion: v1
-kind: ResourceQuota
-metadata:
-  name: high-priority-quota
-  namespace: production
-spec:
-  hard:
-    requests.cpu: "20"
-    requests.memory: 40Gi
-    limits.cpu: "40"
-    limits.memory: 80Gi
-  scopeSelector:
-    matchExpressions:
-    - operator: In
-      scopeName: PriorityClass
-      values: ["high-priority"]
-```
+### **3. Автомасштабирование:**
+- Настройте HPA для динамических нагрузок
+- Используйте VPA для рекомендаций по ресурсам
+- Мониторьте эффективность автомасштабирования
+- Настройте правильные метрики для scaling
 
-### 📋 Лучшие практики
+### **4. Мониторинг и алерты:**
+- Отслеживайте CPU/Memory утилизацию узлов
+- Мониторьте QoS классы подов
+- Настройте алерты на OOMKilled события
+- Анализируйте эффективность использования ресурсов
 
-#### 1. **Общие принципы**
-- ✅ **Всегда устанавливайте requests** для планирования
-- ✅ **Используйте limits** для предотвращения resource starvation
-- ✅ **Мониторьте реальное использование** и корректируйте настройки
-- ✅ **Применяйте QoS классы** в соответствии с критичностью
-- ✅ **Используйте namespace quotas** для изоляции
-- ✅ **Настройте автомасштабирование** для динамических нагрузок
-
-#### 2. **Автоматизация оптимизации**
-```bash
-#!/bin/bash
-# optimize-resources.sh
-
-echo "🔧 Автоматическая оптимизация ресурсов"
-
-# Поиск подов без resource requests
-echo "⚠️ Поды без resource requests:"
-kubectl get pods --all-namespaces -o json | \
-jq -r '.items[] | select(.spec.containers[].resources.requests == null) | "\(.metadata.namespace)/\(.metadata.name)"'
-
-# Поиск подов с высоким CPU throttling
-echo -e "\n⚠️ Поды с CPU throttling:"
-kubectl top pods --all-namespaces --containers | \
-awk 'NR>1 && $3 > 80 {print $1 "/" $2 ": " $3 "%"}'
-
-# Рекомендации по VPA
-echo -e "\n💡 Рекомендации VPA:"
-kubectl get vpa --all-namespaces -o custom-columns=\
-NAMESPACE:.metadata.namespace,\
-NAME:.metadata.name,\
-CPU_TARGET:.status.recommendation.containerRecommendations[0].target.cpu,\
-MEMORY_TARGET:.status.recommendation.containerRecommendations[0].target.memory
-
-echo "✅ Оптимизация завершена"
-```
-
-Эффективное распределение ресурсов в Kubernetes требует понимания потребностей приложений, правильной настройки requests/limits и постоянного мониторинга для корректировки конфигурации.
+**Эффективная оптимизация ресурсов — ключ к стабильной и экономичной работе Kubernetes кластера!**
