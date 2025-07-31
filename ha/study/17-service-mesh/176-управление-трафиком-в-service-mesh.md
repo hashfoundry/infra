@@ -1,167 +1,122 @@
 # 176. Управление трафиком в service mesh
 
-## 🎯 Вопрос
-Как управлять трафиком в service mesh?
+## 🎯 **Что такое traffic management в service mesh?**
 
-## 💡 Ответ
+**Traffic management** в service mesh обеспечивает intelligent routing, load balancing, circuit breaking, canary deployments, A/B testing и fault injection через декларативную конфигурацию VirtualService, DestinationRule, Gateway и ServiceEntry без изменения кода приложений.
 
-Управление трафиком в service mesh осуществляется через VirtualService, DestinationRule, Gateway и ServiceEntry ресурсы, которые обеспечивают intelligent routing, load balancing, circuit breaking, retry logic, canary deployments, A/B testing и fault injection без изменения кода приложений.
+## 🏗️ **Основные компоненты traffic management:**
 
-### 🏗️ Архитектура управления трафиком
+### **1. VirtualService**
+- Routing rules и traffic splitting
+- Header-based routing
+- Fault injection и timeout/retry
 
-#### 1. **Схема traffic management**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                Traffic Management in Service Mesh          │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                    Gateway                              │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │ │
-│  │  │   Ingress   │  │    Egress   │  │   Internal  │     │ │
-│  │  │   Gateway   │  │   Gateway   │  │   Gateway   │     │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘     │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                VirtualService                          │ │
-│  │  • Routing Rules                                       │ │
-│  │  • Traffic Splitting                                   │ │
-│  │  • Header-based Routing                                │ │
-│  │  • Fault Injection                                     │ │
-│  │  • Timeout & Retry                                     │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │               DestinationRule                          │ │
-│  │  • Load Balancing                                      │ │
-│  │  • Circuit Breaking                                    │ │
-│  │  • Connection Pooling                                  │ │
-│  │  • TLS Settings                                        │ │
-│  │  • Subset Definitions                                  │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Service Endpoints                       │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │ │
-│  │  │  Service A  │  │  Service B  │  │  Service C  │     │ │
-│  │  │     v1      │  │     v1      │  │     v1      │     │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘     │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │ │
-│  │  │  Service A  │  │  Service B  │  │  Service C  │     │ │
-│  │  │     v2      │  │     v2      │  │     v2      │     │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘     │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. DestinationRule**
+- Load balancing algorithms
+- Circuit breaking и connection pooling
+- Subset definitions
 
-#### 2. **Компоненты traffic management**
-```yaml
-# Компоненты управления трафиком
-traffic_management_components:
-  gateway:
-    ingress_gateway: "Входящий трафик из внешних источников"
-    egress_gateway: "Исходящий трафик к внешним сервисам"
-    internal_gateway: "Внутренний трафик между namespace"
-    
-  virtual_service:
-    routing_rules: "Правила маршрутизации запросов"
-    traffic_splitting: "Разделение трафика между версиями"
-    header_routing: "Маршрутизация по заголовкам"
-    fault_injection: "Внедрение ошибок для тестирования"
-    
-  destination_rule:
-    load_balancing: "Алгоритмы балансировки нагрузки"
-    circuit_breaking: "Защита от каскадных сбоев"
-    connection_pooling: "Управление соединениями"
-    subset_definition: "Определение подмножеств сервисов"
-    
-  service_entry:
-    external_services: "Регистрация внешних сервисов"
-    mesh_expansion: "Расширение mesh на внешние сервисы"
-    service_discovery: "Обнаружение сервисов"
-```
+### **3. Gateway**
+- Ingress/Egress traffic management
+- TLS termination
+- Protocol handling
 
-### 📊 Примеры из нашего кластера
+## 📊 **Практические примеры из вашего HA кластера:**
 
-#### Проверка traffic management конфигурации:
+### **1. Базовая настройка traffic management:**
 ```bash
-# Проверка VirtualService
-kubectl get virtualservice --all-namespaces
-kubectl describe virtualservice <vs-name> -n <namespace>
+# Создание тестового приложения с версиями
+kubectl create namespace traffic-demo
 
-# Проверка DestinationRule
-kubectl get destinationrule --all-namespaces
-kubectl describe destinationrule <dr-name> -n <namespace>
+kubectl apply -f - << EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-app-v1
+  namespace: traffic-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sample-app
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: sample-app
+        version: v1
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+        env:
+        - name: VERSION
+          value: "v1"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-app-v2
+  namespace: traffic-demo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sample-app
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: sample-app
+        version: v2
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.22
+        ports:
+        - containerPort: 80
+        env:
+        - name: VERSION
+          value: "v2"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sample-app
+  namespace: traffic-demo
+spec:
+  selector:
+    app: sample-app
+  ports:
+  - port: 80
+    targetPort: 80
+EOF
 
-# Проверка Gateway
-kubectl get gateway --all-namespaces
-kubectl describe gateway <gateway-name> -n <namespace>
-
-# Анализ трафика через Envoy
-istioctl proxy-config route <pod-name> -n <namespace>
-istioctl proxy-config cluster <pod-name> -n <namespace>
+# Включение Istio injection
+kubectl label namespace traffic-demo istio-injection=enabled
+kubectl rollout restart deployment/sample-app-v1 -n traffic-demo
+kubectl rollout restart deployment/sample-app-v2 -n traffic-demo
 ```
 
-### 🚦 VirtualService конфигурации
-
-#### 1. **Базовые routing правила**
-```yaml
-# basic-virtual-service.yaml
-
-# Простая маршрутизация
+### **2. VirtualService для routing:**
+```bash
+# Базовый routing по версиям
+kubectl apply -f - << EOF
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   name: sample-app-routing
-  namespace: production
+  namespace: traffic-demo
 spec:
   hosts:
   - sample-app
   http:
-  - match:
-    - uri:
-        prefix: "/api/v1"
-    route:
-    - destination:
-        host: sample-app
-        subset: v1
-  - match:
-    - uri:
-        prefix: "/api/v2"
-    route:
-    - destination:
-        host: sample-app
-        subset: v2
-  - route:
-    - destination:
-        host: sample-app
-        subset: v1
----
-# Header-based routing
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  name: header-based-routing
-  namespace: production
-spec:
-  hosts:
-  - sample-app
-  http:
-  - match:
-    - headers:
-        user-type:
-          exact: premium
-    route:
-    - destination:
-        host: sample-app
-        subset: premium
   - match:
     - headers:
         version:
-          regex: "v2.*"
+          exact: "v2"
     route:
     - destination:
         host: sample-app
@@ -171,12 +126,39 @@ spec:
         host: sample-app
         subset: v1
 ---
-# Canary deployment с weight-based routing
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: sample-app-subsets
+  namespace: traffic-demo
+spec:
+  host: sample-app
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+EOF
+
+# Тестирование routing
+kubectl run test-client --image=curlimages/curl --rm -i --restart=Never -n traffic-demo -- \
+  curl -H "version: v2" http://sample-app/
+
+kubectl run test-client --image=curlimages/curl --rm -i --restart=Never -n traffic-demo -- \
+  curl http://sample-app/
+```
+
+### **3. Canary deployment с weight-based routing:**
+```bash
+# Canary deployment 90/10
+kubectl apply -f - << EOF
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: canary-deployment
-  namespace: production
+  name: sample-app-canary
+  namespace: traffic-demo
 spec:
   hosts:
   - sample-app
@@ -188,28 +170,79 @@ spec:
     route:
     - destination:
         host: sample-app
-        subset: canary
+        subset: v2
   - route:
     - destination:
         host: sample-app
-        subset: stable
+        subset: v1
       weight: 90
     - destination:
         host: sample-app
-        subset: canary
+        subset: v2
       weight: 10
+EOF
+
+# Тестирование canary
+for i in {1..20}; do
+  kubectl run test-client-$i --image=curlimages/curl --rm -i --restart=Never -n traffic-demo -- \
+    curl -s http://sample-app/ | grep -o "nginx/[0-9.]*" &
+done
+wait
 ```
 
-#### 2. **Продвинутые traffic management функции**
-```yaml
-# advanced-virtual-service.yaml
+### **4. Circuit breaker и connection pooling:**
+```bash
+# DestinationRule с circuit breaker
+kubectl apply -f - << EOF
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: sample-app-circuit-breaker
+  namespace: traffic-demo
+spec:
+  host: sample-app
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 10
+      http:
+        http1MaxPendingRequests: 5
+        maxRequestsPerConnection: 2
+    outlierDetection:
+      consecutiveGatewayErrors: 3
+      consecutive5xxErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+    trafficPolicy:
+      connectionPool:
+        tcp:
+          maxConnections: 5
+        http:
+          http1MaxPendingRequests: 2
+EOF
 
-# Fault injection и timeout
+# Тестирование circuit breaker
+kubectl run load-test --image=fortio/fortio --rm -i --restart=Never -n traffic-demo -- \
+  load -c 20 -qps 50 -t 30s http://sample-app/
+```
+
+### **5. Fault injection для chaos engineering:**
+```bash
+# Fault injection с delay и abort
+kubectl apply -f - << EOF
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
-  name: fault-injection-demo
-  namespace: production
+  name: sample-app-fault-injection
+  namespace: traffic-demo
 spec:
   hosts:
   - sample-app
@@ -217,15 +250,24 @@ spec:
   - match:
     - headers:
         test-fault:
-          exact: "true"
+          exact: "delay"
     fault:
       delay:
         percentage:
-          value: 50
+          value: 100
         fixedDelay: 5s
+    route:
+    - destination:
+        host: sample-app
+        subset: v1
+  - match:
+    - headers:
+        test-fault:
+          exact: "abort"
+    fault:
       abort:
         percentage:
-          value: 10
+          value: 50
         httpStatus: 503
     route:
     - destination:
@@ -235,152 +277,27 @@ spec:
     - destination:
         host: sample-app
         subset: v1
-    timeout: 10s
-    retries:
-      attempts: 3
-      perTryTimeout: 3s
-      retryOn: 5xx,reset,connect-failure,refused-stream
----
-# Mirror traffic для testing
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  name: traffic-mirroring
-  namespace: production
-spec:
-  hosts:
-  - sample-app
-  http:
-  - route:
-    - destination:
-        host: sample-app
-        subset: v1
-    mirror:
-      host: sample-app
-      subset: v2
-    mirrorPercentage:
-      value: 10
----
-# Redirect и rewrite
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  name: redirect-rewrite
-  namespace: production
-spec:
-  hosts:
-  - sample-app
-  http:
-  - match:
-    - uri:
-        prefix: "/old-api"
-    redirect:
-      uri: "/new-api"
-      redirectCode: 301
-  - match:
-    - uri:
-        prefix: "/api/v1"
-    rewrite:
-      uri: "/api/v2"
-    route:
-    - destination:
-        host: sample-app
-        subset: v2
+EOF
+
+# Тестирование fault injection
+kubectl run test-delay --image=curlimages/curl --rm -i --restart=Never -n traffic-demo -- \
+  curl -w "Total time: %{time_total}s\n" -H "test-fault: delay" http://sample-app/
+
+kubectl run test-abort --image=curlimages/curl --rm -i --restart=Never -n traffic-demo -- \
+  curl -w "HTTP Code: %{http_code}\n" -H "test-fault: abort" http://sample-app/
 ```
 
-### ⚖️ DestinationRule конфигурации
+## 🌐 **Gateway конфигурации:**
 
-#### 1. **Load balancing и connection pooling**
-```yaml
-# destination-rule-configs.yaml
-
-# Различные алгоритмы load balancing
-apiVersion: networking.istio.io/v1beta1
-kind: DestinationRule
-metadata:
-  name: load-balancing-demo
-  namespace: production
-spec:
-  host: sample-app
-  trafficPolicy:
-    loadBalancer:
-      simple: LEAST_CONN  # ROUND_ROBIN, LEAST_CONN, RANDOM, PASSTHROUGH
-    connectionPool:
-      tcp:
-        maxConnections: 100
-        connectTimeout: 30s
-        keepAlive:
-          time: 7200s
-          interval: 75s
-      http:
-        http1MaxPendingRequests: 50
-        http2MaxRequests: 100
-        maxRequestsPerConnection: 10
-        maxRetries: 3
-        idleTimeout: 90s
-        h2UpgradePolicy: UPGRADE
-  subsets:
-  - name: v1
-    labels:
-      version: v1
-    trafficPolicy:
-      loadBalancer:
-        simple: ROUND_ROBIN
-  - name: v2
-    labels:
-      version: v2
-    trafficPolicy:
-      loadBalancer:
-        simple: LEAST_CONN
----
-# Circuit breaker конфигурация
-apiVersion: networking.istio.io/v1beta1
-kind: DestinationRule
-metadata:
-  name: circuit-breaker
-  namespace: production
-spec:
-  host: sample-app
-  trafficPolicy:
-    connectionPool:
-      tcp:
-        maxConnections: 50
-      http:
-        http1MaxPendingRequests: 25
-        maxRequestsPerConnection: 5
-    circuitBreaker:
-      consecutiveGatewayErrors: 3
-      consecutive5xxErrors: 5
-      interval: 30s
-      baseEjectionTime: 30s
-      maxEjectionPercent: 50
-      minHealthPercent: 30
-      splitExternalLocalOriginErrors: false
-  subsets:
-  - name: v1
-    labels:
-      version: v1
-  - name: v2
-    labels:
-      version: v2
-    trafficPolicy:
-      circuitBreaker:
-        consecutiveGatewayErrors: 2
-        baseEjectionTime: 60s
-```
-
-### 🌐 Gateway конфигурации
-
-#### 1. **Ingress и Egress Gateway**
-```yaml
-# gateway-configs.yaml
-
-# Ingress Gateway
+### **1. Ingress Gateway setup:**
+```bash
+# Создание Gateway для внешнего доступа
+kubectl apply -f - << EOF
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
   name: sample-app-gateway
-  namespace: production
+  namespace: traffic-demo
 spec:
   selector:
     istio: ingressgateway
@@ -390,9 +307,7 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - sample-app.hashfoundry.com
-    tls:
-      httpsRedirect: true
+    - sample-app.hashfoundry.local
   - port:
       number: 443
       name: https
@@ -401,119 +316,138 @@ spec:
       mode: SIMPLE
       credentialName: sample-app-tls
     hosts:
-    - sample-app.hashfoundry.com
+    - sample-app.hashfoundry.local
 ---
-# VirtualService для Gateway
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   name: sample-app-gateway-vs
-  namespace: production
+  namespace: traffic-demo
 spec:
   hosts:
-  - sample-app.hashfoundry.com
+  - sample-app.hashfoundry.local
   gateways:
   - sample-app-gateway
   http:
   - match:
     - uri:
-        prefix: "/api"
+        prefix: "/v2"
+    rewrite:
+      uri: "/"
     route:
     - destination:
         host: sample-app
-        port:
-          number: 8080
-  - match:
-    - uri:
-        prefix: "/"
-    route:
+        subset: v2
+  - route:
     - destination:
-        host: sample-app-frontend
-        port:
-          number: 80
----
-# Egress Gateway
-apiVersion: networking.istio.io/v1beta1
-kind: Gateway
-metadata:
-  name: external-api-gateway
-  namespace: production
-spec:
-  selector:
-    istio: egressgateway
-  servers:
-  - port:
-      number: 443
-      name: https
-      protocol: HTTPS
-    hosts:
-    - api.external-service.com
-    tls:
-      mode: PASSTHROUGH
----
-# ServiceEntry для external сервиса
+        host: sample-app
+        subset: v1
+EOF
+
+# Получение Ingress Gateway IP
+GATEWAY_IP=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+echo "Gateway IP: $GATEWAY_IP"
+
+# Тестирование через Gateway
+curl -H "Host: sample-app.hashfoundry.local" http://$GATEWAY_IP/
+curl -H "Host: sample-app.hashfoundry.local" http://$GATEWAY_IP/v2
+```
+
+### **2. Egress Gateway для внешних сервисов:**
+```bash
+# ServiceEntry для внешнего API
+kubectl apply -f - << EOF
 apiVersion: networking.istio.io/v1beta1
 kind: ServiceEntry
 metadata:
   name: external-api
-  namespace: production
+  namespace: traffic-demo
 spec:
   hosts:
-  - api.external-service.com
+  - httpbin.org
   ports:
+  - number: 80
+    name: http
+    protocol: HTTP
   - number: 443
     name: https
     protocol: HTTPS
   location: MESH_EXTERNAL
   resolution: DNS
 ---
-# VirtualService для Egress
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: egress-gateway
+  namespace: traffic-demo
+spec:
+  selector:
+    istio: egressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - httpbin.org
+---
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   name: external-api-vs
-  namespace: production
+  namespace: traffic-demo
 spec:
   hosts:
-  - api.external-service.com
+  - httpbin.org
   gateways:
-  - external-api-gateway
+  - egress-gateway
   - mesh
-  tls:
+  http:
   - match:
-    - port: 443
-      sniHosts:
-      - api.external-service.com
+    - gateways:
+      - mesh
+      port: 80
     route:
     - destination:
-        host: api.external-service.com
+        host: istio-egressgateway.istio-system.svc.cluster.local
         port:
-          number: 443
+          number: 80
+      weight: 100
+  - match:
+    - gateways:
+      - egress-gateway
+      port: 80
+    route:
+    - destination:
+        host: httpbin.org
+        port:
+          number: 80
+      weight: 100
+EOF
+
+# Тестирование egress
+kubectl run egress-test --image=curlimages/curl --rm -i --restart=Never -n traffic-demo -- \
+  curl -s http://httpbin.org/ip
 ```
 
-### 🔧 Скрипт управления трафиком
+## 🔄 **Автоматизация traffic management:**
 
-#### 1. **Автоматизация traffic management**
+### **1. Скрипт для canary deployment:**
 ```bash
 #!/bin/bash
-# traffic-management-automation.sh
+# canary-deployment.sh
 
-echo "🚦 Автоматизация управления трафиком в Service Mesh"
-
-# Переменные
-NAMESPACE="production"
+NAMESPACE="traffic-demo"
 SERVICE_NAME="sample-app"
-CANARY_VERSION="v2"
 STABLE_VERSION="v1"
+CANARY_VERSION="v2"
 
-# Canary deployment
 deploy_canary() {
-    local canary_weight=${1:-10}
+    local weight=${1:-10}
     
-    echo "🚀 Развертывание canary с весом $canary_weight%"
+    echo "🚀 Развертывание canary с весом $weight%"
     
-    # Создание VirtualService для canary
-    cat <<EOF | kubectl apply -f -
+    kubectl apply -f - << EOF
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
@@ -535,35 +469,38 @@ spec:
     - destination:
         host: ${SERVICE_NAME}
         subset: ${STABLE_VERSION}
-      weight: $((100 - canary_weight))
+      weight: $((100 - weight))
     - destination:
         host: ${SERVICE_NAME}
         subset: ${CANARY_VERSION}
-      weight: ${canary_weight}
+      weight: ${weight}
 EOF
     
-    echo "✅ Canary deployment с весом $canary_weight% развернут"
+    echo "✅ Canary deployment с весом $weight% развернут"
 }
 
-# Мониторинг canary метрик
 monitor_canary() {
     echo "📊 Мониторинг canary метрик"
     
-    # Получение success rate для canary
-    local canary_success_rate=$(kubectl exec -n istio-system deployment/prometheus -- \
-        promtool query instant 'rate(istio_requests_total{destination_service_name="'${SERVICE_NAME}'",destination_version="'${CANARY_VERSION}'",response_code=~"2.*"}[5m]) / rate(istio_requests_total{destination_service_name="'${SERVICE_NAME}'",destination_version="'${CANARY_VERSION}'"}[5m])' | \
-        grep -o '[0-9.]*' | head -1)
+    # Получение success rate
+    local success_rate=$(kubectl exec -n istio-system deployment/prometheus -- \
+        promtool query instant "
+        sum(rate(istio_requests_total{destination_service_name=\"${SERVICE_NAME}\",destination_version=\"${CANARY_VERSION}\",response_code=~\"2.*\"}[5m])) / 
+        sum(rate(istio_requests_total{destination_service_name=\"${SERVICE_NAME}\",destination_version=\"${CANARY_VERSION}\"}[5m]))
+        " 2>/dev/null | grep -o '[0-9.]*' | head -1)
     
-    # Получение latency для canary
-    local canary_latency=$(kubectl exec -n istio-system deployment/prometheus -- \
-        promtool query instant 'histogram_quantile(0.95, rate(istio_request_duration_milliseconds_bucket{destination_service_name="'${SERVICE_NAME}'",destination_version="'${CANARY_VERSION}'"}[5m]))' | \
-        grep -o '[0-9.]*' | head -1)
+    # Получение latency
+    local latency=$(kubectl exec -n istio-system deployment/prometheus -- \
+        promtool query instant "
+        histogram_quantile(0.95, 
+        sum(rate(istio_request_duration_milliseconds_bucket{destination_service_name=\"${SERVICE_NAME}\",destination_version=\"${CANARY_VERSION}\"}[5m])) by (le))
+        " 2>/dev/null | grep -o '[0-9.]*' | head -1)
     
-    echo "Canary Success Rate: ${canary_success_rate:-N/A}"
-    echo "Canary 95th Percentile Latency: ${canary_latency:-N/A}ms"
+    echo "Success Rate: ${success_rate:-N/A}"
+    echo "95th Percentile Latency: ${latency:-N/A}ms"
     
-    # Проверка критериев
-    if (( $(echo "$canary_success_rate > 0.95" | bc -l) )) && (( $(echo "$canary_latency < 1000" | bc -l) )); then
+    # Простая проверка (в реальности нужны более сложные критерии)
+    if [[ -n "$success_rate" ]] && (( $(echo "$success_rate > 0.95" | bc -l 2>/dev/null || echo 0) )); then
         echo "✅ Canary метрики в норме"
         return 0
     else
@@ -572,9 +509,8 @@ monitor_canary() {
     fi
 }
 
-# Автоматическое продвижение canary
 promote_canary() {
-    echo "⬆️ Продвижение canary deployment"
+    echo "⬆️ Автоматическое продвижение canary"
     
     local weights=(10 25 50 75 100)
     
@@ -582,10 +518,8 @@ promote_canary() {
         echo "Увеличение canary трафика до $weight%"
         deploy_canary $weight
         
-        # Ожидание стабилизации
-        sleep 60
+        sleep 30
         
-        # Мониторинг метрик
         if monitor_canary; then
             echo "✅ Метрики стабильны, продолжаем"
         else
@@ -595,35 +529,20 @@ promote_canary() {
         fi
     done
     
-    # Финальное переключение
-    finalize_canary_promotion
-    
+    finalize_promotion
     echo "🎉 Canary deployment успешно завершен"
 }
 
-# Откат canary
 rollback_canary() {
     echo "🔄 Откат canary deployment"
-    
-    # Возврат к 100% stable
     deploy_canary 0
-    
     echo "✅ Откат завершен"
 }
 
-# Финализация canary promotion
-finalize_canary_promotion() {
-    echo "🏁 Финализация canary promotion"
+finalize_promotion() {
+    echo "🏁 Финализация promotion"
     
-    # Обновление labels для переключения stable/canary
-    kubectl patch deployment ${SERVICE_NAME}-${STABLE_VERSION} -n ${NAMESPACE} -p '{"metadata":{"labels":{"version":"old"}}}'
-    kubectl patch deployment ${SERVICE_NAME}-${CANARY_VERSION} -n ${NAMESPACE} -p '{"metadata":{"labels":{"version":"v1"}}}'
-    
-    # Удаление canary VirtualService
-    kubectl delete virtualservice ${SERVICE_NAME}-canary -n ${NAMESPACE}
-    
-    # Создание нового stable VirtualService
-    cat <<EOF | kubectl apply -f -
+    kubectl apply -f - << EOF
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
@@ -636,128 +555,16 @@ spec:
   - route:
     - destination:
         host: ${SERVICE_NAME}
-        subset: v1
-EOF
-    
-    echo "✅ Canary promotion финализирован"
-}
-
-# A/B testing
-setup_ab_testing() {
-    local feature_flag=${1:-"new-feature"}
-    
-    echo "🧪 Настройка A/B тестирования для $feature_flag"
-    
-    cat <<EOF | kubectl apply -f -
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  name: ${SERVICE_NAME}-ab-test
-  namespace: ${NAMESPACE}
-spec:
-  hosts:
-  - ${SERVICE_NAME}
-  http:
-  - match:
-    - headers:
-        ${feature_flag}:
-          exact: "enabled"
-    route:
-    - destination:
-        host: ${SERVICE_NAME}
         subset: ${CANARY_VERSION}
-  - match:
-    - cookie:
-        regex: ".*${feature_flag}=enabled.*"
-    route:
-    - destination:
-        host: ${SERVICE_NAME}
-        subset: ${CANARY_VERSION}
-  - route:
-    - destination:
-        host: ${SERVICE_NAME}
-        subset: ${STABLE_VERSION}
-      weight: 50
-    - destination:
-        host: ${SERVICE_NAME}
-        subset: ${CANARY_VERSION}
-      weight: 50
 EOF
-    
-    echo "✅ A/B тестирование настроено"
 }
 
-# Chaos engineering
-inject_faults() {
-    local fault_type=${1:-"delay"}
-    local percentage=${2:-10}
-    
-    echo "💥 Внедрение fault injection: $fault_type ($percentage%)"
-    
-    case $fault_type in
-        delay)
-            cat <<EOF | kubectl apply -f -
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  name: ${SERVICE_NAME}-fault-delay
-  namespace: ${NAMESPACE}
-spec:
-  hosts:
-  - ${SERVICE_NAME}
-  http:
-  - fault:
-      delay:
-        percentage:
-          value: ${percentage}
-        fixedDelay: 5s
-    route:
-    - destination:
-        host: ${SERVICE_NAME}
-        subset: ${STABLE_VERSION}
-EOF
-            ;;
-        abort)
-            cat <<EOF | kubectl apply -f -
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  name: ${SERVICE_NAME}-fault-abort
-  namespace: ${NAMESPACE}
-spec:
-  hosts:
-  - ${SERVICE_NAME}
-  http:
-  - fault:
-      abort:
-        percentage:
-          value: ${percentage}
-        httpStatus: 503
-    route:
-    - destination:
-        host: ${SERVICE_NAME}
-        subset: ${STABLE_VERSION}
-EOF
-            ;;
-    esac
-    
-    echo "✅ Fault injection активирован"
-}
-
-# Очистка fault injection
-cleanup_faults() {
-    echo "🧹 Очистка fault injection"
-    
-    kubectl delete virtualservice ${SERVICE_NAME}-fault-delay -n ${NAMESPACE} --ignore-not-found
-    kubectl delete virtualservice ${SERVICE_NAME}-fault-abort -n ${NAMESPACE} --ignore-not-found
-    
-    echo "✅ Fault injection очищен"
-}
-
-# Основная логика
 case "$1" in
-    canary)
+    deploy)
         deploy_canary ${2:-10}
+        ;;
+    monitor)
+        monitor_canary
         ;;
     promote)
         promote_canary
@@ -765,26 +572,207 @@ case "$1" in
     rollback)
         rollback_canary
         ;;
-    ab-test)
-        setup_ab_testing $2
-        ;;
-    fault-delay)
-        inject_faults "delay" ${2:-10}
-        ;;
-    fault-abort)
-        inject_faults "abort" ${2:-10}
-        ;;
-    cleanup-faults)
-        cleanup_faults
-        ;;
-    monitor)
-        monitor_canary
-        ;;
     *)
-        echo "Использование: $0 {canary [weight]|promote|rollback|ab-test [flag]|fault-delay [%]|fault-abort [%]|cleanup-faults|monitor}"
+        echo "Usage: $0 {deploy [weight]|monitor|promote|rollback}"
         exit 1
         ;;
 esac
 ```
 
-Управление трафиком в service mesh предоставляет мощные возможности для безопасного развертывания, тестирования и оптимизации микросервисных приложений через декларативную конфигурацию без изменения кода приложений.
+### **2. A/B testing automation:**
+```bash
+# A/B testing setup
+kubectl apply -f - << EOF
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: sample-app-ab-test
+  namespace: traffic-demo
+spec:
+  hosts:
+  - sample-app
+  http:
+  - match:
+    - headers:
+        user-group:
+          exact: "beta"
+    route:
+    - destination:
+        host: sample-app
+        subset: v2
+  - match:
+    - cookie:
+        regex: ".*experiment=beta.*"
+    route:
+    - destination:
+        host: sample-app
+        subset: v2
+  - route:
+    - destination:
+        host: sample-app
+        subset: v1
+      weight: 50
+    - destination:
+        host: sample-app
+        subset: v2
+      weight: 50
+EOF
+
+# Тестирование A/B
+kubectl run ab-test-beta --image=curlimages/curl --rm -i --restart=Never -n traffic-demo -- \
+  curl -H "user-group: beta" http://sample-app/
+
+kubectl run ab-test-cookie --image=curlimages/curl --rm -i --restart=Never -n traffic-demo -- \
+  curl -H "Cookie: experiment=beta" http://sample-app/
+```
+
+## 📈 **Мониторинг traffic management:**
+
+### **1. Ключевые метрики:**
+```bash
+# Port forward к Prometheus
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
+
+# Основные метрики для traffic management:
+# istio_requests_total - общее количество запросов
+# istio_request_duration_milliseconds - latency запросов
+# istio_request_bytes - размер запросов
+# istio_response_bytes - размер ответов
+# envoy_cluster_upstream_rq_retry - количество retry
+# envoy_cluster_upstream_rq_timeout - количество timeout
+```
+
+### **2. Grafana дашборд:**
+```bash
+# Создание дашборда для traffic management
+kubectl apply -f - << EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traffic-management-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  traffic-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Traffic Management Dashboard",
+        "panels": [
+          {
+            "title": "Request Rate by Version",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(istio_requests_total[5m])) by (destination_version)",
+                "legendFormat": "{{destination_version}}"
+              }
+            ]
+          },
+          {
+            "title": "Canary Traffic Distribution",
+            "type": "pie",
+            "targets": [
+              {
+                "expr": "sum(rate(istio_requests_total[5m])) by (destination_version)"
+              }
+            ]
+          },
+          {
+            "title": "Circuit Breaker Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "envoy_cluster_upstream_rq_pending_overflow"
+              }
+            ]
+          }
+        ]
+      }
+    }
+EOF
+```
+
+## 🚨 **Диагностика traffic management:**
+
+### **1. Проверка конфигурации:**
+```bash
+# Анализ VirtualService
+kubectl get virtualservice --all-namespaces
+istioctl analyze --all-namespaces
+
+# Проверка routing rules
+istioctl proxy-config route deployment/sample-app-v1 -n traffic-demo
+
+# Проверка clusters
+istioctl proxy-config cluster deployment/sample-app-v1 -n traffic-demo
+
+# Проверка listeners
+istioctl proxy-config listener deployment/sample-app-v1 -n traffic-demo
+```
+
+### **2. Envoy конфигурация:**
+```bash
+# Dump Envoy конфигурации
+POD_NAME=$(kubectl get pods -n traffic-demo -l app=sample-app,version=v1 -o jsonpath='{.items[0].metadata.name}')
+
+kubectl exec $POD_NAME -n traffic-demo -c istio-proxy -- \
+  pilot-agent request GET config_dump | jq '.configs[2].dynamic_route_configs'
+
+# Проверка upstream clusters
+kubectl exec $POD_NAME -n traffic-demo -c istio-proxy -- \
+  pilot-agent request GET clusters | grep sample-app
+```
+
+### **3. Логи и статистика:**
+```bash
+# Envoy access logs
+kubectl logs $POD_NAME -n traffic-demo -c istio-proxy | grep "GET /"
+
+# Envoy статистика
+kubectl exec $POD_NAME -n traffic-demo -c istio-proxy -- \
+  pilot-agent request GET stats | grep -E "(retry|timeout|circuit_breaker)"
+
+# Istiod логи
+kubectl logs -n istio-system -l app=istiod --tail=50 | grep -i "traffic\|route"
+```
+
+## 🔧 **Cleanup тестового окружения:**
+```bash
+# Очистка всех ресурсов
+kubectl delete namespace traffic-demo
+
+# Остановка port forwards
+pkill -f "kubectl port-forward"
+
+# Удаление скриптов
+rm -f canary-deployment.sh
+```
+
+## 🎯 **Best Practices для traffic management:**
+
+### **1. Canary Deployments:**
+- Начинать с малого процента трафика (5-10%)
+- Мониторить ключевые метрики (success rate, latency, errors)
+- Автоматизировать rollback при проблемах
+- Использовать feature flags для A/B testing
+
+### **2. Circuit Breaking:**
+- Настраивать conservative limits
+- Мониторить connection pool metrics
+- Использовать outlier detection
+- Тестировать circuit breaker behavior
+
+### **3. Load Balancing:**
+- Выбирать подходящий алгоритм (ROUND_ROBIN, LEAST_CONN)
+- Учитывать характеристики workload
+- Настраивать health checks
+- Мониторить distribution metrics
+
+### **4. Fault Injection:**
+- Использовать для chaos engineering
+- Тестировать resilience patterns
+- Начинать с низких процентов
+- Мониторить impact на downstream services
+
+**Traffic management в service mesh обеспечивает sophisticated control над микросервисной коммуникацией!**

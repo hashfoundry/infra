@@ -1,150 +1,38 @@
 # 179. Troubleshooting service mesh
 
-## 🎯 Вопрос
-Как диагностировать и устранять проблемы в service mesh?
+## 🎯 **Что такое troubleshooting service mesh?**
 
-## 💡 Ответ
+**Troubleshooting service mesh** - это систематический подход к диагностике и устранению проблем в control plane, data plane, сетевой связности, конфигурации и производительности через istioctl, Envoy admin interface, метрики, логи и distributed tracing для быстрого выявления root cause и восстановления работоспособности mesh.
 
-Troubleshooting service mesh требует системного подхода к диагностике проблем в control plane, data plane, сетевой связности, конфигурации и производительности. Istio предоставляет богатый набор инструментов для отладки: istioctl, Envoy admin interface, метрики, логи и distributed tracing для быстрого выявления и устранения проблем.
+## 🏗️ **Основные категории проблем:**
 
-### 🏗️ Методология troubleshooting
+### **1. Control Plane Issues**
+- Istiod pod failures
+- Configuration sync problems
+- Certificate management errors
+- Resource exhaustion
 
-#### 1. **Схема диагностики проблем**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                Service Mesh Troubleshooting                │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Problem Categories                       │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │ │
-│  │  │ Control     │  │    Data     │  │  Network    │     │ │
-│  │  │ Plane       │  │   Plane     │  │ Connectivity│     │ │
-│  │  │ Issues      │  │  Issues     │  │   Issues    │     │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘     │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │ │
-│  │  │Configuration│  │Performance  │  │  Security   │     │ │
-│  │  │   Issues    │  │   Issues    │  │   Issues    │     │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘     │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Diagnostic Tools                        │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │ │
-│  │  │   istioctl  │  │    Envoy    │  │  Prometheus │     │ │
-│  │  │             │  │    Admin    │  │   Metrics   │     │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘     │ │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │ │
-│  │  │   Jaeger    │  │    Logs     │  │    Kiali    │     │ │
-│  │  │   Tracing   │  │  Analysis   │  │  Topology   │     │ │
-│  │  └─────────────┘  └─────────────┘  └─────────────┘     │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │              Resolution Process                         │ │
-│  │  1. Identify Problem Scope                             │ │
-│  │  2. Gather Diagnostic Data                             │ │
-│  │  3. Analyze Root Cause                                 │ │
-│  │  4. Apply Fix                                          │ │
-│  │  5. Verify Resolution                                  │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. Data Plane Issues**
+- Sidecar injection problems
+- Envoy configuration errors
+- Upstream connection failures
+- Circuit breaker activation
 
-#### 2. **Категории проблем**
-```yaml
-# Категории проблем в service mesh
-problem_categories:
-  control_plane:
-    istiod_issues:
-      - "Pod не запускается"
-      - "Configuration sync проблемы"
-      - "Certificate management ошибки"
-      - "Resource exhaustion"
-    
-    pilot_issues:
-      - "Service discovery проблемы"
-      - "Configuration validation ошибки"
-      - "xDS API проблемы"
-      - "Memory/CPU issues"
-  
-  data_plane:
-    envoy_issues:
-      - "Sidecar injection проблемы"
-      - "Configuration применение ошибки"
-      - "Upstream connection failures"
-      - "Circuit breaker активация"
-    
-    connectivity_issues:
-      - "Service-to-service communication"
-      - "DNS resolution проблемы"
-      - "Load balancing issues"
-      - "Timeout/retry проблемы"
-  
-  configuration:
-    resource_conflicts:
-      - "VirtualService конфликты"
-      - "DestinationRule overlaps"
-      - "Gateway configuration ошибки"
-      - "Policy conflicts"
-    
-    validation_errors:
-      - "YAML syntax ошибки"
-      - "Schema validation failures"
-      - "Cross-reference ошибки"
-      - "Namespace isolation проблемы"
-  
-  performance:
-    latency_issues:
-      - "High request latency"
-      - "Slow service discovery"
-      - "Configuration propagation delays"
-      - "Resource contention"
-    
-    throughput_issues:
-      - "Connection pool exhaustion"
-      - "Rate limiting activation"
-      - "Resource limits"
-      - "Network bandwidth"
-  
-  security:
-    mtls_issues:
-      - "Certificate validation failures"
-      - "Trust domain mismatches"
-      - "CA configuration problems"
-      - "Certificate rotation issues"
-    
-    authorization_issues:
-      - "RBAC policy denials"
-      - "AuthorizationPolicy misconfigurations"
-      - "JWT validation failures"
-      - "Identity mapping problems"
-```
+### **3. Network Connectivity**
+- Service-to-service communication
+- DNS resolution problems
+- Load balancing issues
+- mTLS connectivity failures
 
-### 📊 Примеры из нашего кластера
+### **4. Configuration Problems**
+- VirtualService conflicts
+- DestinationRule overlaps
+- Gateway misconfigurations
+- Policy validation errors
 
-#### Базовые команды диагностики:
-```bash
-# Проверка статуса Istio компонентов
-istioctl version
-kubectl get pods -n istio-system
+## 📊 **Практические примеры из вашего HA кластера:**
 
-# Проверка конфигурации proxy
-istioctl proxy-status
-istioctl proxy-config cluster <pod-name> -n <namespace>
-
-# Анализ конфигурации
-istioctl analyze
-istioctl analyze --all-namespaces
-
-# Проверка сертификатов
-istioctl authn tls-check <service>.<namespace>.svc.cluster.local
-```
-
-### 🔧 Диагностические инструменты
-
-#### 1. **Комплексный скрипт диагностики**
+### **1. Комплексный диагностический скрипт:**
 ```bash
 #!/bin/bash
 # istio-troubleshoot.sh
@@ -172,7 +60,7 @@ check_control_plane() {
     
     # Статус Istiod
     echo "=== Istiod Status ==="
-    kubectl get pods -n istio-system -l app=istiod
+    kubectl get pods -n istio-system -l app=istiod -o wide
     kubectl get svc -n istio-system -l app=istiod
     
     # Проверка готовности
@@ -193,6 +81,14 @@ check_control_plane() {
     echo "=== Configuration Analysis ==="
     istioctl analyze --all-namespaces
     
+    # Проверка ресурсов
+    echo "=== Resource Usage ==="
+    kubectl top pods -n istio-system --containers
+    
+    # Проверка endpoints
+    echo "=== Istiod Endpoints ==="
+    kubectl get endpoints istiod -n istio-system -o yaml
+    
     echo "✅ Control Plane проверка завершена"
 }
 
@@ -209,10 +105,19 @@ check_data_plane() {
         echo "❌ Istio sidecar не найден"
         echo "Проверка namespace injection:"
         kubectl get namespace $NAMESPACE -o jsonpath='{.metadata.labels.istio-injection}'
+        echo ""
         echo "Проверка pod annotations:"
-        kubectl get pod $POD_NAME -n $NAMESPACE -o jsonpath='{.metadata.annotations}'
+        kubectl get pod $POD_NAME -n $NAMESPACE -o jsonpath='{.metadata.annotations}' | jq '.'
+        
+        # Проверка webhook
+        echo "Проверка sidecar injector webhook:"
+        kubectl get mutatingwebhookconfiguration istio-sidecar-injector -o yaml | grep -A 5 -B 5 "namespaceSelector"
     else
         echo "✅ Istio sidecar найден"
+        
+        # Статус sidecar
+        echo "Статус sidecar контейнера:"
+        kubectl get pod $POD_NAME -n $NAMESPACE -o jsonpath='{.status.containerStatuses[?(@.name=="istio-proxy")]}' | jq '.'
     fi
     
     # Proxy status
@@ -221,13 +126,18 @@ check_data_plane() {
     
     # Proxy configuration
     echo "=== Proxy Configuration ==="
-    istioctl proxy-config cluster $POD_NAME -n $NAMESPACE
-    istioctl proxy-config listener $POD_NAME -n $NAMESPACE
-    istioctl proxy-config route $POD_NAME -n $NAMESPACE
+    echo "Clusters:"
+    istioctl proxy-config cluster $POD_NAME -n $NAMESPACE | head -10
+    echo ""
+    echo "Listeners:"
+    istioctl proxy-config listener $POD_NAME -n $NAMESPACE | head -10
+    echo ""
+    echo "Routes:"
+    istioctl proxy-config route $POD_NAME -n $NAMESPACE | head -10
     
     # Envoy admin interface
     echo "=== Envoy Admin Interface ==="
-    kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- pilot-agent request GET stats | grep -E "(circuit_breakers|upstream_rq_retry|upstream_rq_timeout)"
+    kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- pilot-agent request GET stats | grep -E "(circuit_breakers|upstream_rq_retry|upstream_rq_timeout)" | head -10
     
     echo "✅ Data Plane проверка завершена"
 }
@@ -245,15 +155,20 @@ check_connectivity() {
     
     # Service endpoints
     echo "=== Service Endpoints ==="
-    kubectl get endpoints $SERVICE -n $NAMESPACE
+    kubectl get endpoints $SERVICE -n $NAMESPACE -o yaml
     
     # Connectivity test
     echo "=== Connectivity Test ==="
-    kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- curl -s -o /dev/null -w "%{http_code}" http://$SERVICE.$NAMESPACE.svc.cluster.local:8080/health
+    local response_code=$(kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- curl -s -o /dev/null -w "%{http_code}" http://$SERVICE.$NAMESPACE.svc.cluster.local:8080/health 2>/dev/null || echo "000")
+    echo "HTTP response code: $response_code"
     
     # mTLS connectivity
     echo "=== mTLS Connectivity ==="
     istioctl authn tls-check $SERVICE.$NAMESPACE.svc.cluster.local
+    
+    # Envoy clusters health
+    echo "=== Envoy Clusters Health ==="
+    kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- pilot-agent request GET clusters | grep -E "(health_flags|outlier_detection)" | head -10
     
     echo "✅ Connectivity проверка завершена"
 }
@@ -264,18 +179,15 @@ check_configuration() {
     
     # VirtualService
     echo "=== VirtualService ==="
-    kubectl get virtualservice -n $NAMESPACE
-    kubectl describe virtualservice -n $NAMESPACE
+    kubectl get virtualservice -n $NAMESPACE -o yaml
     
     # DestinationRule
     echo "=== DestinationRule ==="
-    kubectl get destinationrule -n $NAMESPACE
-    kubectl describe destinationrule -n $NAMESPACE
+    kubectl get destinationrule -n $NAMESPACE -o yaml
     
     # Gateway
     echo "=== Gateway ==="
-    kubectl get gateway -n $NAMESPACE
-    kubectl describe gateway -n $NAMESPACE
+    kubectl get gateway -n $NAMESPACE -o yaml
     
     # ServiceEntry
     echo "=== ServiceEntry ==="
@@ -283,16 +195,23 @@ check_configuration() {
     
     # PeerAuthentication
     echo "=== PeerAuthentication ==="
-    kubectl get peerauthentication -n $NAMESPACE
-    kubectl get peerauthentication -n istio-system
+    kubectl get peerauthentication -n $NAMESPACE -o yaml
+    kubectl get peerauthentication -n istio-system -o yaml
     
     # AuthorizationPolicy
     echo "=== AuthorizationPolicy ==="
-    kubectl get authorizationpolicy -n $NAMESPACE
+    kubectl get authorizationpolicy -n $NAMESPACE -o yaml
     
     # Configuration validation
     echo "=== Configuration Validation ==="
     istioctl analyze -n $NAMESPACE
+    
+    # Pilot configuration dump
+    echo "=== Pilot Configuration Dump ==="
+    if [ -n "$POD_NAME" ]; then
+        kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- pilot-agent request GET config_dump > /tmp/config_dump_${POD_NAME}.json
+        echo "Configuration dump сохранен в /tmp/config_dump_${POD_NAME}.json"
+    fi
     
     echo "✅ Configuration проверка завершена"
 }
@@ -309,7 +228,7 @@ check_performance() {
     
     # Envoy stats
     echo "=== Envoy Performance Stats ==="
-    kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- pilot-agent request GET stats | grep -E "(memory|cpu|connections|requests)"
+    kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- pilot-agent request GET stats | grep -E "(memory|cpu|connections|requests)" | head -10
     
     # Circuit breaker status
     echo "=== Circuit Breaker Status ==="
@@ -317,7 +236,11 @@ check_performance() {
     
     # Connection pool stats
     echo "=== Connection Pool Stats ==="
-    kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- pilot-agent request GET stats | grep upstream_cx
+    kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- pilot-agent request GET stats | grep upstream_cx | head -10
+    
+    # Request latency
+    echo "=== Request Latency Stats ==="
+    kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- pilot-agent request GET stats | grep histogram | head -10
     
     echo "✅ Performance проверка завершена"
 }
@@ -342,7 +265,11 @@ check_security() {
     
     # Authorization policies
     echo "=== Authorization Policies ==="
-    kubectl get authorizationpolicy -n $NAMESPACE -o yaml
+    kubectl get authorizationpolicy -n $NAMESPACE
+    
+    # Security events
+    echo "=== Security Events ==="
+    kubectl get events -n $NAMESPACE --field-selector reason=Denied | head -10
     
     echo "✅ Security проверка завершена"
 }
@@ -365,7 +292,7 @@ collect_logs() {
         
         # Application logs
         echo "Сбор application логов..."
-        kubectl logs $POD_NAME -n $NAMESPACE --tail=1000 > $log_dir/application.log
+        kubectl logs $POD_NAME -n $NAMESPACE --tail=1000 > $log_dir/application.log 2>/dev/null || echo "Application logs недоступны"
     fi
     
     # Gateway logs
@@ -375,8 +302,13 @@ collect_logs() {
     # Configuration dump
     echo "Сбор configuration dump..."
     if [ -n "$POD_NAME" ]; then
-        kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- pilot-agent request GET config_dump > $log_dir/config_dump.json
+        kubectl exec $POD_NAME -n $NAMESPACE -c istio-proxy -- pilot-agent request GET config_dump > $log_dir/config_dump.json 2>/dev/null || echo "Config dump недоступен"
     fi
+    
+    # Events
+    echo "Сбор events..."
+    kubectl get events -n $NAMESPACE --sort-by='.lastTimestamp' > $log_dir/events.log
+    kubectl get events -n istio-system --sort-by='.lastTimestamp' > $log_dir/istio-events.log
     
     echo "✅ Логи собраны в $log_dir"
 }
@@ -416,8 +348,8 @@ generate_report() {
         echo ""
         
         echo "=== RESOURCE USAGE ==="
-        kubectl top pods -n istio-system
-        kubectl top pods -n $NAMESPACE
+        kubectl top pods -n istio-system 2>/dev/null || echo "Metrics server недоступен"
+        kubectl top pods -n $NAMESPACE 2>/dev/null || echo "Metrics server недоступен"
         echo ""
         
     } > $report_file
@@ -471,11 +403,13 @@ case "$1" in
         exit 1
         ;;
 esac
+
+chmod +x istio-troubleshoot.sh
 ```
 
-#### 2. **Специализированные диагностические скрипты**
+### **2. Специализированные диагностические скрипты:**
 
-##### mTLS диагностика
+#### **mTLS диагностика:**
 ```bash
 #!/bin/bash
 # diagnose-mtls.sh
@@ -490,8 +424,8 @@ diagnose_mtls_issues() {
     
     # Проверка PeerAuthentication
     echo "=== PeerAuthentication Policies ==="
-    kubectl get peerauthentication -n $namespace
-    kubectl get peerauthentication -n istio-system
+    kubectl get peerauthentication -n $namespace -o yaml
+    kubectl get peerauthentication -n istio-system -o yaml
     
     # Проверка DestinationRule TLS settings
     echo "=== DestinationRule TLS Settings ==="
@@ -503,13 +437,20 @@ diagnose_mtls_issues() {
     
     if [ -n "$pod" ]; then
         # Проверка наличия сертификатов
+        echo "Файлы сертификатов:"
         kubectl exec $pod -n $namespace -c istio-proxy -- ls -la /var/run/secrets/workload-spiffe-credentials/
         
         # Проверка срока действия
+        echo "Срок действия сертификата:"
         kubectl exec $pod -n $namespace -c istio-proxy -- openssl x509 -in /var/run/secrets/workload-spiffe-credentials/cert.pem -noout -dates
         
         # Проверка SPIFFE ID
+        echo "SPIFFE Identity:"
         kubectl exec $pod -n $namespace -c istio-proxy -- openssl x509 -in /var/run/secrets/workload-spiffe-credentials/cert.pem -text -noout | grep "Subject Alternative Name"
+        
+        # Проверка CA
+        echo "CA Certificate:"
+        kubectl exec $pod -n $namespace -c istio-proxy -- openssl x509 -in /var/run/secrets/workload-spiffe-credentials/ca.pem -text -noout | grep -A 2 "Subject:"
     fi
     
     # TLS check
@@ -519,7 +460,7 @@ diagnose_mtls_issues() {
     # Envoy TLS configuration
     echo "=== Envoy TLS Configuration ==="
     if [ -n "$pod" ]; then
-        kubectl exec $pod -n $namespace -c istio-proxy -- pilot-agent request GET config_dump | jq '.configs[] | select(.["@type"] | contains("type.googleapis.com/envoy.admin.v3.ClustersConfigDump")) | .dynamic_active_clusters[] | select(.cluster.transport_socket.typed_config.common_tls_context) | {name: .cluster.name, tls: .cluster.transport_socket.typed_config.common_tls_context}'
+        kubectl exec $pod -n $namespace -c istio-proxy -- pilot-agent request GET config_dump | jq '.configs[] | select(.["@type"] | contains("type.googleapis.com/envoy.admin.v3.ClustersConfigDump")) | .dynamic_active_clusters[] | select(.cluster.transport_socket.typed_config.common_tls_context) | {name: .cluster.name, tls: .cluster.transport_socket.typed_config.common_tls_context}' | head -5
     fi
 }
 
@@ -534,15 +475,15 @@ test_mtls_connectivity() {
     
     # Тест без mTLS
     echo "Тест HTTP (без mTLS):"
-    kubectl exec $source_pod -n $source_namespace -- curl -s -o /dev/null -w "%{http_code}" http://$target_service.$target_namespace.svc.cluster.local:8080/
+    kubectl exec $source_pod -n $source_namespace -- curl -s -o /dev/null -w "%{http_code}" http://$target_service.$target_namespace.svc.cluster.local:8080/ 2>/dev/null || echo "Failed"
     
-    # Тест с mTLS
-    echo "Тест HTTPS (с mTLS):"
-    kubectl exec $source_pod -n $source_namespace -- curl -s -o /dev/null -w "%{http_code}" \
-        --cert /var/run/secrets/workload-spiffe-credentials/cert.pem \
-        --key /var/run/secrets/workload-spiffe-credentials/key.pem \
-        --cacert /var/run/secrets/workload-spiffe-credentials/ca.pem \
-        https://$target_service.$target_namespace.svc.cluster.local:8080/
+    # Тест с mTLS через Envoy
+    echo "Тест через Envoy sidecar (с mTLS):"
+    kubectl exec $source_pod -n $source_namespace -c istio-proxy -- curl -s -o /dev/null -w "%{http_code}" http://$target_service.$target_namespace.svc.cluster.local:8080/ 2>/dev/null || echo "Failed"
+    
+    # Проверка TLS handshake
+    echo "Проверка TLS handshake:"
+    kubectl exec $source_pod -n $source_namespace -c istio-proxy -- openssl s_client -connect $target_service.$target_namespace.svc.cluster.local:8080 -cert /var/run/secrets/workload-spiffe-credentials/cert.pem -key /var/run/secrets/workload-spiffe-credentials/key.pem -CAfile /var/run/secrets/workload-spiffe-credentials/ca.pem < /dev/null 2>&1 | grep -E "(Verify return code|subject|issuer)"
 }
 
 case "$1" in
@@ -554,16 +495,72 @@ case "$1" in
         ;;
     *)
         echo "Использование: $0 {diagnose|test} [params...]"
+        echo "diagnose: $0 diagnose <service> <namespace>"
+        echo "test: $0 test <source-pod> <source-namespace> <target-service> <target-namespace>"
         exit 1
         ;;
 esac
 ```
 
-### 📊 Мониторинг и алерты
+### **3. Автоматизированный health check:**
+```bash
+#!/bin/bash
+# istio-health-check.sh
 
-#### 1. **Prometheus правила для диагностики**
+echo "🏥 Автоматизированная проверка здоровья Istio"
+
+# Функция проверки здоровья
+health_check() {
+    local component=$1
+    local check_command=$2
+    local expected_result=$3
+    
+    echo -n "Проверка $component: "
+    
+    local result=$(eval $check_command 2>/dev/null)
+    local exit_code=$?
+    
+    if [ $exit_code -eq 0 ] && [[ "$result" == *"$expected_result"* ]]; then
+        echo "✅ OK"
+        return 0
+    else
+        echo "❌ FAIL"
+        echo "  Команда: $check_command"
+        echo "  Результат: $result"
+        return 1
+    fi
+}
+
+# Проверки
+echo "🔍 Выполнение проверок здоровья..."
+
+# Control Plane
+health_check "Istiod Pod" "kubectl get pods -n istio-system -l app=istiod --no-headers" "Running"
+health_check "Istiod Service" "kubectl get svc -n istio-system -l app=istiod --no-headers" "ClusterIP"
+
+# Data Plane
+health_check "Proxy Status" "istioctl proxy-status" "SYNCED"
+
+# Configuration
+health_check "Configuration Analysis" "istioctl analyze --all-namespaces" "No validation issues found"
+
+# Connectivity
+health_check "DNS Resolution" "kubectl exec -n istio-system deployment/istiod -- nslookup kubernetes.default.svc.cluster.local" "kubernetes.default.svc.cluster.local"
+
+# Certificates
+health_check "Certificate Validity" "kubectl exec -n istio-system deployment/istiod -- openssl x509 -in /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -noout -checkend 604800" ""
+
+# Gateway
+health_check "Ingress Gateway" "kubectl get pods -n istio-system -l app=istio-ingressgateway --no-headers" "Running"
+
+echo ""
+echo "🏥 Проверка здоровья завершена"
+```
+
+## 🚨 **Мониторинг и алертинг для troubleshooting:**
+
+### **1. Prometheus правила для диагностики:**
 ```yaml
-# diagnostic-alerts.yaml
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -617,60 +614,107 @@ spec:
       annotations:
         summary: "Istio certificate expiring soon"
         description: "Certificate expires in less than 7 days"
+    
+    - alert: IstioHighMemoryUsage
+      expr: container_memory_usage_bytes{container="istio-proxy"} / container_spec_memory_limit_bytes{container="istio-proxy"} > 0.8
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage in Istio proxy"
+        description: "Istio proxy memory usage is above 80%"
 ```
 
-### 🔧 Автоматизированная диагностика
-
-#### 1. **Health check скрипт**
+### **2. Grafana dashboard для troubleshooting:**
 ```bash
-#!/bin/bash
-# istio-health-check.sh
-
-echo "🏥 Автоматизированная проверка здоровья Istio"
-
-# Функция проверки здоровья
-health_check() {
-    local component=$1
-    local check_command=$2
-    local expected_result=$3
-    
-    echo -n "Проверка $component: "
-    
-    local result=$(eval $check_command 2>/dev/null)
-    local exit_code=$?
-    
-    if [ $exit_code -eq 0 ] && [[ "$result" == *"$expected_result"* ]]; then
-        echo "✅ OK"
-        return 0
-    else
-        echo "❌ FAIL"
-        echo "  Команда: $check_command"
-        echo "  Результат: $result"
-        return 1
-    fi
-}
-
-# Проверки
-echo "🔍 Выполнение проверок здоровья..."
-
-# Control Plane
-health_check "Istiod Pod" "kubectl get pods -n istio-system -l app=istiod --no-headers" "Running"
-health_check "Istiod Service" "kubectl get svc -n istio-system -l app=istiod --no-headers" "ClusterIP"
-
-# Data Plane
-health_check "Proxy Status" "istioctl proxy-status" "SYNCED"
-
-# Configuration
-health_check "Configuration Analysis" "istioctl analyze --all-namespaces" "No validation issues found"
-
-# Connectivity
-health_check "DNS Resolution" "kubectl exec -n istio-system deployment/istiod -- nslookup kubernetes.default.svc.cluster.local" "kubernetes.default.svc.cluster.local"
-
-# Certificates
-health_check "Certificate Validity" "kubectl exec -n istio-system deployment/istiod -- openssl x509 -in /var/run/secrets/kubernetes.io/serviceaccount/ca.crt -noout -checkend 604800" ""
-
-echo ""
-echo "🏥 Проверка здоровья завершена"
+kubectl apply -f - << EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: istio-troubleshooting-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  istio-troubleshooting.json: |
+    {
+      "dashboard": {
+        "title": "Istio Troubleshooting Dashboard",
+        "panels": [
+          {
+            "title": "Control Plane Health",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=\"istiod\"}",
+                "legendFormat": "Istiod"
+              }
+            ]
+          },
+          {
+            "title": "Proxy Sync Status",
+            "type": "table",
+            "targets": [
+              {
+                "expr": "pilot_proxy_convergence_time",
+                "legendFormat": "{{proxy}}"
+              }
+            ]
+          },
+          {
+            "title": "Configuration Errors",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(pilot_k8s_cfg_events{type=\"Warning\"}[5m])",
+                "legendFormat": "Config Warnings"
+              }
+            ]
+          },
+          {
+            "title": "Sidecar Injection Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(sidecar_injection_success_total[5m])",
+                "legendFormat": "Success"
+              },
+              {
+                "expr": "rate(sidecar_injection_failure_total[5m])",
+                "legendFormat": "Failures"
+              }
+            ]
+          }
+        ]
+      }
+    }
+EOF
 ```
 
-Troubleshooting service mesh требует систематического подхода и использования множественных инструментов диагностики для быстрого выявления и устранения проблем в сложной микросервисной архитектуре.
+## 🎯 **Best Practices для troubleshooting:**
+
+### **1. Систематический подход:**
+- Начинать с control plane проверки
+- Проверять data plane конфигурацию
+- Тестировать network connectivity
+- Анализировать security policies
+
+### **2. Инструменты диагностики:**
+- Использовать istioctl для быстрой диагностики
+- Анализировать Envoy admin interface
+- Мониторить метрики в реальном времени
+- Собирать и анализировать логи
+
+### **3. Профилактические меры:**
+- Регулярно запускать health checks
+- Мониторить key metrics
+- Настроить proper alerting
+- Документировать known issues
+
+### **4. Escalation procedures:**
+- Определить критичность проблемы
+- Собрать diagnostic data
+- Применить temporary workarounds
+- Планировать permanent fixes
+
+**Эффективный troubleshooting service mesh требует систематического подхода и использования правильных инструментов диагностики!**

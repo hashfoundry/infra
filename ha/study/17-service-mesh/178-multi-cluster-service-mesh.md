@@ -1,135 +1,35 @@
 # 178. Multi-cluster service mesh
 
-## 🎯 Вопрос
-Как реализовать multi-cluster service mesh?
+## 🎯 **Что такое multi-cluster service mesh?**
 
-## 💡 Ответ
+**Multi-cluster service mesh** обеспечивает единую плоскость управления и безопасную коммуникацию между сервисами, развернутыми в разных Kubernetes кластерах через primary-remote, primary-primary модели с автоматическим cross-cluster service discovery, mTLS и intelligent traffic routing для создания федеративной mesh архитектуры.
 
-Multi-cluster service mesh обеспечивает единую плоскость управления и безопасную коммуникацию между сервисами, развернутыми в разных Kubernetes кластерах. Istio поддерживает primary-remote, primary-primary и external control plane модели для создания федеративной mesh архитектуры с cross-cluster service discovery, mTLS и traffic management.
+## 🏗️ **Основные модели multi-cluster:**
 
-### 🏗️ Архитектура multi-cluster service mesh
+### **1. Primary-Remote Model**
+- Один primary кластер с control plane
+- Remote кластеры подключаются к primary
+- Централизованное управление конфигурацией
 
-#### 1. **Схема multi-cluster топологии**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                Multi-Cluster Service Mesh                  │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Primary Cluster                         │ │
-│  │  ┌─────────────────────────────────────────────────────┐│ │
-│  │  │              Istio Control Plane                   ││ │
-│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ ││ │
-│  │  │  │   Istiod    │  │   Pilot     │  │   Citadel   │ ││ │
-│  │  │  │ (Primary)   │  │             │  │             │ ││ │
-│  │  │  └─────────────┘  └─────────────┘  └─────────────┘ ││ │
-│  │  └─────────────────────────────────────────────────────┘│ │
-│  │                              │                          │ │
-│  │  ┌─────────────────────────────────────────────────────┐│ │
-│  │  │                Data Plane                          ││ │
-│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ ││ │
-│  │  │  │  Service A  │  │  Service B  │  │  Gateway    │ ││ │
-│  │  │  │   + Envoy   │  │   + Envoy   │  │   + Envoy   │ ││ │
-│  │  │  └─────────────┘  └─────────────┘  └─────────────┘ ││ │
-│  │  └─────────────────────────────────────────────────────┘│ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              │ Cross-Cluster Network       │
-│                              │                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Remote Cluster                          │ │
-│  │  ┌─────────────────────────────────────────────────────┐│ │
-│  │  │            Remote Control Plane                    ││ │
-│  │  │  ┌─────────────┐                                   ││ │
-│  │  │  │   Istiod    │  ◄─── Config Sync                ││ │
-│  │  │  │  (Remote)   │                                   ││ │
-│  │  │  └─────────────┘                                   ││ │
-│  │  └─────────────────────────────────────────────────────┘│ │
-│  │                              │                          │ │
-│  │  ┌─────────────────────────────────────────────────────┐│ │
-│  │  │                Data Plane                          ││ │
-│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ ││ │
-│  │  │  │  Service C  │  │  Service D  │  │  Gateway    │ ││ │
-│  │  │  │   + Envoy   │  │   + Envoy   │  │   + Envoy   │ ││ │
-│  │  │  └─────────────┘  └─────────────┘  └─────────────┘ ││ │
-│  │  └─────────────────────────────────────────────────────┘│ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. Primary-Primary Model**
+- Несколько primary кластеров
+- Каждый имеет собственный control plane
+- Высокая доступность и независимость
 
-#### 2. **Multi-cluster модели**
-```yaml
-# Модели multi-cluster service mesh
-multi_cluster_models:
-  primary_remote:
-    description: "Один primary кластер с control plane, остальные remote"
-    use_cases:
-      - "Централизованное управление"
-      - "Простая конфигурация"
-      - "Меньше ресурсов на remote кластерах"
-    limitations:
-      - "Single point of failure"
-      - "Network latency для remote кластеров"
-      
-  primary_primary:
-    description: "Несколько primary кластеров с собственными control plane"
-    use_cases:
-      - "High availability"
-      - "Географически распределенные кластеры"
-      - "Независимое управление"
-    benefits:
-      - "Отказоустойчивость"
-      - "Локальное управление"
-      - "Лучшая производительность"
-      
-  external_control_plane:
-    description: "Control plane вне Kubernetes кластеров"
-    use_cases:
-      - "Managed service mesh"
-      - "Hybrid cloud deployments"
-      - "Legacy system integration"
-    considerations:
-      - "Дополнительная инфраструктура"
-      - "Сетевая связность"
-```
+### **3. External Control Plane**
+- Control plane вне Kubernetes кластеров
+- Managed service mesh решения
+- Hybrid cloud deployments
 
-### 📊 Примеры из нашего кластера
+## 📊 **Практические примеры из вашего HA кластера:**
 
-#### Проверка multi-cluster конфигурации:
+### **1. Настройка Primary кластера:**
 ```bash
-# Проверка кластеров в mesh
-istioctl proxy-status --all-namespaces
+# Установка Istio в primary режиме
+kubectl create namespace istio-system
 
-# Проверка cross-cluster endpoints
-kubectl get endpoints --all-namespaces -o wide
-
-# Проверка multi-cluster secrets
-kubectl get secrets -n istio-system -l istio/cluster-name
-
-# Проверка network configuration
-kubectl get gateways --all-namespaces
-kubectl get destinationrules --all-namespaces | grep -i cluster
-```
-
-### 🔧 Настройка Primary-Remote модели
-
-#### 1. **Primary кластер конфигурация**
-```bash
-#!/bin/bash
-# setup-primary-cluster.sh
-
-echo "🏗️ Настройка Primary кластера для multi-cluster mesh"
-
-# Переменные
-PRIMARY_CLUSTER_NAME="hashfoundry-primary"
-PRIMARY_NETWORK="network1"
-MESH_ID="mesh1"
-
-# Установка Istio на primary кластер
-install_istio_primary() {
-    echo "📦 Установка Istio на primary кластер"
-    
-    # Создание IstioOperator для primary
-    cat <<EOF | kubectl apply -f -
+# Создание IstioOperator для primary кластера
+kubectl apply -f - << EOF
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
 metadata:
@@ -138,23 +38,21 @@ metadata:
 spec:
   values:
     global:
-      meshID: ${MESH_ID}
-      cluster: ${PRIMARY_CLUSTER_NAME}
-      network: ${PRIMARY_NETWORK}
+      meshID: hashfoundry-mesh
+      cluster: hashfoundry-primary
+      network: network1
     pilot:
       env:
         EXTERNAL_ISTIOD: true
         PILOT_ENABLE_CROSS_CLUSTER_WORKLOAD_ENTRY: true
-        PILOT_ENABLE_REMOTE_JWKS_CACHE: true
-    istiodRemote:
-      enabled: false
+        PILOT_ENABLE_WORKLOAD_ENTRY_AUTOREGISTRATION: true
   components:
     pilot:
       k8s:
         env:
-          - name: PILOT_ENABLE_WORKLOAD_ENTRY_AUTOREGISTRATION
-            value: "true"
           - name: PILOT_ENABLE_CROSS_CLUSTER_WORKLOAD_ENTRY
+            value: "true"
+          - name: PILOT_ENABLE_WORKLOAD_ENTRY_AUTOREGISTRATION
             value: "true"
         service:
           type: LoadBalancer
@@ -169,43 +67,19 @@ spec:
               targetPort: 15012
               name: grpc-xds-mux
 EOF
-    
-    # Ожидание готовности
-    kubectl wait --for=condition=available deployment/istiod -n istio-system --timeout=600s
-    
-    echo "✅ Istio установлен на primary кластер"
-}
 
-# Настройка cross-cluster secret
-setup_cross_cluster_secret() {
-    local remote_cluster_name=$1
-    local remote_kubeconfig=$2
-    
-    echo "🔐 Настройка cross-cluster secret для $remote_cluster_name"
-    
-    # Создание secret для remote кластера
-    kubectl create secret generic cacerts -n istio-system \
-        --from-file=root-cert.pem=/tmp/root-cert.pem \
-        --from-file=cert-chain.pem=/tmp/cert-chain.pem \
-        --from-file=ca-cert.pem=/tmp/ca-cert.pem \
-        --from-file=ca-key.pem=/tmp/ca-key.pem
-    
-    # Создание secret для доступа к remote кластеру
-    kubectl create secret generic ${remote_cluster_name} \
-        --from-file=${remote_kubeconfig} \
-        -n istio-system
-    
-    kubectl label secret ${remote_cluster_name} istio/cluster=${remote_cluster_name} -n istio-system
-    
-    echo "✅ Cross-cluster secret создан"
-}
+# Ожидание готовности Istiod
+kubectl wait --for=condition=available deployment/istiod -n istio-system --timeout=600s
 
-# Настройка east-west gateway
-setup_east_west_gateway() {
-    echo "🌐 Настройка East-West Gateway"
-    
-    # Установка east-west gateway
-    cat <<EOF | kubectl apply -f -
+# Проверка статуса
+kubectl get pods -n istio-system -l app=istiod
+kubectl get svc -n istio-system -l app=istiod
+```
+
+### **2. Настройка East-West Gateway:**
+```bash
+# Установка East-West Gateway для cross-cluster коммуникации
+kubectl apply -f - << EOF
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
 metadata:
@@ -236,10 +110,13 @@ spec:
               - port: 15012
                 targetPort: 15012
                 name: tls-webhook
+              - port: 15443
+                targetPort: 15443
+                name: tls-cross-cluster
 EOF
-    
-    # Настройка Gateway для cross-cluster трафика
-    cat <<EOF | kubectl apply -f -
+
+# Настройка Gateway для cross-cluster трафика
+kubectl apply -f - << EOF
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
@@ -258,83 +135,82 @@ spec:
       hosts:
         - "*.local"
 EOF
-    
-    echo "✅ East-West Gateway настроен"
-}
 
-# Экспорт discovery адреса
-export_discovery_address() {
-    echo "📡 Экспорт discovery адреса"
-    
-    # Получение external IP east-west gateway
-    local gateway_ip=$(kubectl get svc istio-eastwestgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-    
-    echo "Discovery address: ${gateway_ip}:15012"
-    echo "Используйте этот адрес для настройки remote кластеров"
-    
-    # Сохранение в файл для использования в remote кластерах
-    echo "${gateway_ip}:15012" > /tmp/discovery-address.txt
-    
-    echo "✅ Discovery адрес экспортирован"
-}
-
-# Основная логика
-case "$1" in
-    install)
-        install_istio_primary
-        ;;
-    secret)
-        setup_cross_cluster_secret $2 $3
-        ;;
-    gateway)
-        setup_east_west_gateway
-        ;;
-    export)
-        export_discovery_address
-        ;;
-    all)
-        install_istio_primary
-        setup_east_west_gateway
-        export_discovery_address
-        ;;
-    *)
-        echo "Использование: $0 {install|secret|gateway|export|all} [remote-cluster] [kubeconfig]"
-        exit 1
-        ;;
-esac
+# Получение external IP для East-West Gateway
+EASTWEST_IP=$(kubectl get svc istio-eastwestgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+echo "East-West Gateway IP: $EASTWEST_IP"
+echo "Discovery Address: $EASTWEST_IP:15012"
 ```
 
-#### 2. **Remote кластер конфигурация**
+### **3. Создание общих CA сертификатов:**
 ```bash
+# Создание общего root CA для всех кластеров
+mkdir -p /tmp/multicluster-certs
+cd /tmp/multicluster-certs
+
+# Генерация root CA
+openssl genrsa -out root-key.pem 4096
+
+openssl req -new -x509 -key root-key.pem -out root-cert.pem -days 3650 \
+  -subj "/C=US/ST=CA/L=San Francisco/O=HashFoundry/OU=Infrastructure/CN=HashFoundry Multi-Cluster Root CA"
+
+# Генерация intermediate CA для primary кластера
+openssl genrsa -out primary-ca-key.pem 4096
+
+openssl req -new -key primary-ca-key.pem -out primary-ca-csr.pem \
+  -subj "/C=US/ST=CA/L=San Francisco/O=HashFoundry/OU=Infrastructure/CN=HashFoundry Primary CA"
+
+openssl x509 -req -in primary-ca-csr.pem -CA root-cert.pem -CAkey root-key.pem \
+  -CAcreateserial -out primary-ca-cert.pem -days 1825
+
+# Создание cert-chain
+cat primary-ca-cert.pem root-cert.pem > primary-cert-chain.pem
+
+# Создание secret в primary кластере
+kubectl create secret generic cacerts -n istio-system \
+  --from-file=root-cert.pem=root-cert.pem \
+  --from-file=cert-chain.pem=primary-cert-chain.pem \
+  --from-file=ca-cert.pem=primary-ca-cert.pem \
+  --from-file=ca-key.pem=primary-ca-key.pem
+
+# Перезапуск Istiod для применения новых сертификатов
+kubectl rollout restart deployment/istiod -n istio-system
+kubectl wait --for=condition=available deployment/istiod -n istio-system --timeout=300s
+
+echo "✅ CA сертификаты настроены для primary кластера"
+```
+
+### **4. Настройка Remote кластера:**
+```bash
+# Скрипт для настройки remote кластера
+cat > setup-remote-cluster.sh << 'EOF'
 #!/bin/bash
-# setup-remote-cluster.sh
 
-echo "🔗 Настройка Remote кластера для multi-cluster mesh"
-
-# Переменные
 REMOTE_CLUSTER_NAME="hashfoundry-remote"
 REMOTE_NETWORK="network2"
-MESH_ID="mesh1"
-DISCOVERY_ADDRESS=""  # Получить из primary кластера
+MESH_ID="hashfoundry-mesh"
+DISCOVERY_ADDRESS="$1"  # IP:PORT от primary кластера
 
-# Установка Istio на remote кластер
-install_istio_remote() {
-    local discovery_address=$1
-    
-    echo "📦 Установка Istio на remote кластер"
-    
-    # Создание namespace
-    kubectl create namespace istio-system
-    
-    # Создание CA certificates secret
-    kubectl create secret generic cacerts -n istio-system \
-        --from-file=root-cert.pem=/tmp/root-cert.pem \
-        --from-file=cert-chain.pem=/tmp/cert-chain.pem \
-        --from-file=ca-cert.pem=/tmp/ca-cert.pem \
-        --from-file=ca-key.pem=/tmp/ca-key.pem
-    
-    # Создание IstioOperator для remote
-    cat <<EOF | kubectl apply -f -
+if [ -z "$DISCOVERY_ADDRESS" ]; then
+    echo "Usage: $0 <discovery-address>"
+    echo "Example: $0 203.0.113.10:15012"
+    exit 1
+fi
+
+echo "🔗 Настройка Remote кластера: $REMOTE_CLUSTER_NAME"
+
+# Создание namespace
+kubectl create namespace istio-system
+
+# Копирование CA сертификатов из primary кластера
+kubectl create secret generic cacerts -n istio-system \
+  --from-file=root-cert.pem=/tmp/multicluster-certs/root-cert.pem \
+  --from-file=cert-chain.pem=/tmp/multicluster-certs/primary-cert-chain.pem \
+  --from-file=ca-cert.pem=/tmp/multicluster-certs/primary-ca-cert.pem \
+  --from-file=ca-key.pem=/tmp/multicluster-certs/primary-ca-key.pem
+
+# Установка Istio в remote режиме
+kubectl apply -f - << EOL
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
 metadata:
@@ -346,7 +222,7 @@ spec:
       meshID: ${MESH_ID}
       cluster: ${REMOTE_CLUSTER_NAME}
       network: ${REMOTE_NETWORK}
-      remotePilotAddress: ${discovery_address}
+      remotePilotAddress: ${DISCOVERY_ADDRESS}
     istiodRemote:
       enabled: true
     pilot:
@@ -355,23 +231,13 @@ spec:
   components:
     pilot:
       enabled: false
-    ingressGateways:
-      - name: istio-ingressgateway
-        enabled: false
-EOF
-    
-    # Ожидание готовности
-    kubectl wait --for=condition=available deployment/istiod -n istio-system --timeout=600s
-    
-    echo "✅ Istio установлен на remote кластер"
-}
+EOL
 
-# Настройка east-west gateway для remote
-setup_remote_east_west_gateway() {
-    echo "🌐 Настройка East-West Gateway для remote кластера"
-    
-    # Установка east-west gateway
-    cat <<EOF | kubectl apply -f -
+# Ожидание готовности
+kubectl wait --for=condition=available deployment/istiod -n istio-system --timeout=600s
+
+# Установка East-West Gateway для remote кластера
+kubectl apply -f - << EOL
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
 metadata:
@@ -396,41 +262,10 @@ spec:
               - port: 15443
                 targetPort: 15443
                 name: tls
-EOF
-    
-    # Настройка Gateway
-    cat <<EOF | kubectl apply -f -
-apiVersion: networking.istio.io/v1beta1
-kind: Gateway
-metadata:
-  name: cross-network-gateway
-  namespace: istio-system
-spec:
-  selector:
-    istio: eastwestgateway
-  servers:
-    - port:
-        number: 15443
-        name: tls
-        protocol: TLS
-      tls:
-        mode: ISTIO_MUTUAL
-      hosts:
-        - "*.local"
-EOF
-    
-    echo "✅ East-West Gateway настроен для remote кластера"
-}
+EOL
 
-# Настройка network endpoint
-setup_network_endpoint() {
-    echo "🔗 Настройка network endpoint"
-    
-    # Получение external IP east-west gateway
-    local gateway_ip=$(kubectl get svc istio-eastwestgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-    
-    # Создание network endpoint
-    cat <<EOF | kubectl apply -f -
+# Настройка Gateway для remote кластера
+kubectl apply -f - << EOL
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
@@ -448,347 +283,314 @@ spec:
         mode: ISTIO_MUTUAL
       hosts:
         - "*.local"
+EOL
+
+echo "✅ Remote кластер настроен"
+
+# Получение IP для network endpoint
+REMOTE_EASTWEST_IP=$(kubectl get svc istio-eastwestgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+echo "Remote East-West Gateway IP: $REMOTE_EASTWEST_IP"
+echo "Добавьте network endpoint в primary кластер:"
+echo "kubectl apply -f - << EOL"
+echo "apiVersion: networking.istio.io/v1beta1"
+echo "kind: Gateway"
+echo "metadata:"
+echo "  name: ${REMOTE_NETWORK}-gateway"
+echo "  namespace: istio-system"
+echo "spec:"
+echo "  selector:"
+echo "    istio: eastwestgateway"
+echo "  servers:"
+echo "    - port:"
+echo "        number: 15443"
+echo "        name: tls"
+echo "        protocol: TLS"
+echo "      tls:"
+echo "        mode: ISTIO_MUTUAL"
+echo "      hosts:"
+echo "        - \"*.local\""
+echo "EOL"
+EOF
+
+chmod +x setup-remote-cluster.sh
+
+# Запуск настройки remote кластера (замените IP на актуальный)
+# ./setup-remote-cluster.sh 203.0.113.10:15012
+```
+
+### **5. Cross-cluster service discovery:**
+```bash
+# Создание cross-cluster secrets в primary кластере
+cat > setup-cross-cluster-secrets.sh << 'EOF'
+#!/bin/bash
+
+PRIMARY_CLUSTER="hashfoundry-primary"
+REMOTE_CLUSTER="hashfoundry-remote"
+REMOTE_KUBECONFIG="$1"
+
+if [ -z "$REMOTE_KUBECONFIG" ]; then
+    echo "Usage: $0 <remote-kubeconfig-path>"
+    exit 1
+fi
+
+echo "🔐 Настройка cross-cluster secrets"
+
+# Создание secret для доступа к remote кластеру
+kubectl create secret generic ${REMOTE_CLUSTER} \
+    --from-file=${REMOTE_KUBECONFIG} \
+    -n istio-system
+
+kubectl label secret ${REMOTE_CLUSTER} istio/cluster=${REMOTE_CLUSTER} -n istio-system
+
+# Аннотация для network endpoint
+kubectl annotate secret ${REMOTE_CLUSTER} networking.istio.io/network=network2 -n istio-system
+
+echo "✅ Cross-cluster secret создан"
+
+# Проверка обнаружения remote кластера
+echo "Проверка обнаружения remote кластера..."
+sleep 30
+
+kubectl exec -n istio-system deployment/istiod -- pilot-discovery request GET /debug/registryz | grep -A 5 -B 5 ${REMOTE_CLUSTER}
+
+echo "✅ Cross-cluster discovery настроен"
+EOF
+
+chmod +x setup-cross-cluster-secrets.sh
+
+# Запуск (замените путь на актуальный kubeconfig remote кластера)
+# ./setup-cross-cluster-secrets.sh /path/to/remote-kubeconfig
+```
+
+### **6. Тестирование cross-cluster connectivity:**
+```bash
+# Создание тестовых приложений в обоих кластерах
+kubectl create namespace multicluster-test
+kubectl label namespace multicluster-test istio-injection=enabled
+
+# Primary кластер - frontend service
+kubectl apply -f - << EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: multicluster-test
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: frontend
+        version: v1
+    spec:
+      containers:
+      - name: frontend
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+        env:
+        - name: CLUSTER_NAME
+          value: "primary"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: istio-eastwestgateway-${REMOTE_NETWORK}
-  namespace: istio-system
-  labels:
-    istio: eastwestgateway
-    topology.istio.io/network: ${REMOTE_NETWORK}
+  name: frontend
+  namespace: multicluster-test
 spec:
-  type: LoadBalancer
   selector:
-    istio: eastwestgateway
+    app: frontend
   ports:
-    - port: 15443
-      name: tls
-      targetPort: 15443
+  - port: 80
+    targetPort: 80
 EOF
-    
-    echo "Network endpoint: ${gateway_ip}:15443"
-    echo "✅ Network endpoint настроен"
-}
 
-# Основная логика
-case "$1" in
-    install)
-        install_istio_remote $2
-        ;;
-    gateway)
-        setup_remote_east_west_gateway
-        ;;
-    endpoint)
-        setup_network_endpoint
-        ;;
-    all)
-        install_istio_remote $2
-        setup_remote_east_west_gateway
-        setup_network_endpoint
-        ;;
-    *)
-        echo "Использование: $0 {install|gateway|endpoint|all} [discovery-address]"
-        exit 1
-        ;;
-esac
-```
+# Remote кластер - backend service (выполнить в remote кластере)
+echo "Выполните в remote кластере:"
+cat << 'EOF'
+kubectl create namespace multicluster-test
+kubectl label namespace multicluster-test istio-injection=enabled
 
-### 🌐 Cross-cluster service discovery
+kubectl apply -f - << EOL
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: multicluster-test
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: backend
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: backend
+        version: v1
+    spec:
+      containers:
+      - name: backend
+        image: httpbin/httpbin:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: CLUSTER_NAME
+          value: "remote"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: multicluster-test
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 80
+    targetPort: 80
+EOL
+EOF
 
-#### 1. **ServiceEntry для cross-cluster сервисов**
-```yaml
-# cross-cluster-services.yaml
-
-# ServiceEntry для сервиса в remote кластере
+# Создание ServiceEntry для cross-cluster сервиса
+kubectl apply -f - << EOF
 apiVersion: networking.istio.io/v1beta1
 kind: ServiceEntry
 metadata:
-  name: remote-service
-  namespace: production
+  name: backend-remote
+  namespace: multicluster-test
 spec:
   hosts:
-  - remote-service.production.global
+  - backend.multicluster-test.global
   location: MESH_EXTERNAL
   ports:
-  - number: 8080
+  - number: 80
     name: http
     protocol: HTTP
   resolution: DNS
   addresses:
-  - 240.0.0.1  # Virtual IP для cross-cluster service
+  - 240.0.0.1  # Virtual IP
   endpoints:
-  - address: remote-service.production.svc.cluster.local
+  - address: backend.multicluster-test.svc.cluster.local
     network: network2
     ports:
-      http: 8080
+      http: 80
 ---
-# DestinationRule для cross-cluster трафика
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
-  name: remote-service-dr
-  namespace: production
+  name: backend-remote
+  namespace: multicluster-test
 spec:
-  host: remote-service.production.global
+  host: backend.multicluster-test.global
   trafficPolicy:
     tls:
       mode: ISTIO_MUTUAL
-  subsets:
-  - name: remote-cluster
-    labels:
-      cluster: hashfoundry-remote
-    trafficPolicy:
-      portLevelSettings:
-      - port:
-          number: 8080
-        connectionPool:
-          tcp:
-            maxConnections: 50
----
-# VirtualService для cross-cluster routing
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  name: remote-service-vs
-  namespace: production
-spec:
-  hosts:
-  - remote-service.production.global
-  http:
-  - match:
-    - headers:
-        cluster-preference:
-          exact: remote
-    route:
-    - destination:
-        host: remote-service.production.global
-        subset: remote-cluster
-  - route:
-    - destination:
-        host: remote-service.production.local
-      weight: 80
-    - destination:
-        host: remote-service.production.global
-        subset: remote-cluster
-      weight: 20
+EOF
+
+# Тестирование connectivity
+echo "Тестирование cross-cluster connectivity..."
+sleep 60
+
+FRONTEND_POD=$(kubectl get pods -n multicluster-test -l app=frontend -o jsonpath='{.items[0].metadata.name}')
+
+echo "Тест локального сервиса:"
+kubectl exec $FRONTEND_POD -n multicluster-test -c frontend -- curl -s http://frontend/
+
+echo "Тест cross-cluster сервиса:"
+kubectl exec $FRONTEND_POD -n multicluster-test -c frontend -- curl -s http://backend.multicluster-test.global/ip
+
+echo "Проверка Envoy конфигурации:"
+kubectl exec $FRONTEND_POD -n multicluster-test -c istio-proxy -- pilot-agent request GET clusters | grep backend
 ```
 
-#### 2. **Автоматическое обнаружение сервисов**
+## 🔍 **Мониторинг multi-cluster mesh:**
+
+### **1. Cross-cluster метрики:**
 ```bash
-#!/bin/bash
-# cross-cluster-discovery.sh
+# Prometheus queries для multi-cluster мониторинга
+cat > multicluster-queries.txt << 'EOF'
+# Cross-cluster request rate
+sum(rate(istio_requests_total{source_cluster!="unknown",destination_cluster!="unknown",source_cluster!=destination_cluster}[5m])) by (source_cluster, destination_cluster)
 
-echo "🔍 Настройка cross-cluster service discovery"
+# Cross-cluster latency
+histogram_quantile(0.95, sum(rate(istio_request_duration_milliseconds_bucket{source_cluster!="unknown",destination_cluster!="unknown",source_cluster!=destination_cluster}[5m])) by (le, source_cluster, destination_cluster))
 
-# Создание WorkloadEntry для external сервиса
-create_workload_entry() {
-    local service_name=$1
-    local service_ip=$2
-    local service_port=$3
-    local cluster_name=$4
-    
-    echo "📝 Создание WorkloadEntry для $service_name"
-    
-    cat <<EOF | kubectl apply -f -
-apiVersion: networking.istio.io/v1beta1
-kind: WorkloadEntry
-metadata:
-  name: ${service_name}-${cluster_name}
-  namespace: production
-spec:
-  address: ${service_ip}
-  ports:
-    http: ${service_port}
-  labels:
-    app: ${service_name}
-    cluster: ${cluster_name}
-  serviceAccount: ${service_name}
+# Cross-cluster error rate
+sum(rate(istio_requests_total{source_cluster!="unknown",destination_cluster!="unknown",source_cluster!=destination_cluster,response_code!~"2.*"}[5m])) by (source_cluster, destination_cluster) / sum(rate(istio_requests_total{source_cluster!="unknown",destination_cluster!="unknown",source_cluster!=destination_cluster}[5m])) by (source_cluster, destination_cluster)
+
+# Cluster connectivity status
+up{job="istio-proxy"} by (cluster)
+
+# Certificate expiry across clusters
+(pilot_cert_expiry_timestamp - time()) / 86400 by (cluster)
 EOF
-    
-    echo "✅ WorkloadEntry создан"
-}
 
-# Синхронизация сервисов между кластерами
-sync_services() {
-    local source_cluster=$1
-    local target_cluster=$2
-    
-    echo "🔄 Синхронизация сервисов из $source_cluster в $target_cluster"
-    
-    # Получение списка сервисов из source кластера
-    kubectl --context=$source_cluster get services --all-namespaces -o json | \
-        jq -r '.items[] | select(.metadata.labels.export=="true") | 
-        "\(.metadata.namespace) \(.metadata.name) \(.spec.clusterIP) \(.spec.ports[0].port)"' | \
-        while read namespace service_name cluster_ip port; do
-            echo "Экспорт сервиса: $namespace/$service_name"
-            
-            # Создание ServiceEntry в target кластере
-            cat <<EOF | kubectl --context=$target_cluster apply -f -
-apiVersion: networking.istio.io/v1beta1
-kind: ServiceEntry
-metadata:
-  name: ${service_name}-${source_cluster}
-  namespace: ${namespace}
-  labels:
-    source-cluster: ${source_cluster}
-spec:
-  hosts:
-  - ${service_name}.${namespace}.global
-  location: MESH_EXTERNAL
-  ports:
-  - number: ${port}
-    name: http
-    protocol: HTTP
-  resolution: DNS
-  endpoints:
-  - address: ${service_name}.${namespace}.svc.cluster.local
-    network: ${source_cluster}
-    ports:
-      http: ${port}
-EOF
-        done
-    
-    echo "✅ Синхронизация завершена"
-}
-
-# Проверка cross-cluster connectivity
-test_connectivity() {
-    local source_pod=$1
-    local target_service=$2
-    local target_cluster=$3
-    
-    echo "🧪 Тестирование connectivity к $target_service в $target_cluster"
-    
-    # Тест HTTP запроса
-    kubectl exec $source_pod -- curl -s -o /dev/null -w "%{http_code}" \
-        http://${target_service}.production.global/health
-    
-    # Тест с mTLS
-    kubectl exec $source_pod -- curl -s -o /dev/null -w "%{http_code}" \
-        --cert /var/run/secrets/workload-spiffe-credentials/cert.pem \
-        --key /var/run/secrets/workload-spiffe-credentials/key.pem \
-        --cacert /var/run/secrets/workload-spiffe-credentials/ca.pem \
-        https://${target_service}.production.global/health
-    
-    echo "✅ Connectivity тест завершен"
-}
-
-# Мониторинг cross-cluster трафика
-monitor_cross_cluster_traffic() {
-    echo "📊 Мониторинг cross-cluster трафика"
-    
-    # Метрики cross-cluster запросов
-    kubectl exec -n istio-system deployment/prometheus -- \
-        promtool query instant 'sum(rate(istio_requests_total{source_cluster!="unknown",destination_cluster!="unknown",source_cluster!=destination_cluster}[5m])) by (source_cluster, destination_cluster)'
-    
-    # Latency cross-cluster запросов
-    kubectl exec -n istio-system deployment/prometheus -- \
-        promtool query instant 'histogram_quantile(0.95, sum(rate(istio_request_duration_milliseconds_bucket{source_cluster!="unknown",destination_cluster!="unknown",source_cluster!=destination_cluster}[5m])) by (le, source_cluster, destination_cluster))'
-    
-    echo "✅ Мониторинг завершен"
-}
-
-# Основная логика
-case "$1" in
-    workload-entry)
-        create_workload_entry $2 $3 $4 $5
-        ;;
-    sync)
-        sync_services $2 $3
-        ;;
-    test)
-        test_connectivity $2 $3 $4
-        ;;
-    monitor)
-        monitor_cross_cluster_traffic
-        ;;
-    *)
-        echo "Использование: $0 {workload-entry|sync|test|monitor} [params...]"
-        exit 1
-        ;;
-esac
-```
-
-### 🔐 Multi-cluster security
-
-#### 1. **Cross-cluster mTLS конфигурация**
-```yaml
-# multi-cluster-security.yaml
-
-# Общий root CA для всех кластеров
+# Grafana dashboard для multi-cluster
+kubectl apply -f - << EOF
 apiVersion: v1
-kind: Secret
+kind: ConfigMap
 metadata:
-  name: cacerts
-  namespace: istio-system
-type: Opaque
+  name: multicluster-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
 data:
-  # Общий root certificate для всех кластеров
-  root-cert.pem: LS0tLS1CRUdJTi... # base64 encoded
-  cert-chain.pem: LS0tLS1CRUdJTi... # base64 encoded
-  ca-cert.pem: LS0tLS1CRUdJTi... # base64 encoded
-  ca-key.pem: LS0tLS1CRUdJTi... # base64 encoded
----
-# PeerAuthentication для cross-cluster mTLS
-apiVersion: security.istio.io/v1beta1
-kind: PeerAuthentication
-metadata:
-  name: cross-cluster-mtls
-  namespace: istio-system
-spec:
-  mtls:
-    mode: STRICT
----
-# AuthorizationPolicy для cross-cluster доступа
-apiVersion: security.istio.io/v1beta1
-kind: AuthorizationPolicy
-metadata:
-  name: cross-cluster-access
-  namespace: production
-spec:
-  selector:
-    matchLabels:
-      app: api-service
-  rules:
-  - from:
-    - source:
-        principals: 
-        - "cluster.local/ns/production/sa/frontend-service"
-        - "hashfoundry-remote.local/ns/production/sa/frontend-service"
-  - to:
-    - operation:
-        methods: ["GET", "POST"]
-        paths: ["/api/*"]
----
-# DestinationRule для cross-cluster mTLS
-apiVersion: networking.istio.io/v1beta1
-kind: DestinationRule
-metadata:
-  name: cross-cluster-mtls-dr
-  namespace: production
-spec:
-  host: "*.global"
-  trafficPolicy:
-    tls:
-      mode: ISTIO_MUTUAL
-  exportTo:
-  - "*"
+  multicluster-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Multi-Cluster Service Mesh",
+        "panels": [
+          {
+            "title": "Cross-Cluster Request Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(istio_requests_total{source_cluster!=\"unknown\",destination_cluster!=\"unknown\",source_cluster!=destination_cluster}[5m])) by (source_cluster, destination_cluster)",
+                "legendFormat": "{{source_cluster}} -> {{destination_cluster}}"
+              }
+            ]
+          },
+          {
+            "title": "Cross-Cluster Latency P95",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(istio_request_duration_milliseconds_bucket{source_cluster!=\"unknown\",destination_cluster!=\"unknown\",source_cluster!=destination_cluster}[5m])) by (le, source_cluster, destination_cluster))",
+                "legendFormat": "{{source_cluster}} -> {{destination_cluster}}"
+              }
+            ]
+          },
+          {
+            "title": "Cluster Health Status",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=\"istio-proxy\"} by (cluster)"
+              }
+            ]
+          }
+        ]
+      }
+    }
+EOF
 ```
 
-### 📊 Мониторинг multi-cluster mesh
-
-#### 1. **Multi-cluster метрики**
-```yaml
-# multi-cluster-monitoring.yaml
+### **2. Алерты для multi-cluster:**
+```bash
+kubectl apply -f - << EOF
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
-  name: multi-cluster-alerts
+  name: multicluster-alerts
   namespace: istio-system
 spec:
   groups:
-  - name: multi-cluster.rules
+  - name: multicluster.rules
     rules:
     - alert: CrossClusterConnectivityLoss
       expr: absent(up{job="istio-proxy", cluster!="unknown"}) == 1
@@ -808,14 +610,196 @@ spec:
         summary: "High cross-cluster latency"
         description: "95th percentile cross-cluster latency is above 1s"
     
-    - alert: CrossClusterCertificateExpiry
-      expr: (istio_cert_expiry_timestamp{cluster!="unknown"} - time()) / 86400 < 7
+    - alert: CrossClusterHighErrorRate
+      expr: sum(rate(istio_requests_total{source_cluster!="unknown",destination_cluster!="unknown",source_cluster!=destination_cluster,response_code!~"2.*"}[5m])) / sum(rate(istio_requests_total{source_cluster!="unknown",destination_cluster!="unknown",source_cluster!=destination_cluster}[5m])) > 0.05
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "High cross-cluster error rate"
+        description: "Cross-cluster error rate is above 5%"
+    
+    - alert: MultiClusterCertificateExpiry
+      expr: (pilot_cert_expiry_timestamp{cluster!="unknown"} - time()) / 86400 < 7
       for: 0m
       labels:
         severity: warning
       annotations:
-        summary: "Cross-cluster certificate expiring soon"
-        description: "Certificate in cluster {{ $labels.cluster }} expires in less than 7 days"
+        summary: "Multi-cluster certificate expiring soon"
+        description: "Certificate in cluster {{ \$labels.cluster }} expires in less than 7 days"
+EOF
 ```
 
-Multi-cluster service mesh обеспечивает единую архитектуру безопасности, управления и наблюдаемости для распределенных микросервисных приложений, развернутых в нескольких Kubernetes кластерах, с автоматическим service discovery, mTLS и intelligent traffic routing.
+## 🚨 **Диагностика multi-cluster проблем:**
+
+### **1. Troubleshooting скрипт:**
+```bash
+cat > troubleshoot-multicluster.sh << 'EOF'
+#!/bin/bash
+
+echo "🔍 Диагностика Multi-Cluster Service Mesh"
+
+# Проверка control plane connectivity
+check_control_plane() {
+    echo "🏗️ Проверка Control Plane connectivity"
+    
+    # Статус Istiod в primary
+    echo "=== Primary Istiod Status ==="
+    kubectl get pods -n istio-system -l app=istiod
+    
+    # Проверка remote clusters
+    echo "=== Remote Clusters Discovery ==="
+    kubectl get secrets -n istio-system -l istio/cluster
+    
+    # Pilot debug endpoints
+    echo "=== Pilot Debug Info ==="
+    kubectl exec -n istio-system deployment/istiod -- pilot-discovery request GET /debug/registryz | grep -A 3 -B 3 "Cluster"
+    
+    # Network endpoints
+    echo "=== Network Endpoints ==="
+    kubectl exec -n istio-system deployment/istiod -- pilot-discovery request GET /debug/endpointz | grep -A 5 -B 5 "network"
+}
+
+# Проверка cross-cluster services
+check_cross_cluster_services() {
+    echo "🌐 Проверка Cross-Cluster Services"
+    
+    # ServiceEntry resources
+    echo "=== ServiceEntry Resources ==="
+    kubectl get serviceentry --all-namespaces
+    
+    # Endpoints discovery
+    echo "=== Endpoints Discovery ==="
+    kubectl get endpoints --all-namespaces | grep -E "(multicluster|cross)"
+    
+    # Proxy configuration
+    echo "=== Proxy Configuration ==="
+    local pod=$(kubectl get pods -n multicluster-test -l app=frontend -o jsonpath='{.items[0].metadata.name}')
+    if [ -n "$pod" ]; then
+        kubectl exec $pod -n multicluster-test -c istio-proxy -- pilot-agent request GET clusters | grep -E "(backend|remote)"
+        kubectl exec $pod -n multicluster-test -c istio-proxy -- pilot-agent request GET endpoints | grep -E "(backend|remote)"
+    fi
+}
+
+# Проверка network connectivity
+check_network_connectivity() {
+    echo "🔗 Проверка Network Connectivity"
+    
+    # East-West Gateway status
+    echo "=== East-West Gateway Status ==="
+    kubectl get pods -n istio-system -l app=istio-eastwestgateway
+    kubectl get svc -n istio-system -l app=istio-eastwestgateway
+    
+    # Gateway configuration
+    echo "=== Gateway Configuration ==="
+    kubectl get gateway -n istio-system
+    
+    # Network policies
+    echo "=== Network Policies ==="
+    kubectl get networkpolicy --all-namespaces
+}
+
+# Проверка certificates
+check_certificates() {
+    echo "🔐 Проверка Certificates"
+    
+    # CA certificates
+    echo "=== CA Certificates ==="
+    kubectl get secret cacerts -n istio-system -o jsonpath='{.data.root-cert\.pem}' | base64 -d | openssl x509 -text -noout | grep -A 2 "Subject:"
+    
+    # Certificate expiry
+    echo "=== Certificate Expiry ==="
+    kubectl get secret cacerts -n istio-system -o jsonpath='{.data.root-cert\.pem}' | base64 -d | openssl x509 -noout -dates
+    
+    # Workload certificates
+    echo "=== Workload Certificates ==="
+    local pod=$(kubectl get pods -n multicluster-test -l app=frontend -o jsonpath='{.items[0].metadata.name}')
+    if [ -n "$pod" ]; then
+        kubectl exec $pod -n multicluster-test -c istio-proxy -- openssl x509 -in /var/run/secrets/workload-spiffe-credentials/cert.pem -text -noout | grep "Subject Alternative Name"
+    fi
+}
+
+# Тестирование connectivity
+test_connectivity() {
+    echo "🧪 Тестирование Connectivity"
+    
+    local frontend_pod=$(kubectl get pods -n multicluster-test -l app=frontend -o jsonpath='{.items[0].metadata.name}')
+    
+    if [ -n "$frontend_pod" ]; then
+        echo "=== Local Service Test ==="
+        kubectl exec $frontend_pod -n multicluster-test -c frontend -- curl -s -o /dev/null -w "%{http_code}" http://frontend/
+        
+        echo "=== Cross-Cluster Service Test ==="
+        kubectl exec $frontend_pod -n multicluster-test -c frontend -- curl -s -o /dev/null -w "%{http_code}" http://backend.multicluster-test.global/ip
+        
+        echo "=== DNS Resolution Test ==="
+        kubectl exec $frontend_pod -n multicluster-test -c frontend -- nslookup backend.multicluster-test.global
+    else
+        echo "❌ Frontend pod не найден для тестирования"
+    fi
+}
+
+# Основная логика
+case "$1" in
+    control-plane)
+        check_control_plane
+        ;;
+    services)
+        check_cross_cluster_services
+        ;;
+    network)
+        check_network_connectivity
+        ;;
+    certificates)
+        check_certificates
+        ;;
+    test)
+        test_connectivity
+        ;;
+    all)
+        check_control_plane
+        check_cross_cluster_services
+        check_network_connectivity
+        check_certificates
+        test_connectivity
+        ;;
+    *)
+        echo "Usage: $0 {control-plane|services|network|certificates|test|all}"
+        exit 1
+        ;;
+esac
+EOF
+
+chmod +x troubleshoot-multicluster.sh
+
+# Запуск полной диагностики
+./troubleshoot-multicluster.sh all
+```
+
+## 🎯 **Best Practices для multi-cluster:**
+
+### **1. Архитектурные решения:**
+- Использовать primary-primary для production HA
+- Планировать network latency между кластерами
+- Настраивать proper resource limits
+- Реализовать disaster recovery процедуры
+
+### **2. Security considerations:**
+- Использовать общие CA сертификаты
+- Настраивать network policies между кластерами
+- Регулярно ротировать certificates
+- Мониторить cross-cluster access patterns
+
+### **3. Performance optimization:**
+- Минимизировать cross-cluster calls
+- Использовать locality-aware routing
+- Настраивать connection pooling
+- Мониторить network latency
+
+### **4. Operational practices:**
+- Автоматизировать cluster onboarding
+- Централизовать мониторинг и алертинг
+- Планировать rolling updates
+- Тестировать failover scenarios
+
+**Multi-cluster service mesh обеспечивает enterprise-grade федеративную архитектуру для распределенных микросервисных приложений!**
