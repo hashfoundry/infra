@@ -1,176 +1,262 @@
 # 186. Что такое Kubernetes Operators и как их создавать?
 
-## 🎯 Вопрос
-Что такое Kubernetes Operators и как их создавать?
+## 🎯 **Что такое Kubernetes Operators?**
 
-## 💡 Ответ
+**Kubernetes Operators** — это специализированные контроллеры, которые расширяют функциональность Kubernetes API для управления сложными stateful приложениями. Operators кодируют операционные знания (установка, обновление, резервное копирование, восстановление) в виде кода, автоматизируя жизненный цикл приложений с использованием Custom Resources.
 
-Kubernetes Operators - это специализированные контроллеры, которые расширяют функциональность Kubernetes API для управления сложными stateful приложениями. Operators кодируют операционные знания (установка, обновление, резервное копирование, восстановление) в виде кода, автоматизируя жизненный цикл приложений с использованием Custom Resources.
+## 🏗️ **Основные компоненты Operators:**
 
-### 🏗️ Архитектура Kubernetes Operators
+### **1. Custom Resource Definition (CRD)**
+- Определяет новые типы ресурсов в Kubernetes
+- Расширяет API Server новыми объектами
+- Включает схему валидации и версионирование
 
-#### 1. **Схема Operator Pattern**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  Kubernetes Operator Pattern               │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Custom Resource Definition               │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │    CRD      │    │   Schema    │    │ Validation  │ │ │
-│  │  │ Definition  │───▶│ Definition  │───▶│   Rules     │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Custom Resource Instance                 │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Custom    │    │   Desired   │    │   Current   │ │ │
-│  │  │  Resource   │───▶│    State    │───▶│    State    │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                 Operator Controller                    │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Watch     │    │ Reconcile   │    │   Action    │ │ │
-│  │  │   Events    │───▶│    Loop     │───▶│ Execution   │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │              Kubernetes Resources                      │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │ Deployments │    │  Services   │    │ ConfigMaps  │ │ │
-│  │  │    Pods     │    │   Secrets   │    │    PVCs     │ │ │
-│  │  │    Jobs     │    │   Ingress   │    │   Others    │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. Controller Logic**
+- Реализует reconciliation loop
+- Отслеживает изменения Custom Resources
+- Выполняет операции для достижения желаемого состояния
 
-#### 2. **Operator Maturity Model**
-```yaml
-# Operator Capability Levels
-operator_maturity_levels:
-  level_1_basic_install:
-    description: "Автоматизированная установка приложения"
-    capabilities:
-      - "Provisioning"
-      - "Installation"
-      - "Configuration"
-    examples:
-      - "Создание Deployment"
-      - "Создание Service"
-      - "Создание ConfigMap"
-  
-  level_2_seamless_upgrades:
-    description: "Автоматические обновления"
-    capabilities:
-      - "Patch management"
-      - "Minor version upgrades"
-      - "Configuration updates"
-    examples:
-      - "Rolling updates"
-      - "Configuration drift detection"
-      - "Health checks"
-  
-  level_3_full_lifecycle:
-    description: "Полное управление жизненным циклом"
-    capabilities:
-      - "App lifecycle management"
-      - "Storage management"
-      - "Scaling operations"
-    examples:
-      - "Backup/Restore"
-      - "Failure recovery"
-      - "Performance tuning"
-  
-  level_4_deep_insights:
-    description: "Метрики, алерты, анализ логов"
-    capabilities:
-      - "Metrics collection"
-      - "Alerting"
-      - "Log analysis"
-    examples:
-      - "Prometheus integration"
-      - "Custom dashboards"
-      - "Anomaly detection"
-  
-  level_5_auto_pilot:
-    description: "Автоматическое масштабирование и настройка"
-    capabilities:
-      - "Auto-scaling"
-      - "Auto-tuning"
-      - "Abnormality detection"
-    examples:
-      - "Predictive scaling"
-      - "Self-healing"
-      - "Performance optimization"
+### **3. Operator Pattern**
+- Комбинирует CRD и Controller
+- Автоматизирует операционные задачи
+- Обеспечивает декларативное управление приложениями
 
-# Operator Development Frameworks
-operator_frameworks:
-  operator_sdk:
-    language: "Go, Ansible, Helm"
-    description: "Red Hat Operator SDK"
-    features:
-      - "Code generation"
-      - "Testing framework"
-      - "OLM integration"
-  
-  kubebuilder:
-    language: "Go"
-    description: "Kubernetes SIG framework"
-    features:
-      - "Controller scaffolding"
-      - "Webhook generation"
-      - "CRD generation"
-  
-  kopf:
-    language: "Python"
-    description: "Kubernetes Operator Pythonic Framework"
-    features:
-      - "Event-driven"
-      - "Async/await support"
-      - "Simple decorators"
-  
-  shell_operator:
-    language: "Shell/Any"
-    description: "Flant shell-operator"
-    features:
-      - "Hook-based"
-      - "Multi-language support"
-      - "Simple deployment"
-```
+## 📊 **Практические примеры из вашего HA кластера:**
 
-### 📊 Примеры из нашего кластера
-
-#### Проверка операторов:
+### **1. Проверка существующих operators:**
 ```bash
-# Проверка установленных CRDs
+# Установленные CRDs
 kubectl get crd
 
-# Проверка операторов в кластере
+# Operators в кластере
 kubectl get pods --all-namespaces -l app.kubernetes.io/component=controller
 
-# Проверка Operator Lifecycle Manager (если установлен)
-kubectl get csv --all-namespaces
+# ArgoCD как пример operator
+kubectl get applications -n argocd
+kubectl describe crd applications.argoproj.io
 
-# Проверка custom resources
-kubectl api-resources --api-group=example.com
+# Prometheus Operator (если установлен)
+kubectl get servicemonitors --all-namespaces
+kubectl get prometheusrules --all-namespaces
 ```
 
-### 🔧 Создание простого Operator
+### **2. ArgoCD Operator в действии:**
+```bash
+# ArgoCD Applications (Custom Resources)
+kubectl get applications -n argocd -o yaml | head -20
 
-#### 1. **Custom Resource Definition**
-```yaml
-# database-crd.yaml
+# ArgoCD Controller
+kubectl describe pod -n argocd -l app.kubernetes.io/name=argocd-application-controller
+
+# ArgoCD CRD
+kubectl describe crd applications.argoproj.io | grep -A 10 "Spec"
+
+# ArgoCD reconciliation
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-application-controller | grep reconcile | tail -5
+```
+
+### **3. Monitoring stack operators:**
+```bash
+# Prometheus CRDs
+kubectl get crd | grep monitoring.coreos.com
+
+# ServiceMonitor resources
+kubectl get servicemonitors -n monitoring
+kubectl describe servicemonitor -n monitoring | head -20
+
+# PrometheusRule resources
+kubectl get prometheusrules -n monitoring
+```
+
+### **4. Storage operators:**
+```bash
+# Storage CRDs
+kubectl get crd | grep storage
+
+# CSI operators
+kubectl get pods -n kube-system | grep csi
+
+# Volume snapshots
+kubectl get volumesnapshotclasses
+kubectl get volumesnapshots --all-namespaces
+```
+
+## 🔄 **Operator Maturity Levels:**
+
+### **1. Level 1 - Basic Install:**
+```bash
+# Простой operator для установки приложения
+cat << EOF | kubectl apply -f -
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: webapps.example.com
+spec:
+  group: example.com
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              image:
+                type: string
+              replicas:
+                type: integer
+                minimum: 1
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+  scope: Namespaced
+  names:
+    plural: webapps
+    singular: webapp
+    kind: WebApp
+EOF
+
+# Создание WebApp instance
+cat << EOF | kubectl apply -f -
+apiVersion: example.com/v1
+kind: WebApp
+metadata:
+  name: demo-app
+  namespace: default
+spec:
+  image: nginx:alpine
+  replicas: 3
+EOF
+
+# Проверка созданного ресурса
+kubectl get webapps
+kubectl describe webapp demo-app
+```
+
+### **2. Level 2 - Seamless Upgrades:**
+```bash
+# Обновление WebApp
+kubectl patch webapp demo-app --type='merge' -p='{"spec":{"image":"nginx:1.21","replicas":5}}'
+
+# Проверка rolling update
+kubectl get pods -l app=demo-app -w
+
+# Проверка статуса обновления
+kubectl describe webapp demo-app | grep -A 10 Status
+```
+
+### **3. Level 3 - Full Lifecycle:**
+```bash
+# Создание backup
+kubectl annotate webapp demo-app backup.example.com/schedule="0 2 * * *"
+
+# Проверка backup jobs
+kubectl get jobs -l backup-for=demo-app
+
+# Scaling операции
+kubectl patch webapp demo-app --type='merge' -p='{"spec":{"replicas":10}}'
+```
+
+## 📈 **Мониторинг Operators:**
+
+### **1. Operator metrics:**
+```bash
+# Controller metrics
+kubectl get --raw /metrics | grep controller_runtime
+
+# Reconciliation metrics
+kubectl get --raw /metrics | grep "controller_runtime_reconcile"
+
+# Error metrics
+kubectl get --raw /metrics | grep "controller_runtime_reconcile_errors_total"
+
+# ArgoCD operator metrics
+kubectl port-forward -n argocd svc/argocd-metrics 8082:8082 &
+curl http://localhost:8082/metrics | grep argocd_app
+```
+
+### **2. Operator health:**
+```bash
+# Controller pod status
+kubectl get pods --all-namespaces -l app.kubernetes.io/component=controller
+
+# Controller logs
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-application-controller | tail -10
+
+# Resource status
+kubectl get applications -n argocd -o json | jq '.items[] | {name: .metadata.name, health: .status.health.status}'
+
+# Sync status
+kubectl get applications -n argocd -o json | jq '.items[] | {name: .metadata.name, sync: .status.sync.status}'
+```
+
+### **3. Custom Resource status:**
+```bash
+# Application conditions
+kubectl get applications -n argocd -o yaml | grep -A 10 conditions
+
+# Resource events
+kubectl get events --all-namespaces --field-selector involvedObject.kind=Application
+
+# Finalizers status
+kubectl get applications -n argocd -o json | jq '.items[] | {name: .metadata.name, finalizers: .metadata.finalizers}'
+```
+
+## 🏭 **Operators в вашем HA кластере:**
+
+### **1. ArgoCD Operator:**
+```bash
+# ArgoCD Applications management
+kubectl get applications -n argocd
+kubectl describe application monitoring -n argocd | grep -A 20 "Status"
+
+# ArgoCD Projects
+kubectl get appprojects -n argocd
+kubectl describe appproject default -n argocd
+
+# ArgoCD sync operations
+kubectl get applications -n argocd -o json | jq '.items[] | {name: .metadata.name, lastSync: .status.operationState.finishedAt}'
+```
+
+### **2. Monitoring Operators:**
+```bash
+# Prometheus Operator resources
+kubectl get prometheus -n monitoring
+kubectl get alertmanager -n monitoring
+
+# ServiceMonitor для мониторинга
+kubectl get servicemonitors -n monitoring
+kubectl describe servicemonitor prometheus-server -n monitoring
+
+# PrometheusRule для алертов
+kubectl get prometheusrules -n monitoring
+```
+
+### **3. Storage Operators:**
+```bash
+# CSI Driver operators
+kubectl get csidrivers
+kubectl describe csidriver do.csi.digitalocean.com
+
+# Storage classes managed by operators
+kubectl get storageclass
+kubectl describe storageclass do-block-storage
+
+# Volume snapshots
+kubectl get volumesnapshotclasses
+```
+
+## 🔧 **Создание простого Operator:**
+
+### **1. Database CRD:**
+```bash
+# Создание Database CRD
+cat << EOF | kubectl apply -f -
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
@@ -190,35 +276,17 @@ spec:
             properties:
               type:
                 type: string
-                enum: ["postgresql", "mysql", "mongodb"]
+                enum: ["postgresql", "mysql"]
               version:
                 type: string
               replicas:
                 type: integer
                 minimum: 1
-                maximum: 10
+                maximum: 5
               storage:
                 type: object
                 properties:
                   size:
-                    type: string
-                  storageClass:
-                    type: string
-              backup:
-                type: object
-                properties:
-                  enabled:
-                    type: boolean
-                  schedule:
-                    type: string
-                  retention:
-                    type: string
-              monitoring:
-                type: object
-                properties:
-                  enabled:
-                    type: boolean
-                  scrapeInterval:
                     type: string
             required:
             - type
@@ -228,44 +296,12 @@ spec:
             properties:
               phase:
                 type: string
-                enum: ["Pending", "Creating", "Ready", "Updating", "Failed"]
-              conditions:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    type:
-                      type: string
-                    status:
-                      type: string
-                    reason:
-                      type: string
-                    message:
-                      type: string
-                    lastTransitionTime:
-                      type: string
-                      format: date-time
-              endpoints:
-                type: object
-                properties:
-                  primary:
-                    type: string
-                  readonly:
-                    type: string
-              backupStatus:
-                type: object
-                properties:
-                  lastBackup:
-                    type: string
-                    format: date-time
-                  nextBackup:
-                    type: string
-                    format: date-time
+              ready:
+                type: boolean
+              endpoint:
+                type: string
     subresources:
       status: {}
-      scale:
-        specReplicasPath: .spec.replicas
-        statusReplicasPath: .status.replicas
   scope: Namespaced
   names:
     plural: databases
@@ -273,567 +309,170 @@ spec:
     kind: Database
     shortNames:
     - db
+EOF
 
----
-# Пример Database Custom Resource
+# Проверка CRD
+kubectl get crd databases.example.com
+kubectl describe crd databases.example.com
+```
+
+### **2. Database instance:**
+```bash
+# Создание Database instance
+cat << EOF | kubectl apply -f -
 apiVersion: example.com/v1
 kind: Database
 metadata:
   name: my-postgres
-  namespace: production
+  namespace: default
 spec:
   type: postgresql
-  version: "13.7"
-  replicas: 3
+  version: "13"
+  replicas: 2
   storage:
-    size: "100Gi"
-    storageClass: "fast-ssd"
-  backup:
-    enabled: true
-    schedule: "0 2 * * *"
-    retention: "30d"
-  monitoring:
-    enabled: true
-    scrapeInterval: "30s"
+    size: "10Gi"
+EOF
+
+# Проверка созданного ресурса
+kubectl get databases
+kubectl describe database my-postgres
 ```
 
-#### 2. **Database Operator Implementation**
-```go
-// database-operator.go
-package main
+### **3. Простой controller (концептуально):**
+```bash
+# Controller будет создавать StatefulSet
+kubectl get statefulset my-postgres
 
-import (
-    "context"
-    "fmt"
-    "time"
-    
-    appsv1 "k8s.io/api/apps/v1"
-    corev1 "k8s.io/api/core/v1"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    "k8s.io/apimachinery/pkg/runtime"
-    "k8s.io/apimachinery/pkg/util/intstr"
-    "sigs.k8s.io/controller-runtime/pkg/client"
-    "sigs.k8s.io/controller-runtime/pkg/controller"
-    "sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-    "sigs.k8s.io/controller-runtime/pkg/handler"
-    "sigs.k8s.io/controller-runtime/pkg/reconcile"
-    "sigs.k8s.io/controller-runtime/pkg/source"
-)
+# Controller будет создавать Service
+kubectl get service my-postgres
 
-// Database представляет Custom Resource
-type Database struct {
-    metav1.TypeMeta   `json:",inline"`
-    metav1.ObjectMeta `json:"metadata,omitempty"`
-    
-    Spec   DatabaseSpec   `json:"spec,omitempty"`
-    Status DatabaseStatus `json:"status,omitempty"`
-}
+# Controller будет обновлять status
+kubectl get database my-postgres -o yaml | grep -A 10 status
+```
 
-type DatabaseSpec struct {
-    Type        string             `json:"type"`
-    Version     string             `json:"version"`
-    Replicas    int32              `json:"replicas"`
-    Storage     StorageSpec        `json:"storage"`
-    Backup      BackupSpec         `json:"backup,omitempty"`
-    Monitoring  MonitoringSpec     `json:"monitoring,omitempty"`
-}
+## 🎯 **Архитектура Operator Pattern:**
 
-type StorageSpec struct {
-    Size         string `json:"size"`
-    StorageClass string `json:"storageClass,omitempty"`
-}
+```
+┌─────────────────────────────────────────────────────────────┐
+│                  Kubernetes Operator Pattern               │
+├─────────────────────────────────────────────────────────────┤
+│  Custom Resource Definition (CRD)                          │
+│  ├── API Schema definition                                 │
+│  ├── Validation rules                                      │
+│  └── Versioning strategy                                   │
+├─────────────────────────────────────────────────────────────┤
+│  Custom Resource (CR)                                      │
+│  ├── Desired state specification                          │
+│  ├── Configuration parameters                             │
+│  └── Status information                                    │
+├─────────────────────────────────────────────────────────────┤
+│  Operator Controller                                       │
+│  ├── Watch CR events                                       │
+│  ├── Reconciliation logic                                 │
+│  ├── Resource management                                   │
+│  └── Status updates                                        │
+├─────────────────────────────────────────────────────────────┤
+│  Managed Resources                                         │
+│  ├── Deployments/StatefulSets                            │
+│  ├── Services/ConfigMaps                                  │
+│  ├── PVCs/Secrets                                         │
+│  └── Other Kubernetes objects                             │
+└─────────────────────────────────────────────────────────────┘
+```
 
-type BackupSpec struct {
-    Enabled   bool   `json:"enabled"`
-    Schedule  string `json:"schedule,omitempty"`
-    Retention string `json:"retention,omitempty"`
-}
+## 🚨 **Troubleshooting Operators:**
 
-type MonitoringSpec struct {
-    Enabled        bool   `json:"enabled"`
-    ScrapeInterval string `json:"scrapeInterval,omitempty"`
-}
+### **1. Controller issues:**
+```bash
+# Controller pod logs
+kubectl logs -n argocd -l app.kubernetes.io/name=argocd-application-controller | grep ERROR
 
-type DatabaseStatus struct {
-    Phase         string              `json:"phase,omitempty"`
-    Conditions    []DatabaseCondition `json:"conditions,omitempty"`
-    Endpoints     DatabaseEndpoints   `json:"endpoints,omitempty"`
-    BackupStatus  BackupStatus        `json:"backupStatus,omitempty"`
-}
+# Controller resource usage
+kubectl top pod -n argocd -l app.kubernetes.io/name=argocd-application-controller
 
-type DatabaseCondition struct {
-    Type               string      `json:"type"`
-    Status             string      `json:"status"`
-    Reason             string      `json:"reason,omitempty"`
-    Message            string      `json:"message,omitempty"`
-    LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
-}
+# Controller events
+kubectl get events -n argocd --field-selector involvedObject.kind=Pod
 
-type DatabaseEndpoints struct {
-    Primary  string `json:"primary,omitempty"`
-    Readonly string `json:"readonly,omitempty"`
-}
+# RBAC issues
+kubectl auth can-i create applications --as=system:serviceaccount:argocd:argocd-application-controller -n argocd
+```
 
-type BackupStatus struct {
-    LastBackup *metav1.Time `json:"lastBackup,omitempty"`
-    NextBackup *metav1.Time `json:"nextBackup,omitempty"`
-}
+### **2. Custom Resource issues:**
+```bash
+# CR validation errors
+kubectl get events --field-selector reason=FailedCreate
 
-// DatabaseReconciler reconciles Database objects
-type DatabaseReconciler struct {
-    client.Client
-    Scheme *runtime.Scheme
-}
+# CR status problems
+kubectl get applications -n argocd -o json | jq '.items[] | select(.status.health.status != "Healthy")'
 
-// Reconcile обрабатывает события Database
-func (r *DatabaseReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-    // Получение Database объекта
-    var database Database
-    if err := r.Get(ctx, req.NamespacedName, &database); err != nil {
-        return reconcile.Result{}, client.IgnoreNotFound(err)
-    }
-    
-    // Обработка удаления
-    if database.DeletionTimestamp != nil {
-        return r.handleDeletion(ctx, &database)
-    }
-    
-    // Добавление finalizer
-    if !controllerutil.ContainsFinalizer(&database, "database.example.com/finalizer") {
-        controllerutil.AddFinalizer(&database, "database.example.com/finalizer")
-        return reconcile.Result{Requeue: true}, r.Update(ctx, &database)
-    }
-    
-    // Обновление статуса на Creating
-    if database.Status.Phase == "" {
-        database.Status.Phase = "Creating"
-        if err := r.Status().Update(ctx, &database); err != nil {
-            return reconcile.Result{}, err
-        }
-    }
-    
-    // Создание ресурсов базы данных
-    if err := r.reconcileDatabase(ctx, &database); err != nil {
-        r.updateCondition(&database, "Ready", "False", "ReconcileError", err.Error())
-        r.Status().Update(ctx, &database)
-        return reconcile.Result{RequeueAfter: time.Minute}, err
-    }
-    
-    // Настройка мониторинга
-    if database.Spec.Monitoring.Enabled {
-        if err := r.reconcileMonitoring(ctx, &database); err != nil {
-            return reconcile.Result{}, err
-        }
-    }
-    
-    // Настройка backup
-    if database.Spec.Backup.Enabled {
-        if err := r.reconcileBackup(ctx, &database); err != nil {
-            return reconcile.Result{}, err
-        }
-    }
-    
-    // Обновление статуса на Ready
-    database.Status.Phase = "Ready"
-    r.updateCondition(&database, "Ready", "True", "ReconcileSuccess", "Database is ready")
-    
-    // Обновление endpoints
-    database.Status.Endpoints = DatabaseEndpoints{
-        Primary:  fmt.Sprintf("%s-primary.%s.svc.cluster.local:5432", database.Name, database.Namespace),
-        Readonly: fmt.Sprintf("%s-readonly.%s.svc.cluster.local:5432", database.Name, database.Namespace),
-    }
-    
-    if err := r.Status().Update(ctx, &database); err != nil {
-        return reconcile.Result{}, err
-    }
-    
-    return reconcile.Result{RequeueAfter: time.Minute * 5}, nil
-}
+# Finalizer issues
+kubectl get applications -n argocd -o json | jq '.items[] | select(.metadata.deletionTimestamp != null)'
 
-// reconcileDatabase создает основные ресурсы базы данных
-func (r *DatabaseReconciler) reconcileDatabase(ctx context.Context, database *Database) error {
-    // Создание StatefulSet
-    if err := r.reconcileStatefulSet(ctx, database); err != nil {
-        return fmt.Errorf("failed to reconcile StatefulSet: %w", err)
-    }
-    
-    // Создание Services
-    if err := r.reconcileServices(ctx, database); err != nil {
-        return fmt.Errorf("failed to reconcile Services: %w", err)
-    }
-    
-    // Создание ConfigMap
-    if err := r.reconcileConfigMap(ctx, database); err != nil {
-        return fmt.Errorf("failed to reconcile ConfigMap: %w", err)
-    }
-    
-    // Создание Secrets
-    if err := r.reconcileSecrets(ctx, database); err != nil {
-        return fmt.Errorf("failed to reconcile Secrets: %w", err)
-    }
-    
-    return nil
-}
+# Reconciliation failures
+kubectl describe application monitoring -n argocd | grep -A 10 "Conditions"
+```
 
-// reconcileStatefulSet создает StatefulSet для базы данных
-func (r *DatabaseReconciler) reconcileStatefulSet(ctx context.Context, database *Database) error {
-    statefulSet := &appsv1.StatefulSet{
-        ObjectMeta: metav1.ObjectMeta{
-            Name:      database.Name,
-            Namespace: database.Namespace,
-        },
-        Spec: appsv1.StatefulSetSpec{
-            Replicas:    &database.Spec.Replicas,
-            ServiceName: fmt.Sprintf("%s-headless", database.Name),
-            Selector: &metav1.LabelSelector{
-                MatchLabels: map[string]string{
-                    "app":      database.Name,
-                    "database": database.Spec.Type,
-                },
-            },
-            Template: corev1.PodTemplateSpec{
-                ObjectMeta: metav1.ObjectMeta{
-                    Labels: map[string]string{
-                        "app":      database.Name,
-                        "database": database.Spec.Type,
-                    },
-                },
-                Spec: corev1.PodSpec{
-                    Containers: []corev1.Container{
-                        {
-                            Name:  database.Spec.Type,
-                            Image: r.getDatabaseImage(database),
-                            Ports: []corev1.ContainerPort{
-                                {
-                                    ContainerPort: r.getDatabasePort(database),
-                                    Name:          "database",
-                                },
-                            },
-                            Env: r.getDatabaseEnv(database),
-                            VolumeMounts: []corev1.VolumeMount{
-                                {
-                                    Name:      "data",
-                                    MountPath: r.getDatabaseDataPath(database),
-                                },
-                                {
-                                    Name:      "config",
-                                    MountPath: "/etc/database",
-                                },
-                            },
-                            Resources: r.getDatabaseResources(database),
-                            LivenessProbe: &corev1.Probe{
-                                ProbeHandler: corev1.ProbeHandler{
-                                    TCPSocket: &corev1.TCPSocketAction{
-                                        Port: intstr.FromInt(int(r.getDatabasePort(database))),
-                                    },
-                                },
-                                InitialDelaySeconds: 30,
-                                PeriodSeconds:       10,
-                            },
-                            ReadinessProbe: &corev1.Probe{
-                                ProbeHandler: corev1.ProbeHandler{
-                                    Exec: &corev1.ExecAction{
-                                        Command: r.getDatabaseReadinessCommand(database),
-                                    },
-                                },
-                                InitialDelaySeconds: 5,
-                                PeriodSeconds:       5,
-                            },
-                        },
-                    },
-                    Volumes: []corev1.Volume{
-                        {
-                            Name: "config",
-                            VolumeSource: corev1.VolumeSource{
-                                ConfigMap: &corev1.ConfigMapVolumeSource{
-                                    LocalObjectReference: corev1.LocalObjectReference{
-                                        Name: fmt.Sprintf("%s-config", database.Name),
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-            VolumeClaimTemplates: []corev1.PersistentVolumeClaim{
-                {
-                    ObjectMeta: metav1.ObjectMeta{
-                        Name: "data",
-                    },
-                    Spec: corev1.PersistentVolumeClaimSpec{
-                        AccessModes: []corev1.PersistentVolumeAccessMode{
-                            corev1.ReadWriteOnce,
-                        },
-                        Resources: corev1.ResourceRequirements{
-                            Requests: corev1.ResourceList{
-                                corev1.ResourceStorage: resource.MustParse(database.Spec.Storage.Size),
-                            },
-                        },
-                        StorageClassName: &database.Spec.Storage.StorageClass,
-                    },
-                },
-            },
-        },
-    }
-    
-    // Установка owner reference
-    if err := controllerutil.SetControllerReference(database, statefulSet, r.Scheme); err != nil {
-        return err
-    }
-    
-    // Создание или обновление StatefulSet
-    return r.createOrUpdate(ctx, statefulSet)
-}
+### **3. Performance issues:**
+```bash
+# Reconciliation frequency
+kubectl get --raw /metrics | grep "controller_runtime_reconcile_total"
 
-// reconcileServices создает Services для базы данных
-func (r *DatabaseReconciler) reconcileServices(ctx context.Context, database *Database) error {
-    // Headless Service для StatefulSet
-    headlessService := &corev1.Service{
-        ObjectMeta: metav1.ObjectMeta{
-            Name:      fmt.Sprintf("%s-headless", database.Name),
-            Namespace: database.Namespace,
-        },
-        Spec: corev1.ServiceSpec{
-            ClusterIP: "None",
-            Selector: map[string]string{
-                "app": database.Name,
-            },
-            Ports: []corev1.ServicePort{
-                {
-                    Port:       r.getDatabasePort(database),
-                    TargetPort: intstr.FromString("database"),
-                    Name:       "database",
-                },
-            },
-        },
-    }
-    
-    if err := controllerutil.SetControllerReference(database, headlessService, r.Scheme); err != nil {
-        return err
-    }
-    
-    if err := r.createOrUpdate(ctx, headlessService); err != nil {
-        return err
-    }
-    
-    // Primary Service
-    primaryService := &corev1.Service{
-        ObjectMeta: metav1.ObjectMeta{
-            Name:      fmt.Sprintf("%s-primary", database.Name),
-            Namespace: database.Namespace,
-        },
-        Spec: corev1.ServiceSpec{
-            Selector: map[string]string{
-                "app":  database.Name,
-                "role": "primary",
-            },
-            Ports: []corev1.ServicePort{
-                {
-                    Port:       r.getDatabasePort(database),
-                    TargetPort: intstr.FromString("database"),
-                    Name:       "database",
-                },
-            },
-        },
-    }
-    
-    if err := controllerutil.SetControllerReference(database, primaryService, r.Scheme); err != nil {
-        return err
-    }
-    
-    if err := r.createOrUpdate(ctx, primaryService); err != nil {
-        return err
-    }
-    
-    // Readonly Service (если есть реплики)
-    if database.Spec.Replicas > 1 {
-        readonlyService := &corev1.Service{
-            ObjectMeta: metav1.ObjectMeta{
-                Name:      fmt.Sprintf("%s-readonly", database.Name),
-                Namespace: database.Namespace,
-            },
-            Spec: corev1.ServiceSpec{
-                Selector: map[string]string{
-                    "app":  database.Name,
-                    "role": "replica",
-                },
-                Ports: []corev1.ServicePort{
-                    {
-                        Port:       r.getDatabasePort(database),
-                        TargetPort: intstr.FromString("database"),
-                        Name:       "database",
-                    },
-                },
-            },
-        }
-        
-        if err := controllerutil.SetControllerReference(database, readonlyService, r.Scheme); err != nil {
-            return err
-        }
-        
-        if err := r.createOrUpdate(ctx, readonlyService); err != nil {
-            return err
-        }
-    }
-    
-    return nil
-}
+# Queue depth
+kubectl get --raw /metrics | grep "workqueue_depth"
 
-// reconcileMonitoring настраивает мониторинг
-func (r *DatabaseReconciler) reconcileMonitoring(ctx context.Context, database *Database) error {
-    // ServiceMonitor для Prometheus
-    serviceMonitor := &monitoringv1.ServiceMonitor{
-        ObjectMeta: metav1.ObjectMeta{
-            Name:      fmt.Sprintf("%s-monitor", database.Name),
-            Namespace: database.Namespace,
-        },
-        Spec: monitoringv1.ServiceMonitorSpec{
-            Selector: metav1.LabelSelector{
-                MatchLabels: map[string]string{
-                    "app": database.Name,
-                },
-            },
-            Endpoints: []monitoringv1.Endpoint{
-                {
-                    Port:     "metrics",
-                    Interval: database.Spec.Monitoring.ScrapeInterval,
-                    Path:     "/metrics",
-                },
-            },
-        },
-    }
-    
-    if err := controllerutil.SetControllerReference(database, serviceMonitor, r.Scheme); err != nil {
-        return err
-    }
-    
-    return r.createOrUpdate(ctx, serviceMonitor)
-}
+# Processing time
+kubectl get --raw /metrics | grep "controller_runtime_reconcile_time_seconds"
 
-// reconcileBackup настраивает резервное копирование
-func (r *DatabaseReconciler) reconcileBackup(ctx context.Context, database *Database) error {
-    // CronJob для backup
-    backupCronJob := &batchv1.CronJob{
-        ObjectMeta: metav1.ObjectMeta{
-            Name:      fmt.Sprintf("%s-backup", database.Name),
-            Namespace: database.Namespace,
-        },
-        Spec: batchv1.CronJobSpec{
-            Schedule: database.Spec.Backup.Schedule,
-            JobTemplate: batchv1.JobTemplateSpec{
-                Spec: batchv1.JobSpec{
-                    Template: corev1.PodTemplateSpec{
-                        Spec: corev1.PodSpec{
-                            RestartPolicy: corev1.RestartPolicyOnFailure,
-                            Containers: []corev1.Container{
-                                {
-                                    Name:  "backup",
-                                    Image: r.getBackupImage(database),
-                                    Command: r.getBackupCommand(database),
-                                    Env: []corev1.EnvVar{
-                                        {
-                                            Name:  "DATABASE_URL",
-                                            Value: fmt.Sprintf("%s-primary.%s.svc.cluster.local", database.Name, database.Namespace),
-                                        },
-                                        {
-                                            Name: "DATABASE_PASSWORD",
-                                            ValueFrom: &corev1.EnvVarSource{
-                                                SecretKeyRef: &corev1.SecretKeySelector{
-                                                    LocalObjectReference: corev1.LocalObjectReference{
-                                                        Name: fmt.Sprintf("%s-secret", database.Name),
-                                                    },
-                                                    Key: "password",
-                                                },
-                                            },
-                                        },
-                                    },
-                                    VolumeMounts: []corev1.VolumeMount{
-                                        {
-                                            Name:      "backup-storage",
-                                            MountPath: "/backup",
-                                        },
-                                    },
-                                },
-                            },
-                            Volumes: []corev1.Volume{
-                                {
-                                    Name: "backup-storage",
-                                    VolumeSource: corev1.VolumeSource{
-                                        PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-                                            ClaimName: fmt.Sprintf("%s-backup-pvc", database.Name),
-                                        },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-            },
-        },
-    }
-    
-    if err := controllerutil.SetControllerReference(database, backupCronJob, r.Scheme); err != nil {
-        return err
-    }
-    
-    return r.createOrUpdate(ctx, backupCronJob)
-}
+# Memory usage
+kubectl top pod -n argocd --sort-by=memory
+```
 
-// Utility methods
-func (r *DatabaseReconciler) getDatabaseImage(database *Database) string {
-    switch database.Spec.Type {
-    case "postgresql":
-        return fmt.Sprintf("postgres:%s", database.Spec.Version)
-    case "mysql":
-        return fmt.Sprintf("mysql:%s", database.Spec.Version)
-    case "mongodb":
-        return fmt.Sprintf("mongo:%s", database.Spec.Version)
-    default:
-        return "postgres:13"
-    }
-}
+## 🔧 **Best Practices для Operators:**
 
-func (r *DatabaseReconciler) getDatabasePort(database *Database) int32 {
-    switch database.Spec.Type {
-    case "postgresql":
-        return 5432
-    case "mysql":
-        return 3306
-    case "mongodb":
-        return 27017
-    default:
-        return 5432
-    }
-}
+### **1. Мониторинг:**
+```bash
+# Operator health checks
+kubectl get pods --all-namespaces -l app.kubernetes.io/component=controller --field-selector status.phase!=Running
 
-func (r *DatabaseReconciler) updateCondition(database *Database, condType, status, reason, message string) {
-    condition := DatabaseCondition{
-        Type:               condType,
-        Status:             status,
-        Reason:             reason,
-        Message:            message,
-        LastTransitionTime: metav1.Now(),
-    }
-    
-    // Обновление или добавление condition
-    for i, cond := range database.Status.Conditions {
-        if cond.Type == condType {
-            database.Status.Conditions[i] = condition
-            return
-        }
-    }
-    
-    database.Status.Conditions = append(database.Status.Conditions, condition)
-}
+# Resource drift detection
+kubectl get applications -n argocd -o json | jq '.items[] | select(.status.sync.status != "Synced")'
 
-func (r *DatabaseReconciler) createOrUpdate(ctx context.Context, obj client.Object) error {
-    if err := r.Create(ctx, obj); err != nil {
-        if !errors.IsAlreadyExists(err) {
-            return err
-        }
-        return r.Update(ctx, obj)
-    }
-    return nil
-}
+# Performance monitoring
+kubectl get --raw /metrics | grep "controller_runtime" | grep -E "(reconcile_total|reconcile_time_seconds)"
+```
 
-func (r *DatabaseReconciler)
+### **2. Операционные аспекты:**
+```bash
+# Backup CRDs
+kubectl get crd -o yaml > crd-backup.yaml
+
+# Backup Custom Resources
+kubectl get applications -n argocd -o yaml > applications-backup.yaml
+
+# Version management
+kubectl get crd applications.argoproj.io -o yaml | grep -A 5 versions
+```
+
+## 🎯 **Best Practices для Operators:**
+
+### **1. Дизайн:**
+- Следуйте принципам декларативного API
+- Реализуйте idempotent операции
+- Используйте proper status reporting
+
+### **2. Безопасность:**
+- Минимизируйте RBAC permissions
+- Используйте service accounts
+- Валидируйте входные данные
+
+### **3. Надежность:**
+- Реализуйте proper error handling
+- Используйте exponential backoff
+- Мониторьте operator health
+
+### **4. Производительность:**
+- Оптимизируйте reconciliation loops
+- Используйте efficient watches
+- Кэшируйте данные где возможно
+
+**Operators — это мощный паттерн для автоматизации управления сложными приложениями в Kubernetes!**
