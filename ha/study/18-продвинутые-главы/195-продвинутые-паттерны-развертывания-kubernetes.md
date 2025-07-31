@@ -1,380 +1,204 @@
 # 195. Какие существуют продвинутые паттерны развертывания Kubernetes?
 
-## 🎯 Вопрос
-Какие существуют продвинутые паттерны развертывания Kubernetes?
+## 🎯 **Что такое продвинутые паттерны развертывания?**
 
-## 💡 Ответ
+**Продвинутые паттерны развертывания Kubernetes** — это стратегии доставки приложений, обеспечивающие минимальные риски, высокую доступность и безопасность обновлений в production окружениях. Эти паттерны критически важны для enterprise приложений.
 
-Продвинутые паттерны развертывания в Kubernetes позволяют реализовать сложные сценарии доставки приложений с минимальными рисками и максимальной надежностью. Эти паттерны особенно важны для production окружений, где требуется высокая доступность и безопасность обновлений.
+## 🏗️ **Основные категории паттернов:**
 
-### 🚀 Архитектура продвинутых паттернов развертывания
+### **1. Progressive Delivery**
+- Canary Deployments (постепенное развертывание)
+- Blue-Green Deployments (мгновенное переключение)
+- A/B Testing (сравнение версий)
+- Feature Flags (управление функциональностью)
 
-#### 1. **Схема Advanced Deployment Patterns**
-```
-┌─────────────────────────────────────────────────────────────┐
-│            Advanced Kubernetes Deployment Patterns         │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Progressive Delivery                    │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Canary    │    │ Blue-Green  │    │   A/B       │ │ │
-│  │  │ Deployment  │───▶│ Deployment  │───▶│  Testing    │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Multi-Cluster Patterns                  │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Cross     │    │   Disaster  │    │   Global    │ │ │
-│  │  │  Cluster    │───▶│  Recovery   │───▶│ Load        │ │ │
-│  │  │ Deployment  │    │ Patterns    │    │ Balancing   │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │              GitOps & Automation Patterns              │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   GitOps    │    │ Pipeline    │    │ Environment │ │ │
-│  │  │ Workflows   │───▶│ as Code     │───▶│ Promotion   │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │               Security & Compliance                    │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Policy    │    │   Secret    │    │ Compliance  │ │ │
-│  │  │ Enforcement │───▶│ Management  │───▶│ Automation  │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. Multi-Cluster Patterns**
+- Cross-Cluster Deployment (развертывание в нескольких кластерах)
+- Disaster Recovery (автоматическое восстановление)
+- Global Load Balancing (интеллектуальное распределение)
 
-#### 2. **Классификация паттернов развертывания**
-```yaml
-# Advanced Deployment Patterns Classification
-deployment_patterns:
-  progressive_delivery:
-    canary_deployment:
-      description: "Gradual rollout to subset of users"
-      use_cases:
-        - "Risk mitigation"
-        - "Performance testing"
-        - "User feedback collection"
-        - "Feature validation"
-      
-      implementation:
-        traffic_splitting:
-          - "Istio traffic management"
-          - "NGINX ingress weights"
-          - "Flagger automation"
-          - "Argo Rollouts"
-        
-        metrics_monitoring:
-          - "Success rate tracking"
-          - "Latency monitoring"
-          - "Error rate analysis"
-          - "Business metrics"
-    
-    blue_green_deployment:
-      description: "Switch between two identical environments"
-      use_cases:
-        - "Zero-downtime deployments"
-        - "Quick rollbacks"
-        - "Database migrations"
-        - "Infrastructure updates"
-      
-      implementation:
-        environment_management:
-          - "Separate namespaces"
-          - "Service switching"
-          - "DNS updates"
-          - "Load balancer reconfiguration"
-    
-    a_b_testing:
-      description: "Compare different versions with user groups"
-      use_cases:
-        - "Feature experimentation"
-        - "UI/UX testing"
-        - "Performance comparison"
-        - "Business optimization"
-      
-      implementation:
-        user_segmentation:
-          - "Header-based routing"
-          - "Cookie-based routing"
-          - "Geographic routing"
-          - "Random distribution"
+### **3. GitOps & Automation**
+- Declarative Deployments (Git как источник истины)
+- Environment Promotion (автоматическое продвижение)
+- Policy as Code (автоматизация политик)
 
-  multi_cluster_patterns:
-    cross_cluster_deployment:
-      description: "Deploy across multiple clusters"
-      use_cases:
-        - "High availability"
-        - "Geographic distribution"
-        - "Compliance requirements"
-        - "Resource optimization"
-      
-      implementation:
-        orchestration:
-          - "ArgoCD ApplicationSets"
-          - "Flux multi-cluster"
-          - "Rancher Fleet"
-          - "Admiral"
-    
-    disaster_recovery:
-      description: "Automated failover and recovery"
-      use_cases:
-        - "Business continuity"
-        - "Data protection"
-        - "RTO/RPO compliance"
-        - "Regulatory requirements"
-      
-      implementation:
-        strategies:
-          - "Active-passive clusters"
-          - "Active-active clusters"
-          - "Backup and restore"
-          - "Data replication"
-    
-    global_load_balancing:
-      description: "Intelligent traffic distribution"
-      use_cases:
-        - "Latency optimization"
-        - "Load distribution"
-        - "Failover automation"
-        - "Cost optimization"
-      
-      implementation:
-        technologies:
-          - "Istio multi-cluster"
-          - "Submariner"
-          - "Cilium cluster mesh"
-          - "External DNS"
+## 📊 **Практические примеры из вашего HA кластера:**
 
-  gitops_automation:
-    declarative_deployments:
-      description: "Git as single source of truth"
-      use_cases:
-        - "Audit trail"
-        - "Rollback capability"
-        - "Team collaboration"
-        - "Compliance tracking"
-      
-      implementation:
-        tools:
-          - "ArgoCD"
-          - "Flux"
-          - "Jenkins X"
-          - "Tekton"
-    
-    environment_promotion:
-      description: "Automated promotion through environments"
-      use_cases:
-        - "Quality gates"
-        - "Testing automation"
-        - "Approval workflows"
-        - "Release management"
-      
-      implementation:
-        pipeline_stages:
-          - "Development"
-          - "Testing"
-          - "Staging"
-          - "Production"
-    
-    policy_as_code:
-      description: "Automated policy enforcement"
-      use_cases:
-        - "Security compliance"
-        - "Resource governance"
-        - "Cost control"
-        - "Operational standards"
-      
-      implementation:
-        frameworks:
-          - "Open Policy Agent"
-          - "Gatekeeper"
-          - "Kyverno"
-          - "Falco"
-
-  advanced_strategies:
-    feature_flags:
-      description: "Runtime feature control"
-      use_cases:
-        - "Gradual feature rollout"
-        - "Emergency feature disable"
-        - "User segmentation"
-        - "Performance testing"
-      
-      implementation:
-        platforms:
-          - "LaunchDarkly"
-          - "Split.io"
-          - "Unleash"
-          - "ConfigCat"
-    
-    chaos_engineering:
-      description: "Controlled failure injection"
-      use_cases:
-        - "Resilience testing"
-        - "Failure preparation"
-        - "System validation"
-        - "Team training"
-      
-      implementation:
-        tools:
-          - "Chaos Monkey"
-          - "Litmus"
-          - "Chaos Mesh"
-          - "Gremlin"
-    
-    immutable_infrastructure:
-      description: "Replace rather than modify"
-      use_cases:
-        - "Consistency guarantee"
-        - "Security hardening"
-        - "Simplified rollbacks"
-        - "Audit compliance"
-      
-      implementation:
-        practices:
-          - "Container immutability"
-          - "Infrastructure as Code"
-          - "Automated provisioning"
-          - "Version control"
-```
-
-### 📊 Примеры из нашего кластера
-
-#### Проверка паттернов развертывания:
+### **1. Проверка текущих deployment стратегий:**
 ```bash
-# Проверка ArgoCD applications
-kubectl get applications -n argocd
-
-# Проверка Istio traffic management
-kubectl get virtualservices,destinationrules --all-namespaces
+# Проверка ArgoCD applications и их стратегий
+kubectl get applications -n argocd -o wide
 
 # Проверка deployment strategies
 kubectl get deployments --all-namespaces -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.strategy.type}{"\n"}{end}'
 
-# Проверка rollout status
-kubectl rollout status deployment/app-name -n namespace
+# Проверка rollout статуса ArgoCD
+kubectl rollout status deployment/argocd-server -n argocd
 
-# Проверка ingress configurations
-kubectl get ingress --all-namespaces
+# Проверка HA конфигурации Prometheus
+kubectl get deployment prometheus-server -n monitoring -o yaml | grep -A 10 strategy
 ```
 
-### 🛠️ Реализация продвинутых паттернов
+### **2. Анализ текущих паттернов в кластере:**
+```bash
+# ArgoCD как пример GitOps паттерна
+kubectl describe application hashfoundry-react -n argocd
 
-#### 1. **Canary Deployment с Istio**
+# Мониторинг как пример HA deployment
+kubectl get pods -n monitoring -o wide
+
+# Ingress как пример traffic management
+kubectl get ingress --all-namespaces -o wide
+
+# NFS как пример shared storage pattern
+kubectl get pv | grep nfs
+```
+
+### **3. Настройка Canary Deployment с Argo Rollouts:**
+```bash
+# Установка Argo Rollouts в ваш кластер
+kubectl create namespace argo-rollouts
+kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+
+# Проверка установки
+kubectl get pods -n argo-rollouts
+
+# Установка kubectl plugin
+curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-darwin-amd64
+chmod +x kubectl-argo-rollouts-darwin-amd64
+sudo mv kubectl-argo-rollouts-darwin-amd64 /usr/local/bin/kubectl-argo-rollouts
+```
+
+### **4. Мониторинг deployment паттернов:**
+```bash
+# Prometheus метрики для deployments
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80
+
+# Grafana dashboard для deployment tracking
+kubectl port-forward svc/grafana -n monitoring 3000:80
+
+# ArgoCD UI для GitOps мониторинга
+kubectl port-forward svc/argocd-server -n argocd 8080:80
+```
+
+### **5. Тестирование Blue-Green в development:**
+```bash
+# Создание test namespace
+kubectl create namespace deployment-patterns-test
+
+# Применение blue-green конфигурации
+kubectl apply -f blue-green-test-manifests/ -n deployment-patterns-test
+
+# Мониторинг переключения
+kubectl get services -n deployment-patterns-test -w
+```
+
+## 🔄 **Canary Deployment с Argo Rollouts:**
+
+### **1. Canary Rollout для React приложения:**
 ```yaml
-# canary-deployment-istio.yaml
+# canary-hashfoundry-react.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: canary-app
+  name: hashfoundry-react-canary
+  namespace: hashfoundry-react
 spec:
-  replicas: 10
+  replicas: 5
   strategy:
     canary:
-      canaryService: canary-app-canary
-      stableService: canary-app-stable
+      canaryService: hashfoundry-react-canary
+      stableService: hashfoundry-react-stable
       trafficRouting:
-        istio:
-          virtualService:
-            name: canary-app-vs
-            routes:
-            - primary
-          destinationRule:
-            name: canary-app-dr
-            canarySubsetName: canary
-            stableSubsetName: stable
+        nginx:
+          stableIngress: hashfoundry-react-ingress
+          annotationPrefix: nginx.ingress.kubernetes.io
+          additionalIngressAnnotations:
+            canary-by-header: X-Canary
       steps:
-      - setWeight: 10
-      - pause: {duration: 2m}
       - setWeight: 20
       - pause: {duration: 2m}
-      - setWeight: 50
+      - setWeight: 40
+      - pause: {duration: 2m}
+      - setWeight: 60
       - pause: {duration: 5m}
-      - setWeight: 100
+      - setWeight: 80
+      - pause: {duration: 2m}
       analysis:
         templates:
-        - templateName: success-rate
+        - templateName: react-app-success-rate
         args:
         - name: service-name
-          value: canary-app
+          value: hashfoundry-react-canary
   selector:
     matchLabels:
-      app: canary-app
+      app: hashfoundry-react
   template:
     metadata:
       labels:
-        app: canary-app
+        app: hashfoundry-react
+        version: canary
     spec:
       containers:
-      - name: app
-        image: myapp:v2.0
+      - name: react-app
+        image: hashfoundry/react-app:v2.0
         ports:
-        - containerPort: 8080
+        - containerPort: 3000
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3000
+          initialDelaySeconds: 5
 
 ---
-# Istio VirtualService
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
+# Canary Service
+apiVersion: v1
+kind: Service
 metadata:
-  name: canary-app-vs
+  name: hashfoundry-react-canary
+  namespace: hashfoundry-react
 spec:
-  hosts:
-  - canary-app.example.com
-  http:
-  - name: primary
-    match:
-    - headers:
-        canary:
-          exact: "true"
-    route:
-    - destination:
-        host: canary-app
-        subset: canary
-      weight: 100
-  - route:
-    - destination:
-        host: canary-app
-        subset: stable
-      weight: 100
-    - destination:
-        host: canary-app
-        subset: canary
-      weight: 0
+  selector:
+    app: hashfoundry-react
+    version: canary
+  ports:
+  - port: 80
+    targetPort: 3000
 
 ---
-# Istio DestinationRule
-apiVersion: networking.istio.io/v1beta1
-kind: DestinationRule
+# Stable Service
+apiVersion: v1
+kind: Service
 metadata:
-  name: canary-app-dr
+  name: hashfoundry-react-stable
+  namespace: hashfoundry-react
 spec:
-  host: canary-app
-  subsets:
-  - name: stable
-    labels:
-      version: stable
-  - name: canary
-    labels:
-      version: canary
+  selector:
+    app: hashfoundry-react
+    version: stable
+  ports:
+  - port: 80
+    targetPort: 3000
 
 ---
 # Analysis Template
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
-  name: success-rate
+  name: react-app-success-rate
+  namespace: hashfoundry-react
 spec:
   args:
   - name: service-name
@@ -386,123 +210,159 @@ spec:
     failureLimit: 2
     provider:
       prometheus:
-        address: http://prometheus.monitoring:9090
+        address: http://prometheus-server.monitoring:80
         query: |
           sum(rate(
-            istio_requests_total{
-              destination_service_name="{{args.service-name}}",
-              response_code!~"5.*"
+            nginx_ingress_controller_requests{
+              service="{{args.service-name}}",
+              status!~"5.*"
             }[2m]
           )) / 
           sum(rate(
-            istio_requests_total{
-              destination_service_name="{{args.service-name}}"
+            nginx_ingress_controller_requests{
+              service="{{args.service-name}}"
             }[2m]
           ))
 ```
 
-#### 2. **Blue-Green Deployment**
+### **2. Управление Canary Deployment:**
+```bash
+# Запуск canary deployment
+kubectl apply -f canary-hashfoundry-react.yaml
+
+# Мониторинг прогресса
+kubectl argo rollouts get rollout hashfoundry-react-canary -n hashfoundry-react --watch
+
+# Продвижение canary
+kubectl argo rollouts promote hashfoundry-react-canary -n hashfoundry-react
+
+# Откат в случае проблем
+kubectl argo rollouts abort hashfoundry-react-canary -n hashfoundry-react
+
+# Перезапуск rollout
+kubectl argo rollouts restart hashfoundry-react-canary -n hashfoundry-react
+```
+
+## 🔧 **Blue-Green Deployment для ArgoCD:**
+
+### **1. Blue-Green конфигурация:**
 ```yaml
-# blue-green-deployment.yaml
+# blue-green-argocd.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
-  name: blue-green-app
+  name: argocd-server-bg
+  namespace: argocd
 spec:
-  replicas: 5
+  replicas: 3
   strategy:
     blueGreen:
-      activeService: blue-green-app-active
-      previewService: blue-green-app-preview
+      activeService: argocd-server-active
+      previewService: argocd-server-preview
       autoPromotionEnabled: false
       scaleDownDelaySeconds: 30
       prePromotionAnalysis:
         templates:
-        - templateName: health-check
+        - templateName: argocd-health-check
         args:
         - name: service-name
-          value: blue-green-app-preview
+          value: argocd-server-preview
       postPromotionAnalysis:
         templates:
-        - templateName: health-check
+        - templateName: argocd-health-check
         args:
         - name: service-name
-          value: blue-green-app-active
+          value: argocd-server-active
   selector:
     matchLabels:
-      app: blue-green-app
+      app.kubernetes.io/name: argocd-server
   template:
     metadata:
       labels:
-        app: blue-green-app
+        app.kubernetes.io/name: argocd-server
+        version: blue-green
     spec:
       containers:
-      - name: app
-        image: myapp:v2.0
+      - name: argocd-server
+        image: quay.io/argoproj/argocd:v2.8.4
+        command:
+        - argocd-server
+        - --staticassets
+        - /shared/app
+        - --repo-server
+        - argocd-repo-server:443
+        - --dex-server
+        - http://argocd-dex-server:5556
+        - --logformat
+        - text
+        - --loglevel
+        - info
+        - --redis
+        - argocd-redis:6379
         ports:
         - containerPort: 8080
+        - containerPort: 8083
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         livenessProbe:
           httpGet:
-            path: /health
+            path: /healthz
             port: 8080
           initialDelaySeconds: 30
         readinessProbe:
           httpGet:
-            path: /ready
+            path: /healthz
             port: 8080
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
 
 ---
-# Active Service
+# Active Service (production traffic)
 apiVersion: v1
 kind: Service
 metadata:
-  name: blue-green-app-active
+  name: argocd-server-active
+  namespace: argocd
 spec:
   selector:
-    app: blue-green-app
+    app.kubernetes.io/name: argocd-server
   ports:
-  - port: 80
+  - name: server
+    port: 80
+    targetPort: 8080
+  - name: grpc
+    port: 443
     targetPort: 8080
 
 ---
-# Preview Service
+# Preview Service (testing traffic)
 apiVersion: v1
 kind: Service
 metadata:
-  name: blue-green-app-preview
+  name: argocd-server-preview
+  namespace: argocd
 spec:
   selector:
-    app: blue-green-app
+    app.kubernetes.io/name: argocd-server
   ports:
-  - port: 80
+  - name: server
+    port: 80
     targetPort: 8080
-
----
-# Ingress for production traffic
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: blue-green-app-ingress
-spec:
-  rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: blue-green-app-active
-            port:
-              number: 80
+  - name: grpc
+    port: 443
+    targetPort: 8080
 
 ---
 # Health Check Analysis
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
-  name: health-check
+  name: argocd-health-check
+  namespace: argocd
 spec:
   args:
   - name: service-name
@@ -513,18 +373,48 @@ spec:
     successCondition: result == "1"
     provider:
       prometheus:
-        address: http://prometheus.monitoring:9090
+        address: http://prometheus-server.monitoring:80
         query: |
           up{job="{{args.service-name}}"}
+  - name: response-time
+    interval: 30s
+    count: 3
+    successCondition: result[0] < 0.5
+    provider:
+      prometheus:
+        address: http://prometheus-server.monitoring:80
+        query: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket{
+              job="{{args.service-name}}"
+            }[2m])
+          )
 ```
 
-#### 3. **Multi-Cluster GitOps Deployment**
+### **2. Управление Blue-Green Deployment:**
+```bash
+# Применение blue-green конфигурации
+kubectl apply -f blue-green-argocd.yaml
+
+# Проверка preview версии
+kubectl port-forward svc/argocd-server-preview -n argocd 8081:80
+
+# Продвижение в production
+kubectl argo rollouts promote argocd-server-bg -n argocd
+
+# Мониторинг статуса
+kubectl argo rollouts get rollout argocd-server-bg -n argocd --watch
+```
+
+## 🏭 **Multi-Cluster GitOps с ApplicationSets:**
+
+### **1. ApplicationSet для multi-cluster deployment:**
 ```yaml
-# multi-cluster-applicationset.yaml
+# multi-cluster-monitoring.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: multi-cluster-app
+  name: multi-cluster-monitoring
   namespace: argocd
 spec:
   generators:
@@ -534,37 +424,40 @@ spec:
           environment: production
   - list:
       elements:
-      - cluster: us-east-1
+      - cluster: production-us-east
         region: us-east-1
-        replicas: "5"
-      - cluster: eu-west-1
+        monitoring_retention: "30d"
+        storage_size: "50Gi"
+      - cluster: production-eu-west
         region: eu-west-1
-        replicas: "3"
-      - cluster: ap-south-1
+        monitoring_retention: "15d"
+        storage_size: "30Gi"
+      - cluster: production-ap-south
         region: ap-south-1
-        replicas: "2"
+        monitoring_retention: "7d"
+        storage_size: "20Gi"
   template:
     metadata:
-      name: '{{cluster}}-myapp'
+      name: '{{cluster}}-monitoring'
     spec:
       project: production
       source:
-        repoURL: https://github.com/company/k8s-manifests
+        repoURL: https://github.com/hashfoundry/k8s-manifests
         targetRevision: HEAD
-        path: apps/myapp
+        path: monitoring
         helm:
           parameters:
-          - name: image.tag
-            value: "v1.2.3"
-          - name: replicaCount
-            value: "{{replicas}}"
-          - name: region
+          - name: prometheus.retention
+            value: "{{monitoring_retention}}"
+          - name: prometheus.storage.size
+            value: "{{storage_size}}"
+          - name: grafana.region
             value: "{{region}}"
-          - name: cluster
+          - name: cluster.name
             value: "{{cluster}}"
       destination:
         server: '{{server}}'
-        namespace: myapp
+        namespace: monitoring
       syncPolicy:
         automated:
           prune: true
@@ -579,360 +472,574 @@ spec:
             maxDuration: 3m
 
 ---
-# Environment-specific values
+# Cluster-specific configurations
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: cluster-config
+  name: cluster-monitoring-config
+  namespace: argocd
 data:
-  us-east-1.yaml: |
-    environment: production
-    region: us-east-1
-    timezone: America/New_York
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
+  production-us-east.yaml: |
+    prometheus:
+      retention: "30d"
+      storage:
+        size: "50Gi"
+        class: "do-block-storage"
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "2Gi"
+        limits:
+          cpu: "2000m"
+          memory: "4Gi"
     
-  eu-west-1.yaml: |
-    environment: production
-    region: eu-west-1
-    timezone: Europe/London
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 300m
-        memory: 256Mi
+    grafana:
+      replicas: 2
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
+  
+  production-eu-west.yaml: |
+    prometheus:
+      retention: "15d"
+      storage:
+        size: "30Gi"
+        class: "do-block-storage"
+      resources:
+        requests:
+          cpu: "300m"
+          memory: "1Gi"
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
     
-  ap-south-1.yaml: |
-    environment: production
-    region: ap-south-1
-    timezone: Asia/Kolkata
-    resources:
-      requests:
-        cpu: 50m
-        memory: 64Mi
-      limits:
-        cpu: 200m
-        memory: 128Mi
+    grafana:
+      replicas: 1
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "300m"
+          memory: "256Mi"
 ```
 
-#### 4. **Feature Flag Integration**
+### **2. Environment Promotion Pipeline:**
 ```yaml
-# feature-flag-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
+# environment-promotion.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
 metadata:
-  name: feature-flag-app
+  name: environment-promotion
+  namespace: argocd
 spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: feature-flag-app
+  generators:
+  - list:
+      elements:
+      - env: development
+        cluster: dev-cluster
+        branch: develop
+        replicas: "1"
+        resources: "minimal"
+      - env: staging
+        cluster: staging-cluster
+        branch: staging
+        replicas: "2"
+        resources: "medium"
+      - env: production
+        cluster: production-cluster
+        branch: main
+        replicas: "3"
+        resources: "high"
   template:
     metadata:
-      labels:
-        app: feature-flag-app
+      name: 'hashfoundry-react-{{env}}'
     spec:
-      containers:
-      - name: app
-        image: myapp:v2.0
-        env:
-        - name: FEATURE_FLAGS_URL
-          value: "http://unleash.feature-flags:4242/api"
-        - name: FEATURE_FLAGS_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: feature-flags-secret
-              key: token
-        - name: ENVIRONMENT
-          value: "production"
-        ports:
-        - containerPort: 8080
-        volumeMounts:
-        - name: feature-config
-          mountPath: /app/config
-      volumes:
-      - name: feature-config
-        configMap:
-          name: feature-flags-config
+      project: default
+      source:
+        repoURL: https://github.com/hashfoundry/react-app
+        targetRevision: '{{branch}}'
+        path: k8s/overlays/{{env}}
+        kustomize:
+          images:
+          - hashfoundry/react-app:{{env}}-latest
+      destination:
+        server: '{{cluster}}'
+        namespace: hashfoundry-react-{{env}}
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+        - CreateNamespace=true
+      syncWaves:
+      - wave: 0
+        resources:
+        - group: ""
+          kind: "Namespace"
+        - group: ""
+          kind: "ConfigMap"
+        - group: ""
+          kind: "Secret"
+      - wave: 1
+        resources:
+        - group: "apps"
+          kind: "Deployment"
+        - group: ""
+          kind: "Service"
+      - wave: 2
+        resources:
+        - group: "networking.k8s.io"
+          kind: "Ingress"
+```
+
+## 📈 **Мониторинг deployment паттернов:**
+
+### **1. Prometheus метрики для deployments:**
+```yaml
+# deployment-monitoring.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argo-rollouts-metrics
+  namespace: argo-rollouts
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argo-rollouts-metrics
+  endpoints:
+  - port: metrics
 
 ---
-# Feature Flags Configuration
+# Custom metrics для canary deployments
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: feature-flags-config
+  name: deployment-alerts
+  namespace: monitoring
 data:
-  features.yaml: |
-    features:
-      new_ui:
-        enabled: true
-        rollout_percentage: 25
-        user_segments:
-          - beta_users
-          - premium_users
+  deployment-rules.yaml: |
+    groups:
+    - name: deployment.rules
+      rules:
+      - alert: CanaryDeploymentFailed
+        expr: |
+          increase(rollout_phase_duration_seconds{phase="Degraded"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Canary deployment failed"
+          description: "Rollout {{ $labels.rollout }} in namespace {{ $labels.namespace }} has failed"
       
-      advanced_analytics:
-        enabled: false
-        rollout_percentage: 0
-        prerequisites:
-          - new_ui
+      - alert: BlueGreenPromotionStuck
+        expr: |
+          rollout_phase_duration_seconds{phase="Paused"} > 600
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Blue-Green promotion stuck"
+          description: "Rollout {{ $labels.rollout }} has been paused for more than 10 minutes"
       
-      payment_v2:
-        enabled: true
-        rollout_percentage: 100
-        regions:
-          - us-east-1
-          - eu-west-1
-        exclude_regions:
-          - ap-south-1
-
----
-# Unleash Feature Flag Server
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: unleash
-  namespace: feature-flags
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: unleash
-  template:
-    metadata:
-      labels:
-        app: unleash
-    spec:
-      containers:
-      - name: unleash
-        image: unleashorg/unleash-server:4.22
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: unleash-db-secret
-              key: url
-        - name: DATABASE_SSL
-          value: "false"
-        ports:
-        - containerPort: 4242
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 4242
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 4242
-
----
-# Feature Flag Monitoring
-apiVersion: v1
-kind: Service
-metadata:
-  name: unleash
-  namespace: feature-flags
-  labels:
-    app: unleash
-spec:
-  selector:
-    app: unleash
-  ports:
-  - port: 4242
-    targetPort: 4242
+      - alert: DeploymentRollbackRequired
+        expr: |
+          increase(rollout_phase_duration_seconds{phase="Aborted"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Deployment rollback required"
+          description: "Rollout {{ $labels.rollout }} has been aborted and requires attention"
 ```
 
-### 📈 Мониторинг и автоматизация паттернов
+### **2. Grafana Dashboard для deployment tracking:**
+```json
+{
+  "dashboard": {
+    "title": "Advanced Deployment Patterns",
+    "panels": [
+      {
+        "title": "Rollout Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rollout_info",
+            "legendFormat": "{{rollout}} - {{phase}}"
+          }
+        ]
+      },
+      {
+        "title": "Canary Success Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(nginx_ingress_controller_requests{service=~\".*-canary\",status!~\"5.*\"}[5m]) / rate(nginx_ingress_controller_requests{service=~\".*-canary\"}[5m])",
+            "legendFormat": "{{service}} success rate"
+          }
+        ]
+      },
+      {
+        "title": "Blue-Green Traffic Split",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (service) (rate(nginx_ingress_controller_requests{service=~\".*-(active|preview)\"}[5m]))",
+            "legendFormat": "{{service}}"
+          }
+        ]
+      },
+      {
+        "title": "Deployment Duration",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rollout_phase_duration_seconds",
+            "legendFormat": "{{rollout}} - {{phase}}"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
-#### Скрипт для управления развертываниями:
+## 🚨 **Troubleshooting deployment паттернов:**
+
+### **1. Диагностика проблем Canary:**
+```bash
+# Проверка статуса rollout
+kubectl argo rollouts get rollout <rollout-name> -n <namespace>
+
+# Проверка analysis runs
+kubectl get analysisruns -n <namespace>
+
+# Логи argo-rollouts controller
+kubectl logs -n argo-rollouts deployment/argo-rollouts
+
+# Проверка метрик Prometheus
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80
+# Query: rollout_phase_duration_seconds{rollout="<rollout-name>"}
+
+# Проверка ingress конфигурации
+kubectl describe ingress <ingress-name> -n <namespace>
+```
+
+### **2. Диагностика Blue-Green проблем:**
+```bash
+# Проверка services
+kubectl get services -n <namespace> -l app=<app-name>
+
+# Проверка endpoints
+kubectl get endpoints -n <namespace>
+
+# Проверка pod readiness
+kubectl get pods -n <namespace> -l app=<app-name> -o wide
+
+# Тестирование preview service
+kubectl port-forward svc/<app-name>-preview -n <namespace> 8080:80
+
+# Проверка health checks
+kubectl describe analysisrun <analysis-run-name> -n <namespace>
+```
+
+### **3. Диагностика Multi-Cluster проблем:**
+```bash
+# Проверка ApplicationSet
+kubectl get applicationset -n argocd
+
+# Проверка generated applications
+kubectl get applications -n argocd -l argocd.argoproj.io/application-set-name=<appset-name>
+
+# Проверка cluster connectivity
+kubectl get clusters -n argocd
+
+# Проверка sync статуса
+kubectl describe application <app-name> -n argocd
+
+# Логи ApplicationSet controller
+kubectl logs -n argocd deployment/argocd-applicationset-controller
+```
+
+## 🎯 **Архитектура продвинутых паттернов:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│            Advanced Deployment Architecture                │
+├─────────────────────────────────────────────────────────────┤
+│  GitOps Layer                                              │
+│  ├── ArgoCD ApplicationSets                                │
+│  ├── Environment Promotion                                 │
+│  ├── Multi-Cluster Sync                                    │
+│  └── Policy Enforcement                                    │
+├─────────────────────────────────────────────────────────────┤
+│  Progressive Delivery Layer                                │
+│  ├── Argo Rollouts                                         │
+│  │   ├── Canary Deployments                               │
+│  │   ├── Blue-Green Deployments                           │
+│  │   └── Analysis Templates                               │
+│  ├── Traffic Management                                    │
+│  │   ├── NGINX Ingress                                    │
+│  │   ├── Istio Service Mesh                              │
+│  │   └── Load Balancers                                   │
+│  └── Feature Management                                    │
+│      ├── Feature Flags                                    │
+│      ├── A/B Testing                                      │
+│      └── User Segmentation                                │
+├─────────────────────────────────────────────────────────────┤
+│  Monitoring & Observability                               │
+│  ├── Prometheus Metrics                                    │
+│  │   ├── Deployment Success Rate                          │
+│  │   ├── Rollout Duration                                 │
+│  │   └── Traffic Distribution                             │
+│  ├── Grafana Dashboards                                   │
+│  │   ├── Deployment Status                                │
+│  │   ├── Performance Metrics                              │
+│  │   └── Error Tracking                                   │
+│  └── Alerting                                             │
+│      ├── Failed Deployments                               │
+│      ├── Stuck Rollouts                                   │
+│      └── Performance Degradation                          │
+├─────────────────────────────────────────────────────────────┤
+│  Infrastructure Layer                                      │
+│  ├── Kubernetes Clusters                                   │
+│  │   ├── Production Clusters                              │
+│  │   ├── Staging Clusters                                 │
+│  │   └── Development Clusters                             │
+│  ├── Storage                                              │
+│  │   ├── Persistent Volumes                               │
+│  │   ├── NFS Shared Storage                               │
+│  │   └── Backup Systems                                   │
+│  └── Networking                                           │
+│      ├── Load Balancers                                   │
+│      ├── Ingress Controllers                              │
+│      └── Service Mesh                                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 🔧 **Скрипт управления deployment паттернами:**
+
+### **1. Advanced Deployment Manager:**
 ```bash
 #!/bin/bash
 # advanced-deployment-manager.sh
 
-echo "🚀 Advanced Deployment Pattern Manager"
+echo "🚀 Advanced Deployment Pattern Manager for HA Cluster"
 
 # Canary deployment management
 manage_canary() {
     local app_name=$1
     local action=$2
+    local namespace=${3:-"default"}
+    
+    echo "=== Managing Canary Deployment: $app_name ==="
     
     case $action in
+        "start")
+            echo "Starting canary deployment for $app_name"
+            kubectl argo rollouts restart $app_name -n $namespace
+            kubectl argo rollouts get rollout $app_name -n $namespace
+            ;;
         "promote")
             echo "Promoting canary deployment for $app_name"
-            kubectl argo rollouts promote $app_name
+            kubectl argo rollouts promote $app_name -n $namespace
             ;;
         "abort")
             echo "Aborting canary deployment for $app_name"
-            kubectl argo rollouts abort $app_name
+            kubectl argo rollouts abort $app_name -n $namespace
             ;;
         "status")
             echo "Checking canary status for $app_name"
-            kubectl argo rollouts get rollout $app_name
+            kubectl argo rollouts get rollout $app_name -n $namespace --watch
             ;;
-        "restart")
-            echo "Restarting canary deployment for $app_name"
-            kubectl argo rollouts restart $app_name
+        "metrics")
+            echo "Getting canary metrics for $app_name"
+            kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
+            sleep 2
+            echo "Prometheus available at http://localhost:9090"
+            echo "Query: rollout_phase_duration_seconds{rollout=\"$app_name\"}"
             ;;
     esac
 }
 
-# Blue-green deployment management
+# Blue-Green deployment management
 manage_blue_green() {
     local app_name=$1
     local action=$2
+    local namespace=${3:-"default"}
+    
+    echo "=== Managing Blue-Green Deployment: $app_name ==="
     
     case $action in
         "promote")
             echo "Promoting blue-green deployment for $app_name"
-            kubectl argo rollouts promote $app_name
+            kubectl argo rollouts promote $app_name -n $namespace
             ;;
         "preview")
             echo "Getting preview URL for $app_name"
-            kubectl get service ${app_name}-preview -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+            preview_port=$(kubectl get service ${app_name}-preview -n $namespace -o jsonpath='{.spec.ports[0].port}')
+            kubectl port-forward svc/${app_name}-preview -n $namespace 8081:$preview_port &
+            echo "Preview available at http://localhost:8081"
             ;;
         "status")
             echo "Checking blue-green status for $app_name"
-            kubectl argo rollouts get rollout $app_name --watch
+            kubectl argo rollouts get rollout $app_name -n $namespace
+            ;;
+        "traffic")
+            echo "Checking traffic distribution for $app_name"
+            kubectl get services -n $namespace -l app=$app_name
             ;;
     esac
 }
 
 # Multi-cluster deployment status
 check_multi_cluster_status() {
+    local app_pattern=${1:-"*"}
+    
     echo "=== Multi-Cluster Deployment Status ==="
     
-    local app_name=$1
+    # Check ArgoCD applications
+    echo "--- ArgoCD Applications ---"
+    kubectl get applications -n argocd | grep $app_pattern
     
-    # Get all clusters
-    clusters=$(kubectl config get-contexts -o name | grep -v "^*")
+    echo ""
+    echo "--- ApplicationSets ---"
+    kubectl get applicationsets -n argocd
     
-    for cluster in $clusters; do
-        echo "--- Cluster: $cluster ---"
-        kubectl config use-context $cluster
-        
-        # Check application status
-        if kubectl get deployment $app_name >/dev/null 2>&1; then
-            replicas=$(kubectl get deployment $app_name -o jsonpath='{.status.replicas}')
-            ready=$(kubectl get deployment $app_name -o jsonpath='{.status.readyReplicas}')
-            echo "Deployment: $ready/$replicas ready"
-            
-            # Check service status
-            if kubectl get service $app_name >/dev/null 2>&1; then
-                echo "Service: Available"
-            else
-                echo "Service: Not found"
-            fi
-        else
-            echo "Deployment: Not found"
-        fi
-        echo ""
+    echo ""
+    echo "--- Cluster Status ---"
+    kubectl get clusters -n argocd
+    
+    # Check sync status
+    echo ""
+    echo "--- Sync Status ---"
+    for app in $(kubectl get applications -n argocd -o name | grep $app_pattern); do
+        app_name=$(basename $app)
+        sync_status=$(kubectl get application $app_name -n argocd -o jsonpath='{.status.sync.status}')
+        health_status=$(kubectl get application $app_name -n argocd -o jsonpath='{.status.health.status}')
+        echo "$app_name: Sync=$sync_status, Health=$health_status"
     done
 }
 
-# Feature flag status
-check_feature_flags() {
-    echo "=== Feature Flag Status ==="
+# Environment promotion
+promote_environment() {
+    local app_name=$1
+    local from_env=$2
+    local to_env=$3
     
-    # Get feature flags from Unleash API
-    unleash_url="http://unleash.feature-flags:4242/api/admin/features"
+    echo "=== Promoting $app_name from $from_env to $to_env ==="
     
-    if command -v curl >/dev/null 2>&1; then
-        curl -s $unleash_url | jq -r '.features[] | "\(.name): \(.enabled) (\(.strategies[0].parameters.rollout // "100")%)"'
-    else
-        echo "curl not available, checking ConfigMap"
-        kubectl get configmap feature-flags-config -o yaml | grep -A 20 "features.yaml"
-    fi
+    # Get current image from source environment
+    current_image=$(kubectl get deployment $app_name -n $app_name-$from_env -o jsonpath='{.spec.template.spec.containers[0].image}')
+    echo "Current image in $from_env: $current_image"
+    
+    # Update target environment
+    kubectl set image deployment/$app_name $app_name=$current_image -n $app_name-$to_env
+    
+    # Wait for rollout
+    kubectl rollout status deployment/$app_name -n $app_name-$to_env --timeout=300s
+    
+    echo "Promotion completed successfully"
 }
 
 # Deployment health check
 health_check() {
     local app_name=$1
+    local namespace=${2:-"default"}
     
     echo "=== Health Check for $app_name ==="
     
     # Check deployment status
     echo "--- Deployment Status ---"
-    kubectl get deployment $app_name -o wide
+    kubectl get deployment $app_name -n $namespace -o wide
     
     # Check pod status
     echo ""
     echo "--- Pod Status ---"
-    kubectl get pods -l app=$app_name -o wide
+    kubectl get pods -n $namespace -l app=$app_name -o wide
     
     # Check service status
     echo ""
     echo "--- Service Status ---"
-    kubectl get service $app_name -o wide
+    kubectl get service $app_name -n $namespace -o wide
     
-    # Check ingress status
+    # Check rollout status
     echo ""
-    echo "--- Ingress Status ---"
-    kubectl get ingress -l app=$app_name -o wide
+    echo "--- Rollout Status ---"
+    if kubectl get rollout $app_name -n $namespace >/dev/null 2>&1; then
+        kubectl argo rollouts get rollout $app_name -n $namespace
+    else
+        kubectl rollout status deployment/$app_name -n $namespace
+    fi
     
     # Check recent events
     echo ""
     echo "--- Recent Events ---"
-    kubectl get events --field-selector involvedObject.name=$app_name --sort-by='.lastTimestamp' | tail -5
-}
-
-# Rollback deployment
-rollback_deployment() {
-    local app_name=$1
-    local revision=${2:-""}
-    
-    echo "=== Rolling back $app_name ==="
-    
-    if [ -n "$revision" ]; then
-        kubectl rollout undo deployment/$app_name --to-revision=$revision
-    else
-        kubectl rollout undo deployment/$app_name
-    fi
-    
-    # Wait for rollback to complete
-    kubectl rollout status deployment/$app_name --timeout=300s
-    
-    echo "Rollback completed for $app_name"
+    kubectl get events --field-selector involvedObject.name=$app_name -n $namespace --sort-by='.lastTimestamp' | tail -5
 }
 
 # Performance metrics
 get_performance_metrics() {
     local app_name=$1
+    local namespace=${2:-"default"}
     
     echo "=== Performance Metrics for $app_name ==="
     
     # CPU and Memory usage
     echo "--- Resource Usage ---"
-    kubectl top pods -l app=$app_name
+    kubectl top pods -n $namespace -l app=$app_name
     
     # Request rate (if Prometheus is available)
     echo ""
     echo "--- Request Rate (last 5 minutes) ---"
-    if command -v curl >/dev/null 2>&1; then
-        prometheus_url="http://prometheus.monitoring:9090"
-        query="sum(rate(http_requests_total{job=\"$app_name\"}[5m]))"
-        curl -s "$prometheus_url/api/v1/query?query=$query" | jq -r '.data.result[0].value[1] // "No data"'
+    kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
+    sleep 2
+    echo "Prometheus available at http://localhost:9090"
+    echo "Query: sum(rate(nginx_ingress_controller_requests{service=\"$app_name\"}[5m]))"
+}
+
+# Rollback deployment
+rollback_deployment() {
+    local app_name=$1
+    local namespace=${2:-"default"}
+    local revision=${3:-""}
+    
+    echo "=== Rolling back $app_name ==="
+    
+    # Check if it's a rollout or deployment
+    if kubectl get rollout $app_name -n $namespace >/dev/null 2>&1; then
+        echo "Aborting rollout and rolling back"
+        kubectl argo rollouts abort $app_name -n $namespace
+        kubectl argo rollouts undo $app_name -n $namespace
     else
-        echo "Prometheus not accessible"
+        if [ -n "$revision" ]; then
+            kubectl rollout undo deployment/$app_name --to-revision=$revision -n $namespace
+        else
+            kubectl rollout undo deployment/$app_name -n $namespace
+        fi
+        
+        # Wait for rollback to complete
+        kubectl rollout status deployment/$app_name -n $namespace --timeout=300s
     fi
+    
+    echo "Rollback completed for $app_name"
 }
 
 # Main menu
 show_menu() {
-    echo "Advanced Deployment Pattern Manager"
+    echo ""
+    echo "🚀 Advanced Deployment Pattern Manager"
     echo "1. Manage Canary Deployment"
     echo "2. Manage Blue-Green Deployment"
     echo "3. Check Multi-Cluster Status"
-    echo "4. Check Feature Flags"
+    echo "4. Environment Promotion"
     echo "5. Health Check"
-    echo "6. Rollback Deployment"
-    echo "7. Performance Metrics"
+    echo "6. Performance Metrics"
+    echo "7. Rollback Deployment"
     echo "8. Exit"
 }
 
@@ -945,33 +1052,47 @@ main() {
         case $choice in
             1)
                 read -p "App name: " app_name
-                read -p "Action (promote/abort/status/restart): " action
-                manage_canary $app_name $action
+                read -p "Action (start/promote/abort/status/metrics): " action
+                read -p "Namespace [default]: " namespace
+                namespace=${namespace:-"default"}
+                manage_canary $app_name $action $namespace
                 ;;
             2)
                 read -p "App name: " app_name
-                read -p "Action (promote/preview/status): " action
-                manage_blue_green $app_name $action
+                read -p "Action (promote/preview/status/traffic): " action
+                read -p "Namespace [default]: " namespace
+                namespace=${namespace:-"default"}
+                manage_blue_green $app_name $action $namespace
                 ;;
             3)
-                read -p "App name: " app_name
-                check_multi_cluster_status $app_name
+                read -p "App pattern [*]: " app_pattern
+                app_pattern=${app_pattern:-"*"}
+                check_multi_cluster_status $app_pattern
                 ;;
             4)
-                check_feature_flags
+                read -p "App name: " app_name
+                read -p "From environment: " from_env
+                read -p "To environment: " to_env
+                promote_environment $app_name $from_env $to_env
                 ;;
             5)
                 read -p "App name: " app_name
-                health_check $app_name
+                read -p "Namespace [default]: " namespace
+                namespace=${namespace:-"default"}
+                health_check $app_name $namespace
                 ;;
             6)
                 read -p "App name: " app_name
-                read -p "Revision (optional): " revision
-                rollback_deployment $app_name $revision
+                read -p "Namespace [default]: " namespace
+                namespace=${namespace:-"default"}
+                get_performance_metrics $app_name $namespace
                 ;;
             7)
                 read -p "App name: " app_name
-                get_performance_metrics $app_name
+                read -p "Namespace [default]: " namespace
+                read -p "Revision (optional): " revision
+                namespace=${namespace:-"default"}
+                rollback_deployment $app_name $namespace $revision
                 ;;
             8)
                 echo "Goodbye!"
@@ -990,19 +1111,25 @@ main() {
 if [ $# -gt 0 ]; then
     case $1 in
         "canary")
-            manage_canary $2 $3
+            manage_canary $2 $3 $4
             ;;
         "blue-green")
-            manage_blue_green $2 $3
+            manage_blue_green $2 $3 $4
             ;;
         "multi-cluster")
             check_multi_cluster_status $2
             ;;
         "health")
-            health_check $2
+            health_check $2 $3
+            ;;
+        "metrics")
+            get_performance_metrics $2 $3
+            ;;
+        "rollback")
+            rollback_deployment $2 $3 $4
             ;;
         *)
-            echo "Usage: $0 [canary|blue-green|multi-cluster|health] <app-name> [action]"
+            echo "Usage: $0 [canary|blue-green|multi-cluster|health|metrics|rollback] <app-name> [action] [namespace]"
             ;;
     esac
 else
@@ -1010,23 +1137,30 @@ else
 fi
 ```
 
-### 🎯 Заключение
+## 🎯 **Best Practices для продвинутых паттернов:**
 
-Продвинутые паттерны развертывания Kubernetes обеспечивают:
+### **1. Canary Deployments:**
+- Начинайте с малого процента трафика (5-10%)
+- Используйте автоматические метрики для принятия решений
+- Настройте автоматический rollback при проблемах
+- Мониторьте business метрики, не только технические
 
-**Progressive Delivery:**
-1. **Canary Deployments** - постепенное развертывание с мониторингом
-2. **Blue-Green Deployments** - мгновенное переключение между версиями
-3. **A/B Testing** - сравнение версий на реальных пользователях
-4. **Feature Flags** - управление функциональностью во время выполнения
+### **2. Blue-Green Deployments:**
+- Тестируйте preview environment перед переключением
+- Используйте health checks для валидации
+- Подготовьте план быстрого rollback
+- Учитывайте состояние базы данных при переключении
 
-**Multi-Cluster Patterns:**
-1. **Cross-Cluster Deployment** - развертывание в нескольких кластерах
-2. **Disaster Recovery** - автоматическое восстановление после сбоев
-3. **Global Load Balancing** - интеллектуальное распределение трафика
-4. **Geographic Distribution** - размещение ближе к пользователям
+### **3. Multi-Cluster Patterns:**
+- Используйте GitOps для консистентности
+- Настройте мониторинг всех кластеров
+- Планируйте disaster recovery сценарии
+- Автоматизируйте failover процессы
 
-**Automation & GitOps:**
-1. **Declarative Deployments** - Git как источник истины
-2. **Environment Promotion** - автоматическое продвижение через среды
-3. **Policy as Code** - авт
+### **4. Мониторинг и Observability:**
+- Настройте алерты для критических метрик
+- Используйте distributed tracing
+- Мониторьте user experience метрики
+- Ведите audit log всех изменений
+
+**Продвинутые паттерны развертывания — это основа надежной доставки приложений в production!**

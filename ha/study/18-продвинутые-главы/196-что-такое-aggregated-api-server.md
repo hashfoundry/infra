@@ -1,211 +1,155 @@
-# 196. What is the aggregated API server?
+# 196. Что такое Aggregated API Server?
 
-## 🎯 Вопрос
-What is the aggregated API server?
+## 🎯 **Что такое Aggregated API Server?**
 
-## 💡 Ответ
+**Aggregated API Server** — это механизм расширения Kubernetes API, позволяющий добавлять пользовательские API серверы, которые интегрируются с основным kube-apiserver. Это обеспечивает единый интерфейс для всех API ресурсов через стандартные инструменты Kubernetes.
 
-Aggregated API Server - это механизм в Kubernetes, который позволяет расширять Kubernetes API путем добавления пользовательских API серверов. Это позволяет создавать новые API ресурсы, которые выглядят и работают как встроенные Kubernetes ресурсы, но обрабатываются отдельными серверами.
+## 🏗️ **Основные компоненты:**
 
-### 🏗️ Архитектура Aggregated API
+### **1. API Aggregation Layer**
+- Проксирование запросов к extension API серверам
+- Единая точка входа через kube-apiserver
+- Автоматическое обнаружение API
+- Интеграция с аутентификацией и авторизацией
 
-#### 1. **Схема API Aggregation**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                 API Aggregation Architecture               │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                    Client Layer                        │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   kubectl   │    │  Dashboard  │    │   Custom    │ │ │
-│  │  │             │───▶│             │───▶│   Client    │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                 kube-apiserver                         │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Core API  │    │ Extensions  │    │ Aggregation │ │ │
-│  │  │   /api/v1   │───▶│   /apis/    │───▶│   Layer     │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │              APIService Registration                   │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │ APIService  │    │   Service   │    │ Endpoint    │ │ │
-│  │  │   Object    │───▶│  Discovery  │───▶│  Routing    │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │               Extension API Servers                    │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Metrics   │    │  Custom     │    │   Service   │ │ │
-│  │  │   Server    │───▶│ Resources   │───▶│  Catalog    │ │ │
-│  │  │             │    │   Server    │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. APIService Registration**
+- Регистрация пользовательских API групп
+- Маршрутизация запросов к соответствующим серверам
+- Управление приоритетами API версий
+- TLS сертификация для безопасности
 
-#### 2. **Компоненты API Aggregation**
-```yaml
-# API Aggregation Components
-api_aggregation:
-  core_components:
-    kube_apiserver:
-      role: "Main API server and aggregation proxy"
-      responsibilities:
-        - "Route requests to appropriate API servers"
-        - "Handle authentication and authorization"
-        - "Manage APIService registrations"
-        - "Provide unified API discovery"
-      
-      aggregation_layer:
-        purpose: "Proxy requests to extension API servers"
-        features:
-          - "Request routing based on API group/version"
-          - "Authentication token forwarding"
-          - "TLS certificate validation"
-          - "Load balancing across endpoints"
-    
-    apiservice_controller:
-      role: "Manage APIService lifecycle"
-      responsibilities:
-        - "Watch APIService objects"
-        - "Update API discovery information"
-        - "Handle service availability"
-        - "Manage endpoint routing"
-    
-    extension_apiserver:
-      role: "Custom API implementation"
-      responsibilities:
-        - "Implement custom resource logic"
-        - "Handle CRUD operations"
-        - "Provide resource validation"
-        - "Manage custom storage"
+### **3. Extension API Servers**
+- Пользовательские реализации API логики
+- Обработка CRUD операций
+- Валидация и мутация ресурсов
+- Интеграция с хранилищем данных
 
-  registration_process:
-    apiservice_object:
-      purpose: "Register extension API server"
-      fields:
-        - "API group and version"
-        - "Service reference"
-        - "CA bundle for TLS"
-        - "Priority and version priority"
-    
-    service_discovery:
-      purpose: "Enable client discovery"
-      mechanism:
-        - "Update /apis endpoint"
-        - "Provide OpenAPI schema"
-        - "Enable kubectl integration"
-        - "Support API versioning"
-    
-    request_routing:
-      purpose: "Route requests to correct server"
-      flow:
-        - "Client sends request to kube-apiserver"
-        - "Aggregation layer checks APIService"
-        - "Request proxied to extension server"
-        - "Response returned to client"
+## 📊 **Практические примеры из вашего HA кластера:**
 
-  authentication_authorization:
-    token_forwarding:
-      mechanism: "Forward user tokens to extension servers"
-      headers:
-        - "Authorization: Bearer <token>"
-        - "X-Remote-User: <username>"
-        - "X-Remote-Group: <groups>"
-    
-    rbac_integration:
-      purpose: "Use standard Kubernetes RBAC"
-      resources:
-        - "Custom resources follow RBAC rules"
-        - "Standard verbs (get, list, create, etc.)"
-        - "Namespace and cluster scoped resources"
-    
-    admission_control:
-      integration: "Extension servers can use admission webhooks"
-      flow:
-        - "Request validation"
-        - "Mutation webhooks"
-        - "Validation webhooks"
-        - "Final admission decision"
-```
-
-### 📊 Примеры из нашего кластера
-
-#### Проверка Aggregated API:
+### **1. Проверка существующих Aggregated API:**
 ```bash
-# Проверка APIServices
+# Проверка всех APIServices в кластере
 kubectl get apiservices
 
 # Проверка metrics server (пример aggregated API)
-kubectl get apiservices v1beta1.metrics.k8s.io
+kubectl get apiservices v1beta1.metrics.k8s.io -o yaml
 
 # Проверка доступных API групп
-kubectl api-resources
+kubectl api-resources | grep -v "^NAME"
 
 # Проверка API versions
-kubectl api-versions
+kubectl api-versions | sort
 
-# Проверка custom resources
+# Проверка custom resource definitions
 kubectl get crd
 ```
 
-### 🛠️ Создание Extension API Server
+### **2. Анализ Metrics Server как пример:**
+```bash
+# Metrics Server - стандартный пример Aggregated API
+kubectl get deployment metrics-server -n kube-system
 
-#### 1. **APIService Registration**
+# Проверка APIService для metrics
+kubectl describe apiservice v1beta1.metrics.k8s.io
+
+# Тестирование metrics API
+kubectl top nodes
+kubectl top pods -n monitoring
+
+# Проверка service для metrics server
+kubectl get service metrics-server -n kube-system -o yaml
+```
+
+### **3. Проверка ArgoCD как extension API:**
+```bash
+# ArgoCD использует CRDs, но можно создать aggregated API
+kubectl get crd | grep argoproj
+
+# Проверка ArgoCD API ресурсов
+kubectl api-resources | grep argoproj
+
+# Проверка applications через API
+kubectl get applications -n argocd -o yaml | head -20
+```
+
+### **4. Создание тестового Extension API Server:**
+```bash
+# Создание namespace для тестирования
+kubectl create namespace api-extension-test
+
+# Генерация TLS сертификатов для API server
+openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 \
+  -keyout tls.key -out tls.crt \
+  -subj "/CN=example-api-server.api-extension-test.svc"
+
+# Создание secret с сертификатами
+kubectl create secret tls example-api-server-certs \
+  --cert=tls.crt --key=tls.key -n api-extension-test
+```
+
+### **5. Мониторинг API aggregation:**
+```bash
+# Проверка логов kube-apiserver для aggregation
+kubectl logs -n kube-system -l component=kube-apiserver | grep -i aggregat
+
+# Проверка метрик API server
+kubectl port-forward -n kube-system svc/kube-apiserver 8080:8080 &
+curl http://localhost:8080/metrics | grep apiserver_request
+
+# Мониторинг через Prometheus
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80
+# Query: apiserver_request_duration_seconds{verb="GET"}
+```
+
+## 🔄 **Создание Extension API Server:**
+
+### **1. APIService и Service конфигурация:**
 ```yaml
-# apiservice.yaml
+# example-api-server.yaml
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
 metadata:
-  name: v1alpha1.example.com
+  name: v1alpha1.widgets.example.com
 spec:
-  group: example.com
+  group: widgets.example.com
   version: v1alpha1
   groupPriorityMinimum: 100
   versionPriority: 100
   service:
     name: example-api-server
-    namespace: default
+    namespace: api-extension-test
     port: 443
-  caBundle: LS0tLS1CRUdJTi... # Base64 encoded CA certificate
+  caBundle: LS0tLS1CRUdJTi0tLS0t  # Base64 encoded CA cert
   insecureSkipTLSVerify: false
 
 ---
-# Service for extension API server
+# Service для extension API server
 apiVersion: v1
 kind: Service
 metadata:
   name: example-api-server
-  namespace: default
+  namespace: api-extension-test
+  labels:
+    app: example-api-server
 spec:
   selector:
     app: example-api-server
   ports:
-  - port: 443
+  - name: https
+    port: 443
     targetPort: 8443
     protocol: TCP
+  type: ClusterIP
 
 ---
-# Deployment for extension API server
+# Deployment для extension API server
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: example-api-server
-  namespace: default
+  namespace: api-extension-test
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: example-api-server
@@ -217,32 +161,53 @@ spec:
       serviceAccountName: example-api-server
       containers:
       - name: api-server
-        image: example/api-server:v1.0.0
+        image: example/widget-api-server:v1.0.0
         ports:
         - containerPort: 8443
+          name: https
         args:
         - --secure-port=8443
         - --tls-cert-file=/etc/certs/tls.crt
         - --tls-private-key-file=/etc/certs/tls.key
         - --audit-log-path=-
+        - --feature-gates=APIPriorityAndFairness=false
         - --audit-log-maxage=0
         - --audit-log-maxbackup=0
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         volumeMounts:
         - name: certs
           mountPath: /etc/certs
           readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8443
+            scheme: HTTPS
+          initialDelaySeconds: 5
       volumes:
       - name: certs
         secret:
           secretName: example-api-server-certs
 
 ---
-# RBAC for extension API server
+# ServiceAccount и RBAC
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: example-api-server
-  namespace: default
+  namespace: api-extension-test
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -253,33 +218,6 @@ rules:
 - apiGroups: [""]
   resources: ["namespaces"]
   verbs: ["get", "list", "watch"]
-- apiGroups: ["admissionregistration.k8s.io"]
-  resources: ["mutatingadmissionwebhooks", "validatingadmissionwebhooks"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: ["flowcontrol.apiserver.k8s.io"]
-  resources: ["prioritylevelconfigurations", "flowschemas"]
-  verbs: ["get", "list", "watch"]
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: example-api-server
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: example-api-server
-subjects:
-- kind: ServiceAccount
-  name: example-api-server
-  namespace: default
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: example-api-server:system:auth-delegator
-rules:
 - apiGroups: ["authentication.k8s.io"]
   resources: ["tokenreviews"]
   verbs: ["create"]
@@ -291,15 +229,15 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: example-api-server:system:auth-delegator
+  name: example-api-server
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: example-api-server:system:auth-delegator
+  name: example-api-server
 subjects:
 - kind: ServiceAccount
   name: example-api-server
-  namespace: default
+  namespace: api-extension-test
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -314,635 +252,454 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: example-api-server
-  namespace: default
+  namespace: api-extension-test
 ```
 
-#### 2. **Extension API Server Implementation**
-```go
-// main.go - Extension API Server
-package main
-
-import (
-    "context"
-    "fmt"
-    "net/http"
-    "os"
-
-    "k8s.io/apimachinery/pkg/runtime"
-    "k8s.io/apimachinery/pkg/runtime/schema"
-    "k8s.io/apimachinery/pkg/runtime/serializer"
-    "k8s.io/apiserver/pkg/registry/rest"
-    genericapiserver "k8s.io/apiserver/pkg/server"
-    "k8s.io/apiserver/pkg/server/options"
-    "k8s.io/client-go/kubernetes"
-    "k8s.io/klog/v2"
-)
-
-var (
-    Scheme = runtime.NewScheme()
-    Codecs = serializer.NewCodecFactory(Scheme)
-)
-
-func main() {
-    // Create server options
-    opts := options.NewRecommendedOptions("", Scheme)
-    opts.SecureServing.BindPort = 8443
-    
-    // Create server config
-    config, err := opts.Config()
-    if err != nil {
-        klog.Fatalf("Error creating server config: %v", err)
-    }
-    
-    // Create extension API server
-    server, err := config.Complete().New("example-api-server", genericapiserver.NewEmptyDelegate())
-    if err != nil {
-        klog.Fatalf("Error creating server: %v", err)
-    }
-    
-    // Install API groups
-    if err := installAPIGroups(server); err != nil {
-        klog.Fatalf("Error installing API groups: %v", err)
-    }
-    
-    // Start server
-    ctx := context.Background()
-    if err := server.PrepareRun().Run(ctx.Done()); err != nil {
-        klog.Fatalf("Error running server: %v", err)
-    }
-}
-
-func installAPIGroups(server *genericapiserver.GenericAPIServer) error {
-    // Define API group
-    apiGroupInfo := genericapiserver.NewDefaultAPIGroupInfo("example.com", Scheme, runtime.NewParameterCodec(Scheme), Codecs)
-    
-    // Add v1alpha1 version
-    v1alpha1Storage := map[string]rest.Storage{}
-    v1alpha1Storage["widgets"] = &WidgetStorage{}
-    apiGroupInfo.VersionedResourcesStorageMap["v1alpha1"] = v1alpha1Storage
-    
-    // Install API group
-    return server.InstallAPIGroup(&apiGroupInfo)
-}
-
-// Widget represents a custom resource
-type Widget struct {
-    metav1.TypeMeta   `json:",inline"`
-    metav1.ObjectMeta `json:"metadata,omitempty"`
-    
-    Spec   WidgetSpec   `json:"spec,omitempty"`
-    Status WidgetStatus `json:"status,omitempty"`
-}
-
-type WidgetSpec struct {
-    Size  string `json:"size,omitempty"`
-    Color string `json:"color,omitempty"`
-}
-
-type WidgetStatus struct {
-    Phase string `json:"phase,omitempty"`
-}
-
-type WidgetList struct {
-    metav1.TypeMeta `json:",inline"`
-    metav1.ListMeta `json:"metadata,omitempty"`
-    
-    Items []Widget `json:"items"`
-}
-
-// WidgetStorage implements REST storage for Widget resources
-type WidgetStorage struct {
-    // In-memory storage for demo purposes
-    widgets map[string]*Widget
-}
-
-func (s *WidgetStorage) New() runtime.Object {
-    return &Widget{}
-}
-
-func (s *WidgetStorage) NewList() runtime.Object {
-    return &WidgetList{}
-}
-
-func (s *WidgetStorage) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
-    widget, exists := s.widgets[name]
-    if !exists {
-        return nil, errors.NewNotFound(schema.GroupResource{Group: "example.com", Resource: "widgets"}, name)
-    }
-    return widget.DeepCopy(), nil
-}
-
-func (s *WidgetStorage) List(ctx context.Context, options *metav1.ListOptions) (runtime.Object, error) {
-    list := &WidgetList{}
-    for _, widget := range s.widgets {
-        list.Items = append(list.Items, *widget.DeepCopy())
-    }
-    return list, nil
-}
-
-func (s *WidgetStorage) Create(ctx context.Context, obj runtime.Object, createValidation rest.ValidateObjectFunc, options *metav1.CreateOptions) (runtime.Object, error) {
-    widget := obj.(*Widget)
-    
-    // Validate
-    if createValidation != nil {
-        if err := createValidation(ctx, obj); err != nil {
-            return nil, err
-        }
-    }
-    
-    // Generate name if needed
-    if widget.Name == "" {
-        widget.Name = fmt.Sprintf("widget-%d", len(s.widgets)+1)
-    }
-    
-    // Set defaults
-    if widget.Spec.Size == "" {
-        widget.Spec.Size = "medium"
-    }
-    if widget.Spec.Color == "" {
-        widget.Spec.Color = "blue"
-    }
-    
-    // Set status
-    widget.Status.Phase = "Active"
-    
-    // Store
-    if s.widgets == nil {
-        s.widgets = make(map[string]*Widget)
-    }
-    s.widgets[widget.Name] = widget.DeepCopy()
-    
-    return widget, nil
-}
-
-func (s *WidgetStorage) Update(ctx context.Context, name string, objInfo rest.UpdatedObjectInfo, createValidation rest.ValidateObjectFunc, updateValidation rest.ValidateObjectUpdateFunc, forceAllowCreate bool, options *metav1.UpdateOptions) (runtime.Object, bool, error) {
-    existing, exists := s.widgets[name]
-    if !exists && !forceAllowCreate {
-        return nil, false, errors.NewNotFound(schema.GroupResource{Group: "example.com", Resource: "widgets"}, name)
-    }
-    
-    updated, err := objInfo.UpdatedObject(ctx, existing)
-    if err != nil {
-        return nil, false, err
-    }
-    
-    widget := updated.(*Widget)
-    
-    // Validate
-    if updateValidation != nil {
-        if err := updateValidation(ctx, widget, existing); err != nil {
-            return nil, false, err
-        }
-    }
-    
-    // Store
-    s.widgets[name] = widget.DeepCopy()
-    
-    return widget, !exists, nil
-}
-
-func (s *WidgetStorage) Delete(ctx context.Context, name string, deleteValidation rest.ValidateObjectFunc, options *metav1.DeleteOptions) (runtime.Object, bool, error) {
-    widget, exists := s.widgets[name]
-    if !exists {
-        return nil, false, errors.NewNotFound(schema.GroupResource{Group: "example.com", Resource: "widgets"}, name)
-    }
-    
-    // Validate
-    if deleteValidation != nil {
-        if err := deleteValidation(ctx, widget); err != nil {
-            return nil, false, err
-        }
-    }
-    
-    // Delete
-    delete(s.widgets, name)
-    
-    return widget, true, nil
-}
-
-// Implement additional required methods
-func (s *WidgetStorage) NamespaceScoped() bool {
-    return true
-}
-
-func (s *WidgetStorage) GetSingularName() string {
-    return "widget"
-}
+### **2. Widget Custom Resource Definition:**
+```yaml
+# widget-crd.yaml (для сравнения с aggregated API)
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: widgets.widgets.example.com
+spec:
+  group: widgets.example.com
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              size:
+                type: string
+                enum: ["small", "medium", "large"]
+                default: "medium"
+              color:
+                type: string
+                default: "blue"
+              replicas:
+                type: integer
+                minimum: 1
+                maximum: 10
+                default: 1
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+                enum: ["Pending", "Active", "Failed"]
+              conditions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                    status:
+                      type: string
+                    lastTransitionTime:
+                      type: string
+                      format: date-time
+  scope: Namespaced
+  names:
+    plural: widgets
+    singular: widget
+    kind: Widget
+    shortNames:
+    - wg
 ```
 
-#### 3. **Client Usage Example**
-```go
-// client-example.go
-package main
+### **3. Тестирование Extension API:**
+```bash
+# Применение конфигурации
+kubectl apply -f example-api-server.yaml
 
-import (
-    "context"
-    "fmt"
-    
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    "k8s.io/apimachinery/pkg/runtime/schema"
-    "k8s.io/client-go/dynamic"
-    "k8s.io/client-go/tools/clientcmd"
-)
+# Проверка deployment
+kubectl get pods -n api-extension-test -l app=example-api-server
 
-func main() {
-    // Create client
-    config, err := clientcmd.BuildConfigFromFlags("", "~/.kube/config")
-    if err != nil {
-        panic(err)
-    }
+# Проверка APIService статуса
+kubectl get apiservice v1alpha1.widgets.example.com
+
+# Проверка доступности API
+kubectl api-resources | grep widgets
+
+# Создание тестового widget
+cat <<EOF | kubectl apply -f -
+apiVersion: widgets.example.com/v1alpha1
+kind: Widget
+metadata:
+  name: test-widget
+  namespace: api-extension-test
+spec:
+  size: large
+  color: red
+  replicas: 3
+EOF
+
+# Проверка созданного ресурса
+kubectl get widgets -n api-extension-test
+kubectl describe widget test-widget -n api-extension-test
+```
+
+## 🔧 **Мониторинг и диагностика Aggregated API:**
+
+### **1. Проверка состояния APIServices:**
+```bash
+# Статус всех APIServices
+kubectl get apiservices -o wide
+
+# Детальная информация об APIService
+kubectl describe apiservice v1alpha1.widgets.example.com
+
+# Проверка условий доступности
+kubectl get apiservice v1alpha1.widgets.example.com -o jsonpath='{.status.conditions[*]}'
+
+# Логи extension API server
+kubectl logs -n api-extension-test -l app=example-api-server
+```
+
+### **2. Диагностика проблем:**
+```bash
+# Проверка сетевой связности
+kubectl get endpoints -n api-extension-test example-api-server
+
+# Проверка сертификатов
+kubectl get secret example-api-server-certs -n api-extension-test -o yaml
+
+# Тестирование прямого подключения к API server
+kubectl port-forward -n api-extension-test svc/example-api-server 8443:443 &
+curl -k https://localhost:8443/healthz
+
+# Проверка RBAC разрешений
+kubectl auth can-i create widgets.widgets.example.com --as=system:serviceaccount:api-extension-test:example-api-server
+```
+
+### **3. Prometheus метрики для API aggregation:**
+```yaml
+# api-server-monitoring.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: example-api-server
+  namespace: api-extension-test
+spec:
+  selector:
+    matchLabels:
+      app: example-api-server
+  endpoints:
+  - port: https
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+    path: /metrics
+
+---
+# PrometheusRule для алертов
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: api-server-alerts
+  namespace: api-extension-test
+spec:
+  groups:
+  - name: api-server.rules
+    rules:
+    - alert: APIServerDown
+      expr: up{job="example-api-server"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Extension API Server is down"
+        description: "Extension API Server has been down for more than 1 minute"
     
-    client, err := dynamic.NewForConfig(config)
-    if err != nil {
-        panic(err)
-    }
-    
-    // Define resource
-    gvr := schema.GroupVersionResource{
-        Group:    "example.com",
-        Version:  "v1alpha1",
-        Resource: "widgets",
-    }
-    
-    // Create widget
-    widget := map[string]interface{}{
-        "apiVersion": "example.com/v1alpha1",
-        "kind":       "Widget",
-        "metadata": map[string]interface{}{
-            "name":      "my-widget",
-            "namespace": "default",
-        },
-        "spec": map[string]interface{}{
-            "size":  "large",
-            "color": "red",
-        },
-    }
-    
-    created, err := client.Resource(gvr).Namespace("default").Create(
-        context.TODO(),
-        &unstructured.Unstructured{Object: widget},
-        metav1.CreateOptions{},
-    )
-    if err != nil {
-        panic(err)
-    }
-    
-    fmt.Printf("Created widget: %s\n", created.GetName())
-    
-    // List widgets
-    list, err := client.Resource(gvr).Namespace("default").List(
-        context.TODO(),
-        metav1.ListOptions{},
-    )
-    if err != nil {
-        panic(err)
-    }
-    
-    fmt.Printf("Found %d widgets\n", len(list.Items))
-    for _, item := range list.Items {
-        fmt.Printf("- %s\n", item.GetName())
-    }
+    - alert: APIServerHighLatency
+      expr: histogram_quantile(0.99, rate(apiserver_request_duration_seconds_bucket[5m])) > 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High API Server latency"
+        description: "99th percentile latency is above 1s"
+```
+
+## 🏭 **Интеграция с существующим HA кластером:**
+
+### **1. Использование с ArgoCD:**
+```yaml
+# argocd-widget-application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: widget-api-server
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/hashfoundry/widget-api-server
+    targetRevision: HEAD
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: api-extension-test
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+```
+
+### **2. Мониторинг через Grafana:**
+```json
+{
+  "dashboard": {
+    "title": "Extension API Server Metrics",
+    "panels": [
+      {
+        "title": "API Server Availability",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"example-api-server\"}",
+            "legendFormat": "{{instance}}"
+          }
+        ]
+      },
+      {
+        "title": "Request Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(apiserver_request_total{job=\"example-api-server\"}[5m])",
+            "legendFormat": "{{verb}} {{resource}"
+          }
+        ]
+      },
+      {
+        "title": "Request Duration",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(apiserver_request_duration_seconds_bucket{job=\"example-api-server\"}[5m]))",
+            "legendFormat": "95th percentile"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(apiserver_request_total{job=\"example-api-server\",code!~\"2..\"}[5m])",
+            "legendFormat": "{{code}}"
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 
-### 🔧 Утилиты для работы с Aggregated API
+### **3. Backup и восстановление:**
+```bash
+# Backup APIService конфигурации
+kubectl get apiservice v1alpha1.widgets.example.com -o yaml > apiservice-backup.yaml
 
-#### Скрипт для тестирования Extension API Server:
+# Backup custom resources
+kubectl get widgets --all-namespaces -o yaml > widgets-backup.yaml
+
+# Backup extension API server deployment
+kubectl get deployment example-api-server -n api-extension-test -o yaml > api-server-deployment-backup.yaml
+
+# Восстановление
+kubectl apply -f apiservice-backup.yaml
+kubectl apply -f api-server-deployment-backup.yaml
+kubectl apply -f widgets-backup.yaml
+```
+
+## 🚨 **Troubleshooting Aggregated API:**
+
+### **1. Общие проблемы и решения:**
+```bash
+# APIService недоступен
+kubectl get apiservice v1alpha1.widgets.example.com -o yaml | grep -A 10 conditions
+
+# Проблемы с сертификатами
+kubectl describe secret example-api-server-certs -n api-extension-test
+
+# Проблемы с сетью
+kubectl get endpoints example-api-server -n api-extension-test
+kubectl describe service example-api-server -n api-extension-test
+
+# Проблемы с RBAC
+kubectl auth can-i "*" "*" --as=system:serviceaccount:api-extension-test:example-api-server
+```
+
+### **2. Диагностический скрипт:**
 ```bash
 #!/bin/bash
-# test-aggregated-api.sh
+# diagnose-aggregated-api.sh
 
-echo "🧪 Testing Aggregated API Server"
+echo "🔍 Diagnosing Aggregated API Server"
 
-# Test API service registration
-test_apiservice_registration() {
-    local api_service=$1
+diagnose_apiservice() {
+    local apiservice=$1
     
-    echo "=== Testing APIService Registration ==="
+    echo "=== APIService Status ==="
+    kubectl get apiservice $apiservice -o yaml
     
-    # Check if APIService exists
-    if kubectl get apiservice $api_service >/dev/null 2>&1; then
-        echo "✅ APIService registered: $api_service"
-        
-        # Check service availability
-        available=$(kubectl get apiservice $api_service -o jsonpath='{.status.conditions[?(@.type=="Available")].status}')
-        if [ "$available" = "True" ]; then
-            echo "✅ APIService available"
-        else
-            echo "❌ APIService not available"
-            kubectl get apiservice $api_service -o yaml
-        fi
-    else
-        echo "❌ APIService not found: $api_service"
-        return 1
+    echo ""
+    echo "=== Service Endpoints ==="
+    service_name=$(kubectl get apiservice $apiservice -o jsonpath='{.spec.service.name}')
+    service_namespace=$(kubectl get apiservice $apiservice -o jsonpath='{.spec.service.namespace}')
+    
+    if [ -n "$service_name" ] && [ -n "$service_namespace" ]; then
+        kubectl get endpoints $service_name -n $service_namespace
+        kubectl describe service $service_name -n $service_namespace
     fi
+    
+    echo ""
+    echo "=== Pod Status ==="
+    kubectl get pods -n $service_namespace -l app=$service_name
+    
+    echo ""
+    echo "=== Recent Events ==="
+    kubectl get events -n $service_namespace --sort-by='.lastTimestamp' | tail -10
 }
 
-# Test API discovery
-test_api_discovery() {
-    local group=$1
-    local version=$2
-    
-    echo "=== Testing API Discovery ==="
-    
-    # Check if API group is discoverable
-    if kubectl api-resources --api-group=$group >/dev/null 2>&1; then
-        echo "✅ API group discoverable: $group"
-        kubectl api-resources --api-group=$group
-    else
-        echo "❌ API group not discoverable: $group"
-    fi
-    
-    # Check API version
-    if kubectl api-versions | grep "$group/$version" >/dev/null 2>&1; then
-        echo "✅ API version available: $group/$version"
-    else
-        echo "❌ API version not available: $group/$version"
-    fi
-}
-
-# Test custom resource operations
-test_custom_resource_operations() {
+test_api_functionality() {
     local group=$1
     local version=$2
     local resource=$3
-    local namespace=${4:-"default"}
     
-    echo "=== Testing Custom Resource Operations ==="
+    echo "=== Testing API Functionality ==="
     
-    # Create test resource
-    echo "--- Creating test resource ---"
-    cat <<EOF | kubectl apply -f -
+    # Test API discovery
+    echo "--- API Discovery ---"
+    kubectl api-resources --api-group=$group
+    
+    # Test resource operations
+    echo "--- Resource Operations ---"
+    kubectl get $resource --all-namespaces 2>&1 || echo "Failed to list resources"
+    
+    # Test resource creation
+    echo "--- Resource Creation Test ---"
+    cat <<EOF | kubectl apply --dry-run=client -f - 2>&1 || echo "Failed validation"
 apiVersion: $group/$version
 kind: Widget
 metadata:
   name: test-widget
-  namespace: $namespace
-spec:
-  size: large
-  color: green
-EOF
-
-    if [ $? -eq 0 ]; then
-        echo "✅ Resource created successfully"
-    else
-        echo "❌ Resource creation failed"
-        return 1
-    fi
-    
-    # Get resource
-    echo "--- Getting resource ---"
-    if kubectl get $resource test-widget -n $namespace >/dev/null 2>&1; then
-        echo "✅ Resource retrieved successfully"
-        kubectl get $resource test-widget -n $namespace -o yaml
-    else
-        echo "❌ Resource retrieval failed"
-    fi
-    
-    # List resources
-    echo "--- Listing resources ---"
-    if kubectl get $resource -n $namespace >/dev/null 2>&1; then
-        echo "✅ Resource listing successful"
-        kubectl get $resource -n $namespace
-    else
-        echo "❌ Resource listing failed"
-    fi
-    
-    # Update resource
-    echo "--- Updating resource ---"
-    kubectl patch $resource test-widget -n $namespace --type='merge' -p='{"spec":{"color":"blue"}}'
-    if [ $? -eq 0 ]; then
-        echo "✅ Resource updated successfully"
-    else
-        echo "❌ Resource update failed"
-    fi
-    
-    # Delete resource
-    echo "--- Deleting resource ---"
-    kubectl delete $resource test-widget -n $namespace
-    if [ $? -eq 0 ]; then
-        echo "✅ Resource deleted successfully"
-    else
-        echo "❌ Resource deletion failed"
-    fi
-}
-
-# Test authentication and authorization
-test_auth() {
-    local resource=$1
-    local namespace=${2:-"default"}
-    
-    echo "=== Testing Authentication and Authorization ==="
-    
-    # Test with different service account
-    echo "--- Testing with limited service account ---"
-    
-    # Create limited service account
-    cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: test-user
-  namespace: $namespace
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: widget-reader
-  namespace: $namespace
-rules:
-- apiGroups: ["example.com"]
-  resources: ["widgets"]
-  verbs: ["get", "list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: test-user-binding
-  namespace: $namespace
-subjects:
-- kind: ServiceAccount
-  name: test-user
-  namespace: $namespace
-roleRef:
-  kind: Role
-  name: widget-reader
-  apiGroup: rbac.authorization.k8s.io
-EOF
-
-    # Test with limited permissions
-    token=$(kubectl create token test-user -n $namespace)
-    
-    # Should succeed (read operations)
-    if kubectl --token=$token get $resource -n $namespace >/dev/null 2>&1; then
-        echo "✅ Read access works with limited permissions"
-    else
-        echo "❌ Read access failed with limited permissions"
-    fi
-    
-    # Should fail (write operations)
-    if kubectl --token=$token create -f - <<EOF >/dev/null 2>&1
-apiVersion: example.com/v1alpha1
-kind: Widget
-metadata:
-  name: unauthorized-widget
-  namespace: $namespace
-spec:
-  size: small
-  color: red
-EOF
-    then
-        echo "❌ Write access should have been denied"
-    else
-        echo "✅ Write access correctly denied"
-    fi
-    
-    # Cleanup
-    kubectl delete serviceaccount test-user -n $namespace
-    kubectl delete role widget-reader -n $namespace
-    kubectl delete rolebinding test-user-binding -n $namespace
-}
-
-# Test metrics and monitoring
-test_metrics() {
-    local api_service=$1
-    
-    echo "=== Testing Metrics and Monitoring ==="
-    
-    # Check if metrics are available
-    if kubectl top nodes >/dev/null 2>&1; then
-        echo "✅ Node metrics available"
-    else
-        echo "❌ Node metrics not available"
-    fi
-    
-    if kubectl top pods >/dev/null 2>&1; then
-        echo "✅ Pod metrics available"
-    else
-        echo "❌ Pod metrics not available"
-    fi
-    
-    # Check API server logs
-    echo "--- Checking API server logs ---"
-    kubectl logs -n kube-system -l component=kube-apiserver --tail=10 | grep -i "aggregat\|proxy" || echo "No aggregation logs found"
-}
-
-# Performance testing
-performance_test() {
-    local resource=$1
-    local namespace=${2:-"default"}
-    local count=${3:-10}
-    
-    echo "=== Performance Testing ==="
-    
-    echo "Creating $count resources..."
-    start_time=$(date +%s)
-    
-    for i in $(seq 1 $count); do
-        cat <<EOF | kubectl apply -f - >/dev/null 2>&1
-apiVersion: example.com/v1alpha1
-kind: Widget
-metadata:
-  name: perf-widget-$i
-  namespace: $namespace
+  namespace: default
 spec:
   size: medium
   color: blue
 EOF
-    done
-    
-    end_time=$(date +%s)
-    duration=$((end_time - start_time))
-    
-    echo "✅ Created $count resources in ${duration}s"
-    echo "Average: $((duration * 1000 / count))ms per resource"
-    
-    # List performance
-    echo "Testing list performance..."
-    start_time=$(date +%s)
-    kubectl get $resource -n $namespace >/dev/null 2>&1
-    end_time=$(date +%s)
-    list_duration=$((end_time - start_time))
-    
-    echo "✅ Listed $count resources in ${list_duration}s"
-    
-    # Cleanup
-    echo "Cleaning up test resources..."
-    for i in $(seq 1 $count); do
-        kubectl delete $resource perf-widget-$i -n $namespace >/dev/null 2>&1
-    done
 }
 
-# Main execution
-main() {
-    local api_service=${1:-"v1alpha1.example.com"}
-    local group=${2:-"example.com"}
-    local version=${3:-"v1alpha1"}
-    local resource=${4:-"widgets"}
-    local namespace=${5:-"default"}
+check_certificates() {
+    local secret_name=$1
+    local namespace=$2
     
-    echo "Testing Aggregated API Server"
-    echo "APIService: $api_service"
-    echo "Group: $group"
-    echo "Version: $version"
-    echo "Resource: $resource"
-    echo "Namespace: $namespace"
-    echo ""
+    echo "=== Certificate Check ==="
     
-    # Run tests
-    test_apiservice_registration $api_service
-    echo ""
-    
-    test_api_discovery $group $version
-    echo ""
-    
-    test_custom_resource_operations $group $version $resource $namespace
-    echo ""
-    
-    test_auth $resource $namespace
-    echo ""
-    
-    test_metrics $api_service
-    echo ""
-    
-    read -p "Run performance test? (y/n): " run_perf
-    if [ "$run_perf" = "y" ]; then
-        performance_test $resource $namespace 10
+    if kubectl get secret $secret_name -n $namespace >/dev/null 2>&1; then
+        echo "Certificate secret exists"
+        
+        # Extract and check certificate
+        kubectl get secret $secret_name -n $namespace -o jsonpath='{.data.tls\.crt}' | base64 -d | openssl x509 -text -noout | head -20
+    else
+        echo "Certificate secret not found"
     fi
 }
 
-# Check if arguments provided
-if [ $# -eq 0 ]; then
-    echo "Usage: $0 <api-service> [group] [version] [resource] [namespace]"
-    echo "Example: $0 v1alpha1.example.com example.com v1alpha1 widgets default"
+main() {
+    local apiservice=${1:-"v1alpha1.widgets.example.com"}
+    local group=${2:-"widgets.example.com"}
+    local version=${3:-"v1alpha1"}
+    local resource=${4:-"widgets"}
+    
+    diagnose_apiservice $apiservice
     echo ""
-    echo "Running with default values..."
-    main
-else
-    main "$@"
-fi
+    test_api_functionality $group $version $resource
+    echo ""
+    check_certificates "example-api-server-certs" "api-extension-test"
+}
+
+main "$@"
 ```
 
-### 🎯 Заключение
+## 🎯 **Архитектура Aggregated API в HA кластере:**
 
-Aggregated API Server предоставляет мощный механизм для расширения Kubernetes API:
+```
+┌─────────────────────────────────────────────────────────────┐
+│              HA Cluster Aggregated API Architecture        │
+├─────────────────────────────────────────────────────────────┤
+│  Client Layer                                              │
+│  ├── kubectl                                               │
+│  ├── ArgoCD UI                                             │
+│  ├── Grafana Dashboards                                    │
+│  └── Custom Applications                                   │
+├─────────────────────────────────────────────────────────────┤
+│  Load Balancer (DigitalOcean)                             │
+│  ├── NGINX Ingress Controller                              │
+│  └── TLS Termination                                       │
+├─────────────────────────────────────────────────────────────┤
+│  Kubernetes API Layer                                      │
+│  ├── kube-apiserver (HA)                                   │
+│  │   ├── Core API (/api/v1)                               │
+│  │   ├── Extensions API (/apis/)                          │
+│  │   └── Aggregation Layer                                │
+│  ├── APIService Registry                                   │
+│  └── Request Routing                                       │
+├─────────────────────────────────────────────────────────────┤
+│  Extension API Servers                                     │
+│  ├── Metrics Server (HA)                                   │
+│  ├── Custom Widget API (HA)                                │
+│  ├── ArgoCD API Extensions                                 │
+│  └── Monitoring API Extensions                             │
+├─────────────────────────────────────────────────────────────┤
+│  Storage Layer                                             │
+│  ├── etcd (HA cluster)                                     │
+│  ├── NFS Shared Storage                                    │
+│  └── Persistent Volumes                                    │
+├─────────────────────────────────────────────────────────────┤
+│  Monitoring & Observability                               │
+│  ├── Prometheus (metrics collection)                       │
+│  ├── Grafana (visualization)                              │
+│  └── AlertManager (alerting)                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Ключевые преимущества:**
-1. **Единый API интерфейс** - все ресурсы доступны через kube-apiserver
-2. **Стандартная аутентификация** - использует существующие механизмы Kubernetes
-3. **RBAC интеграция** - полная поддержка стандартных разрешений
-4. **kubectl совместимость** - работает со всеми стандартными инструментами
+## 🎯 **Best Practices для Aggregated API:**
 
-**Архитектурные компоненты:**
-1. **APIService** - регистрация extension API server
-2. **Aggregation Layer** - проксирование запросов
-3. **Extension API Server** - пользовательская реализация API
-4. **Service Discovery** - автоматическое обнаружение API
+### **1. Безопасность:**
+- Используйте TLS сертификаты для всех соединений
+- Настройте правильные RBAC разрешения
+- Валидируйте все входящие запросы
+- Используйте admission webhooks для дополнительной валидации
 
-**Случаи использования:**
-- **Metrics Server** - предоставление метрик ресурсов
-- **Custom Resources** - сложная бизнес-логика
-- **Service Catalog** - управление внешними сервисами
-- **Policy Engines** - расширенные политики безопасности
+### **2. Производительность:**
+- Реализуйте кэширование для часто запрашиваемых данных
+- Используйте connection pooling
+- Мониторьте латентность и throughput
+- Настройте горизонтальное масштабирование
 
-Aggregated API обеспечивает гибкий и масштабируемый способ расширения функциональности Kubernetes без изменения основного кода платформы.
+### **3. Надежность:**
+- Развертывайте в HA конфигурации (минимум 2 реплики)
+- Настройте health checks и readiness probes
+- Реализуйте graceful shutdown
+- Используйте circuit breakers для внешних зависимостей
+
+### **4. Мониторинг:**
+- Экспортируйте метрики в формате Prometheus
+- Настройте алерты для критических состояний
+- Логируйте все API операции
+- Мониторьте использование ресурсов
+
+**Aggregated API Server — это мощный механизм для расширения Kubernetes API с сохранением единого интерфейса и стандартных инструментов!**

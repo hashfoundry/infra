@@ -1,843 +1,496 @@
 # 194. Как внести вклад в сообщество Kubernetes?
 
-## 🎯 Вопрос
-Как внести вклад в сообщество Kubernetes?
+## 🎯 **Что такое вклад в сообщество Kubernetes?**
 
-## 💡 Ответ
+**Вклад в сообщество Kubernetes** — это участие в развитии экосистемы через код, документацию, тестирование, поддержку пользователей и организацию мероприятий. Kubernetes развивается благодаря активному open-source сообществу.
 
-Kubernetes - это проект с открытым исходным кодом, который развивается благодаря активному сообществу разработчиков, операторов и пользователей по всему миру. Внесение вклада в сообщество не только помогает улучшить платформу, но и способствует профессиональному росту и расширению сети контактов.
+## 🏗️ **Основные способы участия:**
 
-### 🤝 Структура сообщества Kubernetes
+### **1. Code Contributions**
+- Исправление багов в core Kubernetes
+- Разработка новых функций
+- Улучшение производительности
+- Создание операторов и контроллеров
 
-#### 1. **Схема Kubernetes Community Structure**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                Kubernetes Community Ecosystem              │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                    Governance                          │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │  Steering   │    │   TOC       │    │   Code of   │ │ │
-│  │  │ Committee   │───▶│ (Technical  │───▶│  Conduct    │ │ │
-│  │  │             │    │ Oversight)  │    │ Committee   │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Special Interest Groups                 │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   SIG Apps  │    │ SIG Network │    │ SIG Storage │ │ │
-│  │  │             │───▶│             │───▶│             │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │ SIG Security│    │ SIG Testing │    │ SIG Release │ │ │
-│  │  │             │───▶│             │───▶│             │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Working Groups                          │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   WG Data   │    │ WG Policy   │    │ WG Batch    │ │ │
-│  │  │ Protection  │───▶│             │───▶│             │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                   User Groups                          │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Local     │    │  Regional   │    │   Virtual   │ │ │
-│  │  │ Meetups     │───▶│ Conferences │───▶│   Events    │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. Documentation & Education**
+- Улучшение официальной документации
+- Создание туториалов и гайдов
+- Перевод документации
+- Написание технических статей
 
-#### 2. **Способы участия в сообществе**
-```yaml
-# Kubernetes Community Contribution Guide
-contribution_types:
-  code_contributions:
-    core_kubernetes:
-      repositories:
-        - "kubernetes/kubernetes"
-        - "kubernetes/kubectl"
-        - "kubernetes/kubeadm"
-        - "kubernetes/kubelet"
-      
-      areas:
-        - "Bug fixes"
-        - "Feature development"
-        - "Performance improvements"
-        - "Security enhancements"
-    
-    ecosystem_projects:
-      cncf_projects:
-        - "Helm"
-        - "Prometheus"
-        - "Envoy"
-        - "Jaeger"
-        - "Fluentd"
-      
-      kubernetes_sigs:
-        - "cluster-api"
-        - "kustomize"
-        - "kind"
-        - "kubebuilder"
+### **3. Community Support**
+- Ответы на вопросы в Slack/Stack Overflow
+- Помощь новичкам
+- Ментoring программы
+- Организация meetup'ов
 
-  documentation:
-    official_docs:
-      kubernetes_io:
-        - "Tutorials"
-        - "Concepts"
-        - "Reference"
-        - "Best practices"
-      
-      improvement_areas:
-        - "Clarity and accuracy"
-        - "Missing examples"
-        - "Translation"
-        - "Accessibility"
-    
-    community_content:
-      blog_posts:
-        - "Technical deep dives"
-        - "Use case studies"
-        - "Best practices"
-        - "Troubleshooting guides"
-      
-      educational_content:
-        - "Video tutorials"
-        - "Workshop materials"
-        - "Certification guides"
-        - "Migration guides"
+## 📊 **Практические примеры из вашего HA кластера:**
 
-  testing_qa:
-    test_contributions:
-      test_types:
-        - "Unit tests"
-        - "Integration tests"
-        - "End-to-end tests"
-        - "Performance tests"
-      
-      test_infrastructure:
-        - "Test automation"
-        - "CI/CD improvements"
-        - "Test environment setup"
-        - "Flaky test fixes"
-    
-    quality_assurance:
-      activities:
-        - "Bug reporting"
-        - "Feature testing"
-        - "Regression testing"
-        - "Security testing"
-
-  community_support:
-    user_support:
-      platforms:
-        - "Stack Overflow"
-        - "Kubernetes Slack"
-        - "GitHub Discussions"
-        - "Reddit r/kubernetes"
-      
-      activities:
-        - "Answering questions"
-        - "Troubleshooting help"
-        - "Best practice guidance"
-        - "Mentoring newcomers"
-    
-    event_organization:
-      event_types:
-        - "Local meetups"
-        - "Kubernetes Days"
-        - "KubeCon talks"
-        - "Workshop facilitation"
-
-  governance_participation:
-    sig_participation:
-      roles:
-        - "SIG member"
-        - "SIG reviewer"
-        - "SIG approver"
-        - "SIG chair"
-      
-      responsibilities:
-        - "Design discussions"
-        - "Code reviews"
-        - "Release planning"
-        - "Community building"
-    
-    working_groups:
-      focus_areas:
-        - "Cross-SIG initiatives"
-        - "Specific problem solving"
-        - "Standards development"
-        - "Policy creation"
-
-  advocacy_outreach:
-    content_creation:
-      formats:
-        - "Technical blogs"
-        - "Conference talks"
-        - "Podcast appearances"
-        - "Social media content"
-      
-      topics:
-        - "Success stories"
-        - "Lessons learned"
-        - "Best practices"
-        - "Future trends"
-    
-    community_building:
-      activities:
-        - "Organizing meetups"
-        - "Mentoring programs"
-        - "Diversity initiatives"
-        - "Newcomer onboarding"
-```
-
-### 📊 Примеры из нашего кластера
-
-#### Подготовка к участию в сообществе:
+### **1. Подготовка среды разработки:**
 ```bash
-# Настройка среды разработки
-git clone https://github.com/kubernetes/kubernetes.git
+# Форк и клонирование Kubernetes
+git clone https://github.com/YOUR_USERNAME/kubernetes.git
 cd kubernetes
+git remote add upstream https://github.com/kubernetes/kubernetes.git
 
-# Проверка возможности сборки
+# Проверка зависимостей
+make verify
+
+# Быстрая сборка
 make quick-release
 
 # Запуск тестов
-make test
-
-# Проверка стиля кода
-make verify
-
-# Создание development кластера
-kind create cluster --config dev-cluster.yaml
+make test WHAT=./pkg/api/...
 ```
 
-### 🛠️ Практическое руководство по участию
-
-#### 1. **Начало работы с кодом Kubernetes**
+### **2. Создание development кластера:**
 ```bash
-#!/bin/bash
-# kubernetes-dev-setup.sh
-
-echo "🚀 Setting up Kubernetes Development Environment"
-
-# Prerequisites check
-check_prerequisites() {
-    echo "=== Checking Prerequisites ==="
-    
-    # Check Go version
-    if command -v go &> /dev/null; then
-        go_version=$(go version | grep -o 'go[0-9]\+\.[0-9]\+' | cut -c3-)
-        echo "✅ Go version: $go_version"
-    else
-        echo "❌ Go not installed"
-        exit 1
-    fi
-    
-    # Check Docker
-    if command -v docker &> /dev/null; then
-        echo "✅ Docker installed"
-    else
-        echo "❌ Docker not installed"
-        exit 1
-    fi
-    
-    # Check Git
-    if command -v git &> /dev/null; then
-        echo "✅ Git installed"
-    else
-        echo "❌ Git not installed"
-        exit 1
-    fi
-}
-
-# Setup development environment
-setup_dev_environment() {
-    echo "=== Setting up Development Environment ==="
-    
-    # Fork and clone Kubernetes
-    echo "1. Fork kubernetes/kubernetes on GitHub"
-    echo "2. Clone your fork:"
-    echo "   git clone https://github.com/YOUR_USERNAME/kubernetes.git"
-    echo "   cd kubernetes"
-    echo "   git remote add upstream https://github.com/kubernetes/kubernetes.git"
-    
-    # Setup development cluster
-    echo ""
-    echo "=== Setting up Development Cluster ==="
-    
-    # Create kind config
-    cat > dev-cluster.yaml <<EOF
+# Создание kind кластера для разработки
+cat > dev-cluster.yaml <<EOF
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: k8s-dev
 nodes:
 - role: control-plane
-  kubeadmConfigPatches:
-  - |
-    kind: InitConfiguration
-    nodeRegistration:
-      kubeletExtraArgs:
-        node-labels: "ingress-ready=true"
-  extraPortMappings:
-  - containerPort: 80
-    hostPort: 80
-    protocol: TCP
-  - containerPort: 443
-    hostPort: 443
-    protocol: TCP
 - role: worker
 - role: worker
 EOF
 
-    # Create cluster
-    kind create cluster --config dev-cluster.yaml
-    
-    echo "✅ Development cluster created"
-}
+kind create cluster --config dev-cluster.yaml
 
-# Build and test workflow
-build_and_test() {
-    echo "=== Build and Test Workflow ==="
-    
-    # Quick build
-    echo "--- Quick Build ---"
-    make quick-release
-    
-    # Run unit tests
-    echo "--- Unit Tests ---"
-    make test WHAT=./pkg/api/...
-    
-    # Run integration tests
-    echo "--- Integration Tests ---"
-    make test-integration WHAT=./test/integration/apiserver/...
-    
-    # Verify code style
-    echo "--- Code Verification ---"
-    make verify
-    
-    # Build specific component
-    echo "--- Building kubectl ---"
-    make WHAT=cmd/kubectl
-}
-
-# Contribution workflow
-contribution_workflow() {
-    echo "=== Contribution Workflow ==="
-    
-    cat <<EOF
-1. Find an issue to work on:
-   - Good first issues: https://github.com/kubernetes/kubernetes/labels/good%20first%20issue
-   - Help wanted: https://github.com/kubernetes/kubernetes/labels/help%20wanted
-
-2. Create a branch:
-   git checkout -b feature/my-contribution
-
-3. Make your changes and test:
-   make test
-   make verify
-
-4. Commit with DCO sign-off:
-   git commit -s -m "component: description of change"
-
-5. Push and create PR:
-   git push origin feature/my-contribution
-
-6. Address review feedback and iterate
-
-7. Celebrate when merged! 🎉
-EOF
-}
-
-# Main execution
-main() {
-    check_prerequisites
-    setup_dev_environment
-    build_and_test
-    contribution_workflow
-}
-
-main "$@"
+# Проверка кластера
+kubectl get nodes
+kubectl cluster-info
 ```
 
-#### 2. **Участие в SIG (Special Interest Group)**
-```yaml
-# sig-participation-guide.yaml
-sig_participation:
-  getting_started:
-    choose_sig:
-      factors:
-        - "Personal interests"
-        - "Professional expertise"
-        - "Available time"
-        - "Learning goals"
-      
-      popular_sigs:
-        sig_apps:
-          focus: "Application deployment and management"
-          meetings: "Weekly"
-          slack: "#sig-apps"
-          
-        sig_network:
-          focus: "Networking components and policies"
-          meetings: "Bi-weekly"
-          slack: "#sig-network"
-          
-        sig_storage:
-          focus: "Storage and volume management"
-          meetings: "Bi-weekly"
-          slack: "#sig-storage"
-          
-        sig_security:
-          focus: "Security policies and practices"
-          meetings: "Bi-weekly"
-          slack: "#sig-security"
-    
-    first_steps:
-      preparation:
-        - "Read SIG charter and goals"
-        - "Review recent meeting notes"
-        - "Join SIG mailing list"
-        - "Attend SIG meetings as observer"
-      
-      initial_contributions:
-        - "Participate in discussions"
-        - "Volunteer for small tasks"
-        - "Help with documentation"
-        - "Test new features"
-
-  progression_path:
-    contributor_ladder:
-      member:
-        requirements:
-          - "Sponsored by 2 reviewers"
-          - "Active for 3+ months"
-          - "Multiple contributions"
-        
-        privileges:
-          - "GitHub org membership"
-          - "Can be assigned issues"
-          - "Can trigger tests"
-      
-      reviewer:
-        requirements:
-          - "Member for 3+ months"
-          - "Primary reviewer for 5+ PRs"
-          - "Knowledgeable in area"
-        
-        privileges:
-          - "Can approve PRs for review"
-          - "Expected to review regularly"
-          - "Mentor new contributors"
-      
-      approver:
-        requirements:
-          - "Reviewer for 3+ months"
-          - "Demonstrated expertise"
-          - "Sponsored by area approvers"
-        
-        privileges:
-          - "Can approve PRs for merge"
-          - "Code ownership responsibilities"
-          - "Technical decision making"
-      
-      chair:
-        requirements:
-          - "Approver with leadership skills"
-          - "Elected by SIG members"
-          - "Commitment to SIG health"
-        
-        responsibilities:
-          - "Run SIG meetings"
-          - "Coordinate with other SIGs"
-          - "Represent SIG in community"
-
-  meeting_participation:
-    preparation:
-      before_meeting:
-        - "Review agenda"
-        - "Read linked documents"
-        - "Prepare questions/comments"
-        - "Test video/audio setup"
-    
-    during_meeting:
-      best_practices:
-        - "Introduce yourself if new"
-        - "Ask clarifying questions"
-        - "Volunteer for action items"
-        - "Take notes for yourself"
-    
-    follow_up:
-      after_meeting:
-        - "Review meeting notes"
-        - "Follow up on commitments"
-        - "Continue discussions in Slack"
-        - "Prepare for next meeting"
-```
-
-#### 3. **Создание и поддержка документации**
-```markdown
-# Documentation Contribution Guide
-
-## Types of Documentation Contributions
-
-### 1. Official Kubernetes Documentation
-- **Location**: https://github.com/kubernetes/website
-- **Process**: Fork → Edit → PR → Review → Merge
-- **Style Guide**: https://kubernetes.io/docs/contribute/style/
-
-### 2. Code Documentation
-- **Inline Comments**: Explain complex logic
-- **API Documentation**: Document new APIs
-- **README Files**: Project setup and usage
-
-### 3. Community Content
-- **Blog Posts**: Technical insights and tutorials
-- **Case Studies**: Real-world implementations
-- **Best Practices**: Operational guidance
-
-## Documentation Standards
-
-### Writing Guidelines
-```yaml
-documentation_standards:
-  content_quality:
-    clarity:
-      - "Use simple, clear language"
-      - "Define technical terms"
-      - "Provide context and background"
-      - "Use active voice"
-    
-    accuracy:
-      - "Test all code examples"
-      - "Verify command outputs"
-      - "Keep content up-to-date"
-      - "Cross-reference related topics"
-    
-    completeness:
-      - "Cover prerequisites"
-      - "Include troubleshooting"
-      - "Provide next steps"
-      - "Link to related resources"
-  
-  formatting:
-    structure:
-      - "Use consistent headings"
-      - "Organize with bullet points"
-      - "Include code blocks"
-      - "Add diagrams when helpful"
-    
-    accessibility:
-      - "Use descriptive link text"
-      - "Provide alt text for images"
-      - "Ensure good contrast"
-      - "Support screen readers"
-```
-
-### Example Documentation PR
+### **3. Тестирование изменений в вашем HA кластере:**
 ```bash
-# Documentation contribution workflow
-git clone https://github.com/YOUR_USERNAME/website.git
-cd website
+# Сравнение с production кластером
+kubectl get nodes -o wide
 
-# Create feature branch
-git checkout -b improve-storage-docs
+# Тестирование новых функций
+kubectl apply -f test-manifests/
 
-# Make changes to content/en/docs/concepts/storage/
-# Edit files using markdown
+# Проверка совместимости с ArgoCD
+kubectl get applications -n argocd
 
-# Test locally
-make serve
+# Тестирование с мониторингом
+kubectl get pods -n monitoring
+```
 
-# Commit changes
-git add .
-git commit -s -m "docs: improve storage volume examples
+### **4. Участие в SIG (Special Interest Groups):**
+```bash
+# Присоединение к SIG Apps (управление приложениями)
+# Актуально для вашего ArgoCD и React приложений
 
-- Add PVC examples for different storage classes
-- Include troubleshooting section
-- Fix broken links to API reference
+# Присоединение к SIG Monitoring
+# Актуально для Prometheus/Grafana стека
+
+# Присоединение к SIG Storage
+# Актуально для NFS provisioner
+```
+
+### **5. Документирование best practices:**
+```bash
+# Создание документации на основе вашего опыта
+# Например, HA ArgoCD setup
+kubectl get deployment argocd-server -n argocd -o yaml > examples/ha-argocd.yaml
+
+# Документирование мониторинга
+kubectl get configmap prometheus-config -n monitoring -o yaml > examples/prometheus-ha.yaml
+
+# Создание troubleshooting гайдов
+kubectl describe pod <failing-pod> > troubleshooting/pod-issues.txt
+```
+
+## 🔄 **Workflow участия в разработке:**
+
+### **1. Поиск задач для новичков:**
+```bash
+# Good first issues в Kubernetes
+curl -s "https://api.github.com/repos/kubernetes/kubernetes/issues?labels=good%20first%20issue" | \
+  jq -r '.[] | "\(.number): \(.title)"'
+
+# Help wanted issues
+curl -s "https://api.github.com/repos/kubernetes/kubernetes/issues?labels=help%20wanted" | \
+  jq -r '.[] | "\(.number): \(.title)"'
+```
+
+### **2. Создание Pull Request:**
+```bash
+# Создание feature branch
+git checkout -b fix/improve-scheduler-performance
+
+# Внесение изменений
+# Редактирование файлов...
+
+# Коммит с DCO sign-off
+git commit -s -m "scheduler: improve pod scheduling performance
+
+- Optimize node selection algorithm
+- Reduce scheduling latency by 15%
+- Add benchmark tests
 
 Fixes #12345"
 
-# Push and create PR
-git push origin improve-storage-docs
+# Push и создание PR
+git push origin fix/improve-scheduler-performance
 ```
 
-#### 4. **Организация мероприятий сообщества**
-```yaml
-# community-event-organization.yaml
-event_organization:
-  local_meetups:
-    planning:
-      logistics:
-        - "Find venue (office, coworking space)"
-        - "Set regular schedule (monthly/bi-monthly)"
-        - "Create meetup.com group"
-        - "Establish social media presence"
-      
-      content:
-        - "Mix of beginner and advanced topics"
-        - "Hands-on workshops"
-        - "Lightning talks"
-        - "Community showcases"
-      
-      speakers:
-        - "Local practitioners"
-        - "Remote experts (video call)"
-        - "Vendor presentations (balanced)"
-        - "Community members sharing experiences"
-    
-    execution:
-      before_event:
-        - "Promote on social media"
-        - "Send reminders to attendees"
-        - "Prepare materials and setup"
-        - "Test A/V equipment"
-      
-      during_event:
-        - "Welcome newcomers"
-        - "Facilitate networking"
-        - "Record sessions (with permission)"
-        - "Collect feedback"
-      
-      after_event:
-        - "Share recordings and slides"
-        - "Follow up with attendees"
-        - "Plan next meetup"
-        - "Thank speakers and sponsors"
-
-  kubernetes_days:
-    proposal_process:
-      requirements:
-        - "CNCF approval"
-        - "Local organizing committee"
-        - "Venue and logistics plan"
-        - "Speaker and content strategy"
-      
-      timeline:
-        - "6 months: Submit proposal"
-        - "4 months: Confirm speakers"
-        - "2 months: Finalize logistics"
-        - "1 month: Marketing push"
-    
-    content_tracks:
-      beginner_track:
-        - "Kubernetes 101"
-        - "Getting started workshops"
-        - "Basic concepts and demos"
-      
-      intermediate_track:
-        - "Production best practices"
-        - "Troubleshooting and debugging"
-        - "Security and compliance"
-      
-      advanced_track:
-        - "Custom controllers and operators"
-        - "Performance optimization"
-        - "Multi-cluster management"
-
-  virtual_events:
-    platforms:
-      - "Zoom webinars"
-      - "YouTube Live"
-      - "Twitch streaming"
-      - "Discord communities"
-    
-    best_practices:
-      engagement:
-        - "Interactive polls"
-        - "Q&A sessions"
-        - "Breakout rooms"
-        - "Chat moderation"
-      
-      accessibility:
-        - "Multiple time zones"
-        - "Recording availability"
-        - "Closed captions"
-        - "Multiple languages"
-```
-
-### 📈 Измерение вклада в сообщество
-
-#### Скрипт для отслеживания активности:
+### **3. Code Review процесс:**
 ```bash
-#!/bin/bash
-# community-contribution-tracker.sh
+# Обновление PR после review
+git fetch upstream
+git rebase upstream/master
 
-echo "📊 Kubernetes Community Contribution Tracker"
+# Исправление замечаний
+# Редактирование файлов...
 
-# GitHub contribution analysis
-analyze_github_contributions() {
-    echo "=== GitHub Contributions Analysis ==="
-    
-    local username=$1
-    if [ -z "$username" ]; then
-        echo "Usage: $0 <github-username>"
-        return 1
-    fi
-    
-    # Get contribution stats using GitHub API
-    echo "--- Pull Requests ---"
-    curl -s "https://api.github.com/search/issues?q=author:$username+type:pr+repo:kubernetes/kubernetes" | \
-        jq -r '.total_count as $total | "Total PRs: \($total)"'
-    
-    echo ""
-    echo "--- Issues ---"
-    curl -s "https://api.github.com/search/issues?q=author:$username+type:issue+repo:kubernetes/kubernetes" | \
-        jq -r '.total_count as $total | "Total Issues: \($total)"'
-    
-    echo ""
-    echo "--- Recent Activity ---"
-    curl -s "https://api.github.com/users/$username/events" | \
-        jq -r '.[] | select(.repo.name | contains("kubernetes")) | 
-               "\(.created_at | split("T")[0]): \(.type) in \(.repo.name)"' | \
-        head -10
-}
+# Amend коммита
+git commit --amend -s
 
-# SIG participation tracking
-track_sig_participation() {
-    echo "=== SIG Participation Tracking ==="
-    
-    # Meeting attendance (manual tracking)
-    cat <<EOF
-Track your SIG participation:
-
-1. Meeting Attendance:
-   - SIG Apps: X/Y meetings attended
-   - SIG Network: X/Y meetings attended
-   - Working Groups: X/Y meetings attended
-
-2. Action Items Completed:
-   - Documentation updates: X
-   - Code reviews: X
-   - Testing tasks: X
-
-3. Leadership Activities:
-   - Meeting facilitation: X times
-   - Mentoring newcomers: X people
-   - Cross-SIG coordination: X initiatives
-EOF
-}
-
-# Community impact metrics
-measure_community_impact() {
-    echo "=== Community Impact Metrics ==="
-    
-    cat <<EOF
-Measure your community impact:
-
-📝 Content Creation:
-   - Blog posts written: X
-   - Documentation pages: X
-   - Tutorial videos: X
-   - Conference talks: X
-
-🎓 Education & Mentoring:
-   - People mentored: X
-   - Workshops conducted: X
-   - Questions answered: X
-   - Office hours hosted: X
-
-🌟 Recognition:
-   - GitHub stars received: X
-   - Community awards: X
-   - Speaking invitations: X
-   - Media mentions: X
-
-🤝 Collaboration:
-   - Cross-project contributions: X
-   - Vendor partnerships: X
-   - Academic collaborations: X
-   - Standards participation: X
-EOF
-}
-
-# Contribution goals and planning
-plan_contributions() {
-    echo "=== Contribution Planning ==="
-    
-    cat <<EOF
-Plan your Kubernetes contributions:
-
-🎯 Short-term Goals (1-3 months):
-   □ Join a SIG and attend 3 meetings
-   □ Make first code contribution
-   □ Answer 10 community questions
-   □ Write one blog post
-
-📈 Medium-term Goals (3-6 months):
-   □ Become SIG member
-   □ Complete 5 meaningful PRs
-   □ Give a local meetup talk
-   □ Mentor a newcomer
-
-🚀 Long-term Goals (6-12 months):
-   □ Become SIG reviewer
-   □ Organize a community event
-   □ Speak at KubeCon
-   □ Lead a working group initiative
-
-💡 Skill Development:
-   □ Learn Go programming
-   □ Understand Kubernetes internals
-   □ Develop public speaking skills
-   □ Build technical writing abilities
-EOF
-}
-
-# Main execution
-main() {
-    local github_username=$1
-    
-    if [ -n "$github_username" ]; then
-        analyze_github_contributions $github_username
-        echo ""
-    fi
-    
-    track_sig_participation
-    echo ""
-    measure_community_impact
-    echo ""
-    plan_contributions
-}
-
-main "$@"
+# Force push обновлений
+git push --force-with-lease origin fix/improve-scheduler-performance
 ```
 
-### 🎯 Заключение
+## 🔧 **Демонстрация участия в SIG:**
 
-Участие в сообществе Kubernetes предоставляет множество возможностей для профессионального и личного роста:
+### **1. SIG Apps (Application Management):**
+```bash
+# Участие в обсуждениях ArgoCD интеграции
+# Ваш опыт с HA ArgoCD ценен для сообщества
 
-**Способы участия:**
-1. **Код** - исправления багов, новые функции, тестирование
-2. **Документация** - улучшение официальных документов, создание туториалов
-3. **Поддержка** - помощь пользователям, ответы на вопросы
-4. **Организация** - проведение мероприятий, создание сообществ
-5. **Руководство** - участие в SIG, принятие технических решений
+# Тестирование новых функций Application CRD
+kubectl get applications -n argocd -o yaml
 
-**Преимущества участия:**
-- **Профессиональный рост** - глубокое понимание технологий
-- **Сетевое взаимодействие** - связи с экспертами отрасли
-- **Карьерные возможности** - признание в сообществе
-- **Влияние на будущее** - участие в развитии технологий
+# Предложение улучшений для GitOps workflow
+kubectl describe application hashfoundry-react -n argocd
+```
 
-**Ключевые принципы:**
-- **Начинайте с малого** - первые вклады могут быть простыми
-- **Будьте последовательными** - регулярное участие важнее разовых усилий
-- **Учитесь у других** - наблюдайте за опытными участниками
-- **Делитесь знаниями** - помогайте другим расти вместе с вами
+### **2. SIG Monitoring:**
+```bash
+# Участие в развитии Prometheus Operator
+kubectl get prometheusrules -n monitoring
 
-Kubernetes сообщество приветствует участников всех уровней опыта и предоставляет множество путей для внесения значимого вклада.
+# Тестирование новых метрик
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80
+
+# Предложение dashboard'ов для Grafana
+kubectl get configmap grafana-dashboards -n monitoring -o yaml
+```
+
+### **3. SIG Storage:**
+```bash
+# Участие в развитии CSI драйверов
+kubectl get storageclass
+
+# Тестирование NFS provisioner
+kubectl get pv | grep nfs
+
+# Документирование storage patterns
+kubectl describe pvc -n monitoring
+```
+
+## 📈 **Мониторинг вашего вклада:**
+
+### **1. GitHub активность:**
+```bash
+# Скрипт для отслеживания contributions
+#!/bin/bash
+USERNAME="your-github-username"
+
+echo "=== GitHub Contributions ==="
+curl -s "https://api.github.com/search/issues?q=author:$USERNAME+repo:kubernetes/kubernetes" | \
+  jq -r '.total_count as $total | "Total contributions: \($total)"'
+
+echo "=== Recent PRs ==="
+curl -s "https://api.github.com/search/issues?q=author:$USERNAME+type:pr+repo:kubernetes/kubernetes" | \
+  jq -r '.items[] | "\(.created_at | split("T")[0]): \(.title)"' | head -5
+```
+
+### **2. Community участие:**
+```bash
+# Отслеживание SIG участия
+echo "=== SIG Participation ==="
+echo "- SIG Apps meetings attended: X/Y"
+echo "- Code reviews completed: X"
+echo "- Issues triaged: X"
+echo "- Documentation PRs: X"
+
+# Отслеживание mentoring
+echo "=== Mentoring Activity ==="
+echo "- Newcomers helped: X"
+echo "- Questions answered: X"
+echo "- Workshops conducted: X"
+```
+
+### **3. Использование Prometheus для отслеживания:**
+```bash
+# Метрики вашей активности в Prometheus
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80
+
+# Custom метрики для community contributions
+# github_contributions_total
+# sig_meetings_attended_total
+# code_reviews_completed_total
+```
+
+## 🏭 **Применение опыта вашего HA кластера:**
+
+### **1. Документирование HA patterns:**
+```bash
+# Создание примеров HA конфигураций
+kubectl get deployment argocd-server -n argocd -o yaml > \
+  examples/ha-argocd-deployment.yaml
+
+# Документирование мониторинга HA
+kubectl get prometheus -n monitoring -o yaml > \
+  examples/ha-prometheus-config.yaml
+
+# Best practices для NFS в HA
+kubectl get deployment nfs-provisioner -n nfs-provisioner -o yaml > \
+  examples/ha-nfs-provisioner.yaml
+```
+
+### **2. Создание операторов на основе опыта:**
+```bash
+# Оператор для HA ArgoCD
+mkdir argocd-ha-operator
+cd argocd-ha-operator
+
+# Инициализация оператора
+kubebuilder init --domain hashfoundry.io --repo github.com/hashfoundry/argocd-ha-operator
+
+# Создание API
+kubebuilder create api --group apps --version v1 --kind ArgoCDHA
+```
+
+### **3. Участие в тестировании новых версий:**
+```bash
+# Тестирование beta версий в development кластере
+kubectl create namespace k8s-beta-test
+
+# Развертывание beta компонентов
+kubectl apply -f beta-manifests/ -n k8s-beta-test
+
+# Сравнение с production
+kubectl diff -f production-manifests/ -f beta-manifests/
+```
+
+## 🔄 **Типы вкладов и примеры:**
+
+### **1. Bug Fixes:**
+```bash
+# Исправление проблем, найденных в вашем кластере
+# Например, проблемы с ArgoCD sync
+
+# Создание минимального репродуктора
+kubectl create namespace bug-reproduction
+kubectl apply -f bug-reproduction-manifests/
+
+# Документирование бага
+kubectl describe pod failing-pod -n bug-reproduction > bug-report.txt
+```
+
+### **2. Feature Development:**
+```bash
+# Разработка новых функций на основе потребностей
+# Например, улучшения для GitOps workflow
+
+# Создание design document
+cat > design-docs/gitops-improvements.md <<EOF
+# GitOps Workflow Improvements
+
+## Problem
+Current ArgoCD sync process has limitations...
+
+## Proposed Solution
+Implement progressive sync with health checks...
+EOF
+```
+
+### **3. Documentation:**
+```bash
+# Создание документации на основе реального опыта
+mkdir kubernetes-ha-docs
+cd kubernetes-ha-docs
+
+# Документирование HA patterns
+cat > ha-deployment-patterns.md <<EOF
+# High Availability Deployment Patterns
+
+Based on production experience with DigitalOcean Kubernetes...
+EOF
+```
+
+## 🚨 **Troubleshooting участия:**
+
+### **1. Проблемы с development setup:**
+```bash
+# Проблемы сборки
+make clean
+make quick-release
+
+# Проблемы с тестами
+make test-integration WHAT=./test/integration/apiserver/...
+
+# Проблемы с kind кластером
+kind delete cluster --name k8s-dev
+kind create cluster --config dev-cluster.yaml
+```
+
+### **2. Проблемы с PR:**
+```bash
+# Конфликты при rebase
+git fetch upstream
+git rebase upstream/master
+
+# Проблемы с CI/CD
+make verify
+make test
+
+# Проблемы с DCO
+git commit --amend -s
+```
+
+## 🎯 **Структура Kubernetes сообщества:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                Kubernetes Community                        │
+├─────────────────────────────────────────────────────────────┤
+│  Governance                                                 │
+│  ├── Steering Committee                                     │
+│  ├── Technical Oversight Committee (TOC)                   │
+│  └── Code of Conduct Committee                             │
+├─────────────────────────────────────────────────────────────┤
+│  Special Interest Groups (SIGs)                            │
+│  ├── SIG Apps (Application management)                     │
+│  ├── SIG Network (Networking)                              │
+│  ├── SIG Storage (Storage systems)                         │
+│  ├── SIG Security (Security policies)                      │
+│  ├── SIG Monitoring (Observability)                        │
+│  └── 20+ other SIGs                                        │
+├─────────────────────────────────────────────────────────────┤
+│  Working Groups                                             │
+│  ├── WG Data Protection                                     │
+│  ├── WG Policy                                             │
+│  └── Cross-SIG initiatives                                 │
+├─────────────────────────────────────────────────────────────┤
+│  User Groups                                                │
+│  ├── Local Meetups                                         │
+│  ├── Regional Conferences                                   │
+│  └── Virtual Events                                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 🔧 **Настройка для участия:**
+
+### **1. GitHub setup:**
+```bash
+# Настройка Git для contributions
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+
+# Настройка GPG для подписи коммитов
+git config --global commit.gpgsign true
+git config --global user.signingkey YOUR_GPG_KEY
+
+# Настройка DCO
+git config --global alias.signoff 'commit -s'
+```
+
+### **2. Development tools:**
+```bash
+# Установка необходимых инструментов
+# Go (для Kubernetes development)
+go version
+
+# Docker (для контейнеризации)
+docker version
+
+# kubectl (для тестирования)
+kubectl version
+
+# kind (для local кластеров)
+kind version
+
+# kubebuilder (для операторов)
+kubebuilder version
+```
+
+### **3. Communication channels:**
+```bash
+# Присоединение к Kubernetes Slack
+# https://kubernetes.slack.com
+
+# Подписка на mailing lists
+# kubernetes-dev@googlegroups.com
+# kubernetes-sig-apps@googlegroups.com
+
+# Участие в SIG meetings
+# Календарь: https://calendar.google.com/calendar/embed?src=cgnt364vd8s86hr2phapfjc6uk%40group.calendar.google.com
+```
+
+## 🎯 **Progression Path в сообществе:**
+
+### **1. Contributor → Member:**
+```bash
+# Требования для Member статуса:
+# - Спонсорство от 2 reviewers
+# - Активность 3+ месяца
+# - Множественные contributions
+
+# Привилегии Member:
+# - Членство в GitHub org
+# - Возможность assignment на issues
+# - Возможность trigger CI tests
+```
+
+### **2. Member → Reviewer:**
+```bash
+# Требования для Reviewer статуса:
+# - Member статус 3+ месяца
+# - Primary reviewer для 5+ PRs
+# - Экспертиза в области
+
+# Привилегии Reviewer:
+# - Approve PRs для review
+# - Ожидается регулярный review
+# - Mentoring новых contributors
+```
+
+### **3. Reviewer → Approver:**
+```bash
+# Требования для Approver статуса:
+# - Reviewer статус 3+ месяца
+# - Демонстрация экспертизы
+# - Спонсорство от area approvers
+
+# Привилегии Approver:
+# - Approve PRs для merge
+# - Code ownership ответственность
+# - Участие в технических решениях
+```
+
+## 🎯 **Best Practices для участия:**
+
+### **1. Начало работы:**
+- Начинайте с small contributions
+- Изучайте existing codebase
+- Участвуйте в SIG meetings как observer
+- Читайте design documents
+
+### **2. Code качество:**
+- Следуйте coding standards
+- Пишите comprehensive tests
+- Документируйте изменения
+- Используйте meaningful commit messages
+
+### **3. Community взаимодействие:**
+- Будьте respectful и inclusive
+- Помогайте newcomers
+- Участвуйте в discussions
+- Делитесь знаниями и опытом
+
+**Участие в Kubernetes сообществе — это путь профессионального роста и влияния на будущее cloud-native технологий!**

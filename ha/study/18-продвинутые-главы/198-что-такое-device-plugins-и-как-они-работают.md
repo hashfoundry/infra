@@ -1,185 +1,262 @@
-# 198. What are device plugins and how do they work?
+# 198. Что такое Device Plugins и как они работают?
 
-## 🎯 Вопрос
-What are device plugins and how do they work?
+## 🎯 **Что такое Device Plugins?**
 
-## 💡 Ответ
+**Device Plugins** — это механизм расширения Kubernetes, позволяющий подам использовать специализированные аппаратные ресурсы (GPU, FPGA, InfiniBand, сетевые устройства) без изменения основного кода Kubernetes. Они работают через gRPC API и регистрируют свои ресурсы в kubelet.
 
-Device Plugins - это механизм в Kubernetes, который позволяет подам использовать специализированные аппаратные ресурсы (GPU, FPGA, InfiniBand, специальные сетевые устройства) без изменения основного кода Kubernetes. Они работают через gRPC API и регистрируют свои ресурсы в kubelet.
+## 🏗️ **Основные компоненты:**
 
-### 🏗️ Архитектура Device Plugins
+### **1. Device Plugin API**
+- gRPC интерфейс для взаимодействия с kubelet
+- Registration Service для регистрации плагинов
+- Device Service для управления жизненным циклом устройств
+- Health monitoring для контроля состояния устройств
 
-#### 1. **Схема Device Plugin Architecture**
-```
-┌─────────────────────────────────────────────────────────────┐
-│                Device Plugin Architecture                   │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                    Pod Layer                           │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │     Pod     │    │     Pod     │    │     Pod     │ │ │
-│  │  │  (GPU App)  │───▶│ (FPGA App)  │───▶│ (Custom HW) │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                    kubelet                             │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │   Device    │    │  Resource   │    │   Pod       │ │ │
-│  │  │  Manager    │───▶│  Manager    │───▶│  Manager    │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Device Plugin gRPC                     │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │Registration │    │   Device    │    │   Health    │ │ │
-│  │  │   Service   │───▶│   Service   │───▶│  Monitoring │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │               Device Plugin Implementations            │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │    NVIDIA   │    │    Intel    │    │   Custom    │ │ │
-│  │  │ GPU Plugin  │───▶│ FPGA Plugin │───▶│ HW Plugin   │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                              │                              │
-│                              ▼                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │                Hardware Layer                          │ │
-│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │ │
-│  │  │    GPU      │    │    FPGA     │    │  Network    │ │ │
-│  │  │  Hardware   │───▶│  Hardware   │───▶│  Hardware   │ │ │
-│  │  │             │    │             │    │             │ │ │
-│  │  └─────────────┘    └─────────────┘    └─────────────┘ │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
-```
+### **2. Kubelet Integration**
+- Device Manager для отслеживания регистраций плагинов
+- Resource Manager для рекламирования ресурсов в API server
+- Pod Manager для конфигурации container runtime
+- Automatic device discovery и allocation
 
-#### 2. **Device Plugin API и Workflow**
-```yaml
-# Device Plugin API and Workflow
-device_plugin_api:
-  registration_service:
-    purpose: "Register device plugin with kubelet"
-    endpoint: "/var/lib/kubelet/device-plugins/kubelet.sock"
-    method: "Register"
-    parameters:
-      - "version: v1beta1"
-      - "endpoint: plugin socket path"
-      - "resourceName: vendor-domain/resource"
-      - "options: plugin options"
-    
-    workflow:
-      - "Plugin creates Unix socket"
-      - "Plugin calls Register on kubelet"
-      - "kubelet validates registration"
-      - "kubelet starts monitoring plugin"
+### **3. Hardware Abstraction**
+- Стандартизированный интерфейс для любых типов устройств
+- Поддержка NUMA topology awareness
+- Изоляция ресурсов между подами
+- Автоматическое управление device files и mounts
 
-  device_service:
-    purpose: "Manage device lifecycle"
-    methods:
-      list_and_watch:
-        description: "Stream available devices"
-        returns: "List of Device objects"
-        monitoring: "Continuous device health"
-      
-      allocate:
-        description: "Allocate devices to container"
-        input: "AllocateRequest with device IDs"
-        output: "AllocateResponse with env vars, mounts"
-        
-      get_device_plugin_options:
-        description: "Get plugin configuration"
-        returns: "DevicePluginOptions"
-    
-    device_object:
-      structure:
-        - "ID: unique device identifier"
-        - "Health: Healthy/Unhealthy"
-        - "Topology: NUMA affinity info"
+## 📊 **Практические примеры из вашего HA кластера:**
 
-  kubelet_integration:
-    device_manager:
-      responsibilities:
-        - "Track device plugin registrations"
-        - "Monitor device health"
-        - "Handle device allocation requests"
-        - "Manage device lifecycle"
-    
-    resource_manager:
-      responsibilities:
-        - "Advertise device resources to API server"
-        - "Track resource usage"
-        - "Enforce resource limits"
-        - "Handle resource cleanup"
-    
-    pod_manager:
-      responsibilities:
-        - "Configure container runtime"
-        - "Set environment variables"
-        - "Mount device files"
-        - "Apply security contexts"
-
-  failure_handling:
-    plugin_failure:
-      detection: "gRPC connection monitoring"
-      response: "Mark devices as unhealthy"
-      recovery: "Re-registration on plugin restart"
-    
-    device_failure:
-      detection: "Health monitoring via ListAndWatch"
-      response: "Remove device from available pool"
-      pod_impact: "Existing pods continue, new pods blocked"
-    
-    kubelet_restart:
-      behavior: "Plugins must re-register"
-      socket_cleanup: "Remove stale sockets"
-      state_recovery: "Rebuild device state"
-```
-
-### 📊 Примеры из нашего кластера
-
-#### Проверка Device Plugins:
+### **1. Проверка существующих Device Plugins:**
 ```bash
-# Проверка доступных device plugins
-kubectl get nodes -o json | jq '.items[].status.allocatable'
+# Проверка доступных extended resources на узлах
+kubectl get nodes -o json | jq '.items[].status.allocatable' | grep -E "(nvidia|intel|amd)"
 
-# Проверка capacity узлов
+# Проверка capacity и allocatable ресурсов
 kubectl describe nodes | grep -A 10 "Capacity\|Allocatable"
 
-# Проверка device plugin sockets
-ls -la /var/lib/kubelet/device-plugins/
+# Проверка device plugin sockets на узлах
+kubectl debug node/<node-name> -it --image=busybox -- ls -la /host/var/lib/kubelet/device-plugins/
 
-# Проверка device plugin pods
-kubectl get pods --all-namespaces | grep device
+# Проверка device plugin pods в кластере
+kubectl get pods --all-namespaces | grep -E "(device|gpu|fpga)"
 
-# Проверка extended resources
-kubectl get nodes -o yaml | grep -A 5 "nvidia.com\|intel.com"
+# Проверка extended resources в node status
+kubectl get nodes -o yaml | grep -A 5 -B 5 "nvidia.com\|intel.com\|amd.com"
 ```
 
-### 🛠️ Реализация Device Plugin
+### **2. Анализ GPU resources (если доступны):**
+```bash
+# Проверка NVIDIA GPU resources
+kubectl get nodes -o json | jq '.items[] | {name: .metadata.name, gpu: .status.allocatable["nvidia.com/gpu"]}'
 
-#### 1. **Базовая структура Device Plugin**
+# Проверка GPU pods
+kubectl get pods --all-namespaces -o json | jq '.items[] | select(.spec.containers[].resources.limits["nvidia.com/gpu"]) | {name: .metadata.name, namespace: .metadata.namespace}'
+
+# Проверка GPU utilization
+kubectl top nodes --show-capacity
+
+# Проверка device plugin logs
+kubectl logs -n kube-system -l app=nvidia-device-plugin --tail=20
+```
+
+### **3. Создание тестового Device Plugin:**
+```bash
+# Создание namespace для device plugin
+kubectl create namespace device-plugin-system
+
+# Создание ConfigMap с device plugin конфигурацией
+kubectl create configmap device-plugin-config -n device-plugin-system \
+  --from-literal=device-count=4 \
+  --from-literal=device-prefix=hashfoundry-device
+
+# Проверка созданных ресурсов
+kubectl get configmap -n device-plugin-system
+kubectl describe configmap device-plugin-config -n device-plugin-system
+```
+
+### **4. Мониторинг Device Plugin активности:**
+```bash
+# Мониторинг через Prometheus
+kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
+
+# Проверка метрик device plugins
+# Query: kubelet_device_plugin_registration_total
+# Query: kubelet_device_plugin_alloc_duration_seconds
+
+# Проверка логов kubelet для device plugins
+kubectl logs -n kube-system -l component=kubelet | grep -i "device\|plugin"
+
+# Мониторинг через Grafana
+kubectl port-forward svc/grafana -n monitoring 3000:80 &
+```
+
+## 🔄 **Реализация Custom Device Plugin:**
+
+### **1. Device Plugin Server Implementation:**
+```yaml
+# custom-device-plugin.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: custom-device-plugin
+  namespace: device-plugin-system
+  labels:
+    app: custom-device-plugin
+spec:
+  selector:
+    matchLabels:
+      app: custom-device-plugin
+  template:
+    metadata:
+      labels:
+        app: custom-device-plugin
+    spec:
+      serviceAccountName: device-plugin-service-account
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      containers:
+      - name: device-plugin
+        image: hashfoundry/custom-device-plugin:v1.0.0
+        command: ["/usr/bin/custom-device-plugin"]
+        args:
+        - --resource-name=hashfoundry.com/custom-device
+        - --device-count=4
+        - --health-check-interval=30s
+        - --log-level=info
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: DEVICE_PLUGIN_PATH
+          value: "/var/lib/kubelet/device-plugins"
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+            - SYS_ADMIN
+        volumeMounts:
+        - name: device-plugin
+          mountPath: /var/lib/kubelet/device-plugins
+        - name: dev
+          mountPath: /dev
+        - name: sys
+          mountPath: /sys
+        - name: proc
+          mountPath: /proc
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: device-plugin
+        hostPath:
+          path: /var/lib/kubelet/device-plugins
+      - name: dev
+        hostPath:
+          path: /dev
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: proc
+        hostPath:
+          path: /proc
+      nodeSelector:
+        hashfoundry.com/custom-device: "enabled"
+
+---
+# Service для health checks
+apiVersion: v1
+kind: Service
+metadata:
+  name: custom-device-plugin
+  namespace: device-plugin-system
+  labels:
+    app: custom-device-plugin
+spec:
+  selector:
+    app: custom-device-plugin
+  ports:
+  - name: health
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+
+---
+# ServiceAccount и RBAC
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: device-plugin-service-account
+  namespace: device-plugin-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: device-plugin-reader
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch", "patch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: device-plugin-reader-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: device-plugin-reader
+subjects:
+- kind: ServiceAccount
+  name: device-plugin-service-account
+  namespace: device-plugin-system
+```
+
+### **2. Device Plugin Go Implementation:**
 ```go
-// device-plugin.go
+// main.go
 package main
 
 import (
     "context"
     "fmt"
     "net"
+    "net/http"
     "os"
     "path/filepath"
+    "strings"
     "time"
 
     "google.golang.org/grpc"
@@ -188,33 +265,47 @@ import (
 )
 
 const (
-    resourceName = "example.com/custom-device"
-    serverSock   = pluginapi.DevicePluginPath + "custom-device.sock"
-    kubeletSock  = pluginapi.KubeletSocket
+    defaultResourceName = "hashfoundry.com/custom-device"
+    defaultDeviceCount  = 4
+    kubeletSocket      = pluginapi.KubeletSocket
+    devicePluginPath   = pluginapi.DevicePluginPath
 )
 
-// CustomDevicePlugin implements the device plugin interface
 type CustomDevicePlugin struct {
-    socket   string
-    server   *grpc.Server
-    devices  map[string]*pluginapi.Device
-    stop     chan interface{}
-    health   chan *pluginapi.Device
+    resourceName string
+    socket       string
+    server       *grpc.Server
+    devices      map[string]*pluginapi.Device
+    stop         chan interface{}
+    health       chan *pluginapi.Device
+    deviceCount  int
 }
 
-func NewCustomDevicePlugin() *CustomDevicePlugin {
+func NewCustomDevicePlugin(resourceName string, deviceCount int) *CustomDevicePlugin {
+    serverSock := filepath.Join(devicePluginPath, 
+        strings.Replace(resourceName, "/", "-", -1)+".sock")
+    
     return &CustomDevicePlugin{
-        socket:  serverSock,
-        devices: make(map[string]*pluginapi.Device),
-        stop:    make(chan interface{}),
-        health:  make(chan *pluginapi.Device),
+        resourceName: resourceName,
+        socket:       serverSock,
+        devices:      make(map[string]*pluginapi.Device),
+        stop:         make(chan interface{}),
+        health:       make(chan *pluginapi.Device),
+        deviceCount:  deviceCount,
     }
 }
 
 func main() {
-    klog.Info("Starting Custom Device Plugin")
+    klog.Info("Starting HashFoundry Custom Device Plugin")
     
-    plugin := NewCustomDevicePlugin()
+    // Parse command line arguments
+    resourceName := getEnvOrDefault("RESOURCE_NAME", defaultResourceName)
+    deviceCount := getIntEnvOrDefault("DEVICE_COUNT", defaultDeviceCount)
+    
+    plugin := NewCustomDevicePlugin(resourceName, deviceCount)
+    
+    // Start health check server
+    go plugin.startHealthServer()
     
     // Discover devices
     if err := plugin.discoverDevices(); err != nil {
@@ -233,28 +324,29 @@ func main() {
     
     klog.Info("Device plugin started successfully")
     
+    // Start health monitoring
+    go plugin.healthMonitor()
+    
     // Wait for termination signal
     <-plugin.stop
+    
+    klog.Info("Shutting down device plugin")
+    plugin.Stop()
 }
 
-// Start starts the gRPC server
 func (dp *CustomDevicePlugin) Start() error {
-    // Remove existing socket
     if err := dp.cleanup(); err != nil {
         return err
     }
     
-    // Create Unix socket
     sock, err := net.Listen("unix", dp.socket)
     if err != nil {
         return fmt.Errorf("failed to listen on socket %s: %v", dp.socket, err)
     }
     
-    // Create gRPC server
     dp.server = grpc.NewServer()
     pluginapi.RegisterDevicePluginServer(dp.server, dp)
     
-    // Start server
     go func() {
         if err := dp.server.Serve(sock); err != nil {
             klog.Errorf("Failed to serve: %v", err)
@@ -276,9 +368,8 @@ func (dp *CustomDevicePlugin) Start() error {
     return nil
 }
 
-// Register registers the device plugin with kubelet
 func (dp *CustomDevicePlugin) Register() error {
-    conn, err := grpc.Dial(kubeletSock, grpc.WithInsecure(),
+    conn, err := grpc.Dial(kubeletSocket, grpc.WithInsecure(),
         grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
             return net.DialTimeout("unix", addr, timeout)
         }))
@@ -292,55 +383,51 @@ func (dp *CustomDevicePlugin) Register() error {
     request := &pluginapi.RegisterRequest{
         Version:      pluginapi.Version,
         Endpoint:     filepath.Base(dp.socket),
-        ResourceName: resourceName,
+        ResourceName: dp.resourceName,
+        Options: &pluginapi.DevicePluginOptions{
+            PreStartRequired:                false,
+            GetPreferredAllocationAvailable: true,
+        },
     }
     
     if _, err := client.Register(context.Background(), request); err != nil {
         return fmt.Errorf("failed to register device plugin: %v", err)
     }
     
-    klog.Info("Device plugin registered with kubelet")
+    klog.Infof("Device plugin registered with kubelet for resource: %s", dp.resourceName)
     return nil
 }
 
-// GetDevicePluginOptions returns device plugin options
 func (dp *CustomDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
     return &pluginapi.DevicePluginOptions{
         PreStartRequired:                false,
-        GetPreferredAllocationAvailable: false,
+        GetPreferredAllocationAvailable: true,
     }, nil
 }
 
-// ListAndWatch lists devices and updates as they change
 func (dp *CustomDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
     klog.Info("Starting ListAndWatch")
     
-    // Send initial device list
     if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: dp.getDevices()}); err != nil {
         return fmt.Errorf("failed to send device list: %v", err)
     }
     
-    // Monitor device health
     for {
         select {
         case <-dp.stop:
             return nil
         case device := <-dp.health:
-            // Update device health
             if dev, exists := dp.devices[device.ID]; exists {
                 dev.Health = device.Health
+                klog.Infof("Device %s health changed to %s", device.ID, device.Health)
                 if err := s.Send(&pluginapi.ListAndWatchResponse{Devices: dp.getDevices()}); err != nil {
                     return fmt.Errorf("failed to send device update: %v", err)
                 }
             }
-        case <-time.After(30 * time.Second):
-            // Periodic health check
-            dp.checkDeviceHealth()
         }
     }
 }
 
-// Allocate allocates devices to a container
 func (dp *CustomDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
     klog.Infof("Allocate request: %v", reqs)
     
@@ -349,7 +436,6 @@ func (dp *CustomDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Allo
     for _, req := range reqs.ContainerRequests {
         response := &pluginapi.ContainerAllocateResponse{}
         
-        // Process each requested device
         for _, deviceID := range req.DevicesIDs {
             device, exists := dp.devices[deviceID]
             if !exists {
@@ -360,25 +446,37 @@ func (dp *CustomDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Allo
                 return nil, fmt.Errorf("device %s is not healthy", deviceID)
             }
             
-            // Add device-specific configuration
-            response.Envs = map[string]string{
-                "CUSTOM_DEVICE_ID": deviceID,
-                "CUSTOM_DEVICE_PATH": fmt.Sprintf("/dev/custom-device-%s", deviceID),
+            // Set environment variables
+            if response.Envs == nil {
+                response.Envs = make(map[string]string)
             }
+            response.Envs["HASHFOUNDRY_DEVICE_ID"] = deviceID
+            response.Envs["HASHFOUNDRY_DEVICE_PATH"] = fmt.Sprintf("/dev/hashfoundry-device-%s", deviceID)
+            response.Envs["HASHFOUNDRY_DEVICE_COUNT"] = fmt.Sprintf("%d", len(req.DevicesIDs))
             
             // Add device mounts
+            devicePath := fmt.Sprintf("/dev/hashfoundry-device-%s", deviceID)
             response.Mounts = append(response.Mounts, &pluginapi.Mount{
-                ContainerPath: fmt.Sprintf("/dev/custom-device-%s", deviceID),
-                HostPath:      fmt.Sprintf("/dev/custom-device-%s", deviceID),
+                ContainerPath: devicePath,
+                HostPath:      devicePath,
                 ReadOnly:      false,
             })
             
-            // Add device nodes
+            // Add device specifications
             response.Devices = append(response.Devices, &pluginapi.DeviceSpec{
-                ContainerPath: fmt.Sprintf("/dev/custom-device-%s", deviceID),
-                HostPath:      fmt.Sprintf("/dev/custom-device-%s", deviceID),
+                ContainerPath: devicePath,
+                HostPath:      devicePath,
                 Permissions:   "rw",
             })
+            
+            // Add annotations for monitoring
+            if response.Annotations == nil {
+                response.Annotations = make(map[string]string)
+            }
+            response.Annotations["hashfoundry.com/device-allocated"] = deviceID
+            response.Annotations["hashfoundry.com/allocation-time"] = time.Now().Format(time.RFC3339)
+            
+            klog.Infof("Allocated device %s to container", deviceID)
         }
         
         responses.ContainerResponses = append(responses.ContainerResponses, response)
@@ -387,38 +485,98 @@ func (dp *CustomDevicePlugin) Allocate(ctx context.Context, reqs *pluginapi.Allo
     return responses, nil
 }
 
-// PreStartContainer is called before starting a container (if enabled)
+func (dp *CustomDevicePlugin) GetPreferredAllocation(ctx context.Context, req *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
+    response := &pluginapi.PreferredAllocationResponse{}
+    
+    for _, containerReq := range req.ContainerRequests {
+        containerResp := &pluginapi.ContainerPreferredAllocationResponse{}
+        
+        // Simple allocation strategy: prefer devices with lower IDs
+        availableDevices := containerReq.AvailableDeviceIDs
+        mustIncludeDevices := containerReq.MustIncludeDeviceIDs
+        allocationSize := int(containerReq.AllocationSize)
+        
+        // Start with must-include devices
+        preferredDevices := make([]string, 0, allocationSize)
+        preferredDevices = append(preferredDevices, mustIncludeDevices...)
+        
+        // Add additional devices if needed
+        for _, deviceID := range availableDevices {
+            if len(preferredDevices) >= allocationSize {
+                break
+            }
+            
+            // Skip if already included
+            found := false
+            for _, included := range preferredDevices {
+                if included == deviceID {
+                    found = true
+                    break
+                }
+            }
+            
+            if !found {
+                preferredDevices = append(preferredDevices, deviceID)
+            }
+        }
+        
+        containerResp.DeviceIDs = preferredDevices
+        response.ContainerResponses = append(response.ContainerResponses, containerResp)
+        
+        klog.Infof("Preferred allocation for container: %v", preferredDevices)
+    }
+    
+    return response, nil
+}
+
 func (dp *CustomDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
     return &pluginapi.PreStartContainerResponse{}, nil
 }
 
-// GetPreferredAllocation returns preferred device allocation (if enabled)
-func (dp *CustomDevicePlugin) GetPreferredAllocation(context.Context, *pluginapi.PreferredAllocationRequest) (*pluginapi.PreferredAllocationResponse, error) {
-    return &pluginapi.PreferredAllocationResponse{}, nil
-}
-
-// discoverDevices discovers available devices
 func (dp *CustomDevicePlugin) discoverDevices() error {
-    klog.Info("Discovering devices")
+    klog.Infof("Discovering %d devices", dp.deviceCount)
     
-    // Simulate device discovery
-    // In real implementation, this would scan hardware
-    deviceCount := 4
-    
-    for i := 0; i < deviceCount; i++ {
+    for i := 0; i < dp.deviceCount; i++ {
         deviceID := fmt.Sprintf("device-%d", i)
         device := &pluginapi.Device{
             ID:     deviceID,
             Health: pluginapi.Healthy,
+            Topology: &pluginapi.TopologyInfo{
+                Nodes: []*pluginapi.NUMANode{
+                    {
+                        ID: int64(i % 2), // Distribute across NUMA nodes
+                    },
+                },
+            },
         }
         dp.devices[deviceID] = device
+        
+        // Create device file (simulation)
+        devicePath := fmt.Sprintf("/dev/hashfoundry-device-%s", deviceID)
+        if err := dp.createDeviceFile(devicePath); err != nil {
+            klog.Warningf("Failed to create device file %s: %v", devicePath, err)
+        }
+        
         klog.Infof("Discovered device: %s", deviceID)
     }
     
     return nil
 }
 
-// getDevices returns current device list
+func (dp *CustomDevicePlugin) createDeviceFile(devicePath string) error {
+    // Create device file for simulation
+    file, err := os.Create(devicePath)
+    if err != nil {
+        return err
+    }
+    defer file.Close()
+    
+    // Write device metadata
+    metadata := fmt.Sprintf("HashFoundry Custom Device\nCreated: %s\n", time.Now().Format(time.RFC3339))
+    _, err = file.WriteString(metadata)
+    return err
+}
+
 func (dp *CustomDevicePlugin) getDevices() []*pluginapi.Device {
     devices := make([]*pluginapi.Device, 0, len(dp.devices))
     for _, device := range dp.devices {
@@ -427,39 +585,68 @@ func (dp *CustomDevicePlugin) getDevices() []*pluginapi.Device {
     return devices
 }
 
-// checkDeviceHealth checks device health
-func (dp *CustomDevicePlugin) checkDeviceHealth() {
-    for deviceID, device := range dp.devices {
-        // Simulate health check
-        // In real implementation, this would check actual hardware
-        if dp.isDeviceHealthy(deviceID) {
-            if device.Health != pluginapi.Healthy {
-                device.Health = pluginapi.Healthy
-                dp.health <- device
-                klog.Infof("Device %s is now healthy", deviceID)
-            }
-        } else {
-            if device.Health != pluginapi.Unhealthy {
-                device.Health = pluginapi.Unhealthy
-                dp.health <- device
-                klog.Infof("Device %s is now unhealthy", deviceID)
-            }
+func (dp *CustomDevicePlugin) healthMonitor() {
+    ticker := time.NewTicker(30 * time.Second)
+    defer ticker.Stop()
+    
+    for {
+        select {
+        case <-dp.stop:
+            return
+        case <-ticker.C:
+            dp.checkDeviceHealth()
         }
     }
 }
 
-// isDeviceHealthy checks if device is healthy
+func (dp *CustomDevicePlugin) checkDeviceHealth() {
+    for deviceID, device := range dp.devices {
+        healthy := dp.isDeviceHealthy(deviceID)
+        
+        if healthy && device.Health != pluginapi.Healthy {
+            device.Health = pluginapi.Healthy
+            dp.health <- device
+        } else if !healthy && device.Health != pluginapi.Unhealthy {
+            device.Health = pluginapi.Unhealthy
+            dp.health <- device
+        }
+    }
+}
+
 func (dp *CustomDevicePlugin) isDeviceHealthy(deviceID string) bool {
-    // Simulate health check logic
-    // Check if device file exists and is accessible
-    devicePath := fmt.Sprintf("/dev/custom-device-%s", deviceID)
+    devicePath := fmt.Sprintf("/dev/hashfoundry-device-%s", deviceID)
     if _, err := os.Stat(devicePath); err != nil {
         return false
     }
+    
+    // Additional health checks can be added here
+    // For example: check device responsiveness, temperature, etc.
+    
     return true
 }
 
-// cleanup removes the device plugin socket
+func (dp *CustomDevicePlugin) startHealthServer() {
+    http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte("OK"))
+    })
+    
+    http.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
+        if len(dp.devices) > 0 {
+            w.WriteHeader(http.StatusOK)
+            w.Write([]byte("Ready"))
+        } else {
+            w.WriteHeader(http.StatusServiceUnavailable)
+            w.Write([]byte("Not Ready"))
+        }
+    })
+    
+    klog.Info("Starting health server on :8080")
+    if err := http.ListenAndServe(":8080", nil); err != nil {
+        klog.Errorf("Health server failed: %v", err)
+    }
+}
+
 func (dp *CustomDevicePlugin) cleanup() error {
     if err := os.Remove(dp.socket); err != nil && !os.IsNotExist(err) {
         return fmt.Errorf("failed to remove socket %s: %v", dp.socket, err)
@@ -467,7 +654,6 @@ func (dp *CustomDevicePlugin) cleanup() error {
     return nil
 }
 
-// Stop stops the device plugin
 func (dp *CustomDevicePlugin) Stop() error {
     if dp.server != nil {
         dp.server.Stop()
@@ -475,442 +661,663 @@ func (dp *CustomDevicePlugin) Stop() error {
     close(dp.stop)
     return dp.cleanup()
 }
+
+func getEnvOrDefault(key, defaultValue string) string {
+    if value := os.Getenv(key); value != "" {
+        return value
+    }
+    return defaultValue
+}
+
+func getIntEnvOrDefault(key string, defaultValue int) int {
+    if value := os.Getenv(key); value != "" {
+        if intValue, err := strconv.Atoi(value); err == nil {
+            return intValue
+        }
+    }
+    return defaultValue
+}
 ```
 
-#### 2. **Device Plugin Deployment**
+### **3. Тестирование Device Plugin:**
 ```yaml
-# device-plugin-daemonset.yaml
-apiVersion: apps/v1
-kind: DaemonSet
-metadata:
-  name: custom-device-plugin
-  namespace: kube-system
-spec:
-  selector:
-    matchLabels:
-      name: custom-device-plugin
-  template:
-    metadata:
-      labels:
-        name: custom-device-plugin
-    spec:
-      tolerations:
-      - key: nvidia.com/gpu
-        operator: Exists
-        effect: NoSchedule
-      - key: node-role.kubernetes.io/master
-        operator: Exists
-        effect: NoSchedule
-      serviceAccountName: custom-device-plugin
-      hostNetwork: true
-      hostPID: true
-      containers:
-      - name: custom-device-plugin
-        image: example/custom-device-plugin:v1.0.0
-        command: ["/usr/bin/custom-device-plugin"]
-        env:
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        securityContext:
-          privileged: true
-        volumeMounts:
-        - name: device-plugin
-          mountPath: /var/lib/kubelet/device-plugins
-        - name: dev
-          mountPath: /dev
-        - name: sys
-          mountPath: /sys
-        resources:
-          limits:
-            cpu: 100m
-            memory: 128Mi
-          requests:
-            cpu: 50m
-            memory: 64Mi
-      volumes:
-      - name: device-plugin
-        hostPath:
-          path: /var/lib/kubelet/device-plugins
-      - name: dev
-        hostPath:
-          path: /dev
-      - name: sys
-        hostPath:
-          path: /sys
-      nodeSelector:
-        custom-device: "true"
-
----
-# RBAC for device plugin
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: custom-device-plugin
-  namespace: kube-system
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: custom-device-plugin
-rules:
-- apiGroups: [""]
-  resources: ["nodes"]
-  verbs: ["get", "list", "watch"]
-- apiGroups: [""]
-  resources: ["events"]
-  verbs: ["create", "patch"]
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: custom-device-plugin
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: custom-device-plugin
-subjects:
-- kind: ServiceAccount
-  name: custom-device-plugin
-  namespace: kube-system
-```
-
-#### 3. **Использование Device Plugin в Pod**
-```yaml
-# test-pod.yaml
+# test-device-usage.yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: custom-device-test
+  name: device-test-single
+  namespace: device-plugin-system
+  labels:
+    app: device-test
 spec:
   containers:
   - name: test-container
-    image: ubuntu:20.04
-    command: ["/bin/bash"]
-    args: ["-c", "while true; do echo 'Using custom device'; sleep 30; done"]
+    image: busybox:1.35
+    command: ["/bin/sh"]
+    args:
+    - -c
+    - |
+      echo "=== HashFoundry Device Test ==="
+      echo "Environment variables:"
+      env | grep HASHFOUNDRY
+      echo ""
+      echo "Device files:"
+      ls -la /dev/hashfoundry-device-* 2>/dev/null || echo "No device files found"
+      echo ""
+      echo "Device content:"
+      for device in /dev/hashfoundry-device-*; do
+        if [ -f "$device" ]; then
+          echo "--- $device ---"
+          cat "$device"
+        fi
+      done
+      echo ""
+      echo "Sleeping for monitoring..."
+      sleep 3600
     resources:
       limits:
-        example.com/custom-device: 1
+        hashfoundry.com/custom-device: 1
       requests:
-        example.com/custom-device: 1
-    env:
-    - name: CUSTOM_DEVICE_ID
-      value: "will-be-set-by-device-plugin"
+        hashfoundry.com/custom-device: 1
   restartPolicy: Never
 
 ---
-# multi-device-pod.yaml
+# Multi-device test
 apiVersion: v1
 kind: Pod
 metadata:
-  name: multi-device-test
+  name: device-test-multi
+  namespace: device-plugin-system
+  labels:
+    app: device-test
 spec:
   containers:
-  - name: container1
-    image: ubuntu:20.04
-    command: ["/bin/bash"]
-    args: ["-c", "echo 'Container 1 using device'; sleep infinity"]
+  - name: test-container
+    image: busybox:1.35
+    command: ["/bin/sh"]
+    args:
+    - -c
+    - |
+      echo "=== Multi-Device Test ==="
+      echo "Allocated devices: $HASHFOUNDRY_DEVICE_COUNT"
+      echo "Device ID: $HASHFOUNDRY_DEVICE_ID"
+      echo ""
+      echo "Available devices:"
+      ls -la /dev/hashfoundry-device-*
+      echo ""
+      echo "Testing device access..."
+      for device in /dev/hashfoundry-device-*; do
+        if [ -f "$device" ]; then
+          echo "Testing $device..."
+          cat "$device" | head -2
+        fi
+      done
+      sleep 3600
     resources:
       limits:
-        example.com/custom-device: 1
-  - name: container2
-    image: ubuntu:20.04
-    command: ["/bin/bash"]
-    args: ["-c", "echo 'Container 2 using device'; sleep infinity"]
-    resources:
-      limits:
-        example.com/custom-device: 2
+        hashfoundry.com/custom-device: 2
+      requests:
+        hashfoundry.com/custom-device: 2
   restartPolicy: Never
+
+---
+# Deployment with device usage
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: device-workload
+  namespace: device-plugin-system
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: device-workload
+  template:
+    metadata:
+      labels:
+        app: device-workload
+    spec:
+      containers:
+      - name: workload
+        image: nginx:1.21
+        resources:
+          limits:
+            hashfoundry.com/custom-device: 1
+          requests:
+            hashfoundry.com/custom-device: 1
+            cpu: 100m
+            memory: 128Mi
+        env:
+        - name: DEVICE_ID
+          value: "$(HASHFOUNDRY_DEVICE_ID)"
+        volumeMounts:
+        - name: device-info
+          mountPath: /usr/share/nginx/html/device
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - /bin/sh
+              - -c
+              - |
+                echo "Device allocated: $HASHFOUNDRY_DEVICE_ID" > /usr/share/nginx/html/device/info.txt
+                echo "Allocation time: $(date)" >> /usr/share/nginx/html/device/info.txt
+      volumes:
+      - name: device-info
+        emptyDir: {}
 ```
 
-### 🔧 Утилиты для тестирования Device Plugins
+## 🏭 **Интеграция с ArgoCD и мониторингом:**
 
-#### Скрипт для тестирования device plugins:
+### **1. ArgoCD Application для Device Plugin:**
+```yaml
+# argocd-device-plugin-application.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: custom-device-plugin
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/hashfoundry/custom-device-plugin
+    targetRevision: HEAD
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: device-plugin-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+```
+
+### **2. Prometheus мониторинг для Device Plugins:**
+```yaml
+# device-plugin-monitoring.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: custom-device-plugin
+  namespace: device-plugin-system
+spec:
+  selector:
+    matchLabels:
+      app: custom-device-plugin
+  endpoints:
+  - port: health
+    path: /metrics
+    interval: 30s
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: device-plugin-alerts
+  namespace: device-plugin-system
+spec:
+  groups:
+  - name: device-plugin.rules
+    rules:
+    - alert: DevicePluginDown
+      expr: up{job="custom-device-plugin"} == 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Device plugin is down"
+        description: "Custom device plugin has been down for more than 2 minutes"
+    
+    - alert: DeviceUnhealthy
+      expr: kubelet_device_plugin_resource_capacity{resource="hashfoundry.com/custom-device"} != kubelet_device_plugin_resource_allocatable{resource="hashfoundry.com/custom-device"}
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Unhealthy devices detected"
+        description: "Some custom devices are marked as unhealthy"
+    
+    - alert: DeviceAllocationHigh
+      expr: (kubelet_device_plugin_resource_capacity{resource="hashfoundry.com/custom-device"} - kubelet_device_plugin_resource_allocatable{resource="hashfoundry.com/custom-device"}) / kubelet_device_plugin_resource_capacity{resource="hashfoundry.com/custom-device"} > 0.8
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High device allocation"
+        description: "More than 80% of custom devices are allocated"
+```
+
+### **3. Grafana Dashboard для Device Plugins:**
+```json
+{
+  "dashboard": {
+    "title": "HashFoundry Device Plugin Dashboard",
+    "panels": [
+      {
+        "title": "Device Plugin Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"custom-device-plugin\"}",
+            "legendFormat": "Plugin Status"
+          }
+        ]
+      },
+      {
+        "title": "Device Capacity vs Allocatable",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "kubelet_device_plugin_resource_capacity{resource=\"hashfoundry.com/custom-device\"}",
+            "legendFormat": "Capacity - {{node}}"
+          },
+          {
+            "expr": "kubelet_device_plugin_resource_allocatable{resource=\"hashfoundry.com/custom-device\"}",
+            "legendFormat": "Allocatable - {{node}}"
+          }
+        ]
+      },
+      {
+        "title": "Device Allocation Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(kubelet_device_plugin_alloc_duration_seconds_count[5m])",
+            "legendFormat": "Allocations/sec - {{node}}"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### **4. Тестирование и диагностика Device Plugins:**
 ```bash
 #!/bin/bash
 # test-device-plugins.sh
 
 echo "🧪 Testing Device Plugins"
 
-# Test device plugin registration
 test_device_plugin_registration() {
     echo "=== Testing Device Plugin Registration ==="
     
-    # Check if device plugin is running
-    echo "--- Device Plugin Pods ---"
-    kubectl get pods -n kube-system -l name=custom-device-plugin
+    # Check device plugin registration
+    kubectl get nodes -o json | jq '.items[] | {
+        name: .metadata.name,
+        capacity: .status.capacity,
+        allocatable: .status.allocatable
+    }' | grep -A 5 -B 5 "hashfoundry.com/custom-device"
     
-    # Check device plugin logs
-    echo "--- Device Plugin Logs ---"
-    kubectl logs -n kube-system -l name=custom-device-plugin --tail=10
-    
-    # Check node capacity
-    echo "--- Node Capacity ---"
-    kubectl get nodes -o json | jq '.items[].status.capacity | select(."example.com/custom-device")'
+    # Check device plugin sockets
+    for node in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+        echo "--- Node: $node ---"
+        kubectl debug node/$node -it --image=busybox -- \
+            ls -la /host/var/lib/kubelet/device-plugins/ | grep hashfoundry || \
+            echo "No HashFoundry device plugin socket found"
+    done
 }
 
-# Test device allocation
 test_device_allocation() {
     echo "=== Testing Device Allocation ==="
     
     # Create test pod
-    echo "--- Creating test pod ---"
     cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: Pod
 metadata:
-  name: device-test-pod
+  name: device-allocation-test
+  namespace: device-plugin-system
 spec:
   containers:
   - name: test
-    image: busybox
-    command: ["/bin/sh"]
-    args: ["-c", "env | grep CUSTOM_DEVICE; ls -la /dev/custom-device-*; sleep 3600"]
+    image: busybox:1.35
+    command: ["sleep", "300"]
     resources:
       limits:
-        example.com/custom-device: 1
+        hashfoundry.com/custom-device: 1
+      requests:
+        hashfoundry.com/custom-device: 1
   restartPolicy: Never
 EOF
 
     # Wait for pod to be scheduled
-    echo "Waiting for pod to be scheduled..."
-    kubectl wait --for=condition=PodScheduled pod/device-test-pod --timeout=60s
+    kubectl wait --for=condition=Ready pod/device-allocation-test -n device-plugin-system --timeout=60s
     
-    if [ $? -eq 0 ]; then
-        echo "✅ Pod scheduled successfully"
-        
-        # Check pod status
-        kubectl get pod device-test-pod -o wide
-        
-        # Check environment variables
-        echo "--- Environment Variables ---"
-        kubectl exec device-test-pod -- env | grep CUSTOM_DEVICE || echo "No custom device env vars found"
-        
-        # Check device mounts
-        echo "--- Device Mounts ---"
-        kubectl exec device-test-pod -- ls -la /dev/ | grep custom-device || echo "No custom devices found"
-    else
-        echo "❌ Pod scheduling failed"
-        kubectl describe pod device-test-pod
-    fi
-}
-
-# Test device health monitoring
-test_device_health() {
-    echo "=== Testing Device Health Monitoring ==="
+    # Check device allocation
+    kubectl describe pod device-allocation-test -n device-plugin-system | grep -A 10 "Environment\|Mounts"
     
-    # Get device plugin pod
-    plugin_pod=$(kubectl get pods -n kube-system -l name=custom-device-plugin -o jsonpath='{.items[0].metadata.name}')
-    
-    if [ -n "$plugin_pod" ]; then
-        echo "--- Device Plugin Health Logs ---"
-        kubectl logs -n kube-system $plugin_pod | grep -i "health\|device" | tail -10
-    else
-        echo "❌ Device plugin pod not found"
-    fi
-}
-
-# Test multiple device allocation
-test_multiple_devices() {
-    echo "=== Testing Multiple Device Allocation ==="
-    
-    # Create pod requesting multiple devices
-    cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Pod
-metadata:
-  name: multi-device-test
-spec:
-  containers:
-  - name: test
-    image: busybox
-    command: ["/bin/sh"]
-    args: ["-c", "echo 'Allocated devices:'; env | grep CUSTOM_DEVICE; ls -la /dev/custom-device-*; sleep 3600"]
-    resources:
-      limits:
-        example.com/custom-device: 2
-  restartPolicy: Never
-EOF
-
-    # Wait for pod
-    kubectl wait --for=condition=PodScheduled pod/multi-device-test --timeout=60s
-    
-    if [ $? -eq 0 ]; then
-        echo "✅ Multi-device pod scheduled"
-        kubectl exec multi-device-test -- ls -la /dev/ | grep custom-device | wc -l
-    else
-        echo "❌ Multi-device pod scheduling failed"
-    fi
-}
-
-# Test device plugin failure scenarios
-test_failure_scenarios() {
-    echo "=== Testing Failure Scenarios ==="
-    
-    # Scale down device plugin
-    echo "--- Scaling down device plugin ---"
-    kubectl scale daemonset custom-device-plugin -n kube-system --replicas=0
-    
-    # Wait for pods to terminate
-    sleep 10
-    
-    # Try to create pod (should fail or remain pending)
-    echo "--- Attempting to create pod without device plugin ---"
-    cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Pod
-metadata:
-  name: failure-test-pod
-spec:
-  containers:
-  - name: test
-    image: busybox
-    command: ["sleep", "3600"]
-    resources:
-      limits:
-        example.com/custom-device: 1
-  restartPolicy: Never
-EOF
-
-    # Check pod status
-    sleep 5
-    status=$(kubectl get pod failure-test-pod -o jsonpath='{.status.phase}')
-    if [ "$status" = "Pending" ]; then
-        echo "✅ Pod correctly pending without device plugin"
-    else
-        echo "❌ Unexpected pod status: $status"
-    fi
-    
-    # Scale device plugin back up
-    echo "--- Scaling device plugin back up ---"
-    kubectl scale daemonset custom-device-plugin -n kube-system --replicas=1
-    
-    # Wait for device plugin to be ready
-    kubectl wait --for=condition=ready pod -l name=custom-device-plugin -n kube-system --timeout=60s
-}
-
-# Performance testing
-test_performance() {
-    echo "=== Testing Performance ==="
-    
-    local count=${1:-5}
-    echo "Creating $count pods with device requests..."
-    
-    start_time=$(date +%s)
-    
-    for i in $(seq 1 $count); do
-        cat <<EOF | kubectl apply -f - >/dev/null 2>&1
-apiVersion: v1
-kind: Pod
-metadata:
-  name: perf-test-$i
-spec:
-  containers:
-  - name: test
-    image: busybox
-    command: ["sleep", "60"]
-    resources:
-      limits:
-        example.com/custom-device: 1
-  restartPolicy: Never
-EOF
-    done
-    
-    # Wait for all pods to be scheduled
-    for i in $(seq 1 $count); do
-        kubectl wait --for=condition=PodScheduled pod/perf-test-$i --timeout=30s >/dev/null 2>&1
-    done
-    
-    end_time=$(date +%s)
-    duration=$((end_time - start_time))
-    
-    echo "✅ Scheduled $count pods in ${duration}s"
-    
-    # Check how many were actually scheduled
-    scheduled=$(kubectl get pods -l app=perf-test --field-selector=status.phase=Running --no-headers | wc -l)
-    echo "Pods running: $scheduled/$count"
+    # Check device files in container
+    kubectl exec device-allocation-test -n device-plugin-system -- ls -la /dev/hashfoundry-device-*
     
     # Cleanup
-    for i in $(seq 1 $count); do
-        kubectl delete pod perf-test-$i >/dev/null 2>&1
+    kubectl delete pod device-allocation-test -n device-plugin-system
+}
+
+check_device_plugin_health() {
+    echo "=== Device Plugin Health Check ==="
+    
+    # Check device plugin pods
+    kubectl get pods -n device-plugin-system -l app=custom-device-plugin
+    
+    # Check device plugin logs
+    kubectl logs -n device-plugin-system -l app=custom-device-plugin --tail=20
+    
+    # Check device plugin health endpoint
+    kubectl port-forward -n device-plugin-system svc/custom-device-plugin 8080:8080 &
+    PF_PID=$!
+    
+    sleep 2
+    curl -f http://localhost:8080/healthz && echo "✅ Health check passed" || echo "❌ Health check failed"
+    curl -f http://localhost:8080/readyz && echo "✅ Ready check passed" || echo "❌ Ready check failed"
+    
+    kill $PF_PID
+}
+
+monitor_device_metrics() {
+    echo "=== Device Plugin Metrics ==="
+    
+    # Port forward to Prometheus
+    kubectl port-forward svc/prometheus-server -n monitoring 9090:80 &
+    PROM_PID=$!
+    
+    sleep 2
+    
+    # Query device plugin metrics
+    echo "Device plugin registration count:"
+    curl -s "http://localhost:9090/api/v1/query?query=kubelet_device_plugin_registration_total" | \
+        jq -r '.data.result[] | "\(.metric.node): \(.value[1])"'
+    
+    echo ""
+    echo "Device allocation duration:"
+    curl -s "http://localhost:9090/api/v1/query?query=kubelet_device_plugin_alloc_duration_seconds" | \
+        jq -r '.data.result[] | "\(.metric.node): \(.value[1])s"'
+    
+    kill $PROM_PID
+}
+
+main() {
+    test_device_plugin_registration
+    echo ""
+    test_device_allocation
+    echo ""
+    check_device_plugin_health
+    echo ""
+    monitor_device_metrics
+}
+
+main "$@"
+```
+
+## 🚨 **Troubleshooting Device Plugins:**
+
+### **1. Диагностический скрипт:**
+```bash
+#!/bin/bash
+# diagnose-device-plugins.sh
+
+echo "🔍 Diagnosing Device Plugins"
+
+diagnose_kubelet_device_manager() {
+    echo "=== Kubelet Device Manager Diagnosis ==="
+    
+    # Check kubelet logs for device plugin activity
+    for node in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+        echo "--- Node: $node ---"
+        kubectl debug node/$node -it --image=busybox -- \
+            grep -i "device.*plugin\|device.*manager" /host/var/log/kubelet.log | tail -10
     done
 }
 
-# Cleanup test resources
-cleanup_test_resources() {
-    echo "=== Cleaning up Test Resources ==="
+check_device_plugin_sockets() {
+    echo "=== Device Plugin Sockets Check ==="
     
-    kubectl delete pod device-test-pod --ignore-not-found=true
-    kubectl delete pod multi-device-test --ignore-not-found=true
-    kubectl delete pod failure-test-pod --ignore-not-found=true
-    
-    echo "✅ Cleanup completed"
+    for node in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+        echo "--- Node: $node ---"
+        kubectl debug node/$node -it --image=busybox -- \
+            find /host/var/lib/kubelet/device-plugins/ -name "*.sock" -ls
+    done
 }
 
-# Main execution
+verify_device_files() {
+    echo "=== Device Files Verification ==="
+    
+    for node in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+        echo "--- Node: $node ---"
+        kubectl debug node/$node -it --image=busybox -- \
+            ls -la /host/dev/hashfoundry-device-* 2>/dev/null || \
+            echo "No HashFoundry device files found"
+    done
+}
+
+check_extended_resources() {
+    echo "=== Extended Resources Check ==="
+    
+    kubectl get nodes -o json | jq '.items[] | {
+        name: .metadata.name,
+        capacity: .status.capacity | to_entries | map(select(.key | contains("hashfoundry.com"))),
+        allocatable: .status.allocatable | to_entries | map(select(.key | contains("hashfoundry.com")))
+    }'
+}
+
+analyze_pod_allocation_failures() {
+    echo "=== Pod Allocation Failures Analysis ==="
+    
+    # Check for pods with device resource requests that are pending
+    kubectl get pods --all-namespaces -o json | jq -r '
+        .items[] | 
+        select(.status.phase == "Pending") |
+        select(.spec.containers[].resources.limits | has("hashfoundry.com/custom-device")) |
+        "\(.metadata.namespace)/\(.metadata.name): \(.status.conditions[-1].message // "No message")"
+    '
+    
+    # Check events related to device allocation
+    kubectl get events --all-namespaces --field-selector reason=FailedScheduling | \
+        grep -i "device\|resource"
+}
+
 main() {
-    echo "Testing Device Plugins"
+    diagnose_kubelet_device_manager
     echo ""
-    
-    # Run tests
-    test_device_plugin_registration
+    check_device_plugin_sockets
     echo ""
-    
-    test_device_allocation
+    verify_device_files
     echo ""
-    
-    test_device_health
+    check_extended_resources
     echo ""
-    
-    test_multiple_devices
-    echo ""
-    
-    test_failure_scenarios
-    echo ""
-    
-    test_performance 3
-    echo ""
-    
-    read -p "Cleanup test resources? (y/n): " cleanup
-    if [ "$cleanup" = "y" ]; then
-        cleanup_test_resources
-    fi
+    analyze_pod_allocation_failures
 }
 
-# Check if arguments provided
-if [ $# -eq 0 ]; then
-    echo "Usage: $0"
-    echo ""
-    echo "Running device plugin tests..."
-    main
-else
-    main "$@"
-fi
+main "$@"
 ```
 
-### 🎯 Заключение
+### **2. Device Plugin Lifecycle Management:**
+```bash
+#!/bin/bash
+# device-plugin-lifecycle.sh
 
-Device Plugins предоставляют стандартизированный способ интеграции специализированного оборудования с Kubernetes:
+echo "🔄 Device Plugin Lifecycle Management"
 
-**Ключевые возможности:**
-1. **Стандартный API** - единый интерфейс для всех типов устройств
-2. **Автоматическое обнаружение** - kubelet автоматически обнаруживает и регистрирует устройства
-3. **Мониторинг здоровья** - непрерывный контроль состояния устройств
-4. **Изоляция ресурсов** - гарантированное выделение устройств подам
+deploy_device_plugin() {
+    echo "=== Deploying Device Plugin ==="
+    
+    # Label nodes for device plugin
+    kubectl label nodes --all hashfoundry.com/custom-device=enabled --overwrite
+    
+    # Deploy device plugin DaemonSet
+    kubectl apply -f custom-device-plugin.yaml
+    
+    # Wait for device plugin to be ready
+    kubectl rollout status daemonset/custom-device-plugin -n device-plugin-system --timeout=300s
+    
+    # Verify device plugin registration
+    sleep 10
+    kubectl get nodes -o json | jq '.items[0].status.allocatable' | grep hashfoundry.com
+}
 
-**Архитектурные принципы:**
-1. **gRPC коммуникация** - надежный протокол взаимодействия с kubelet
-2. **Unix сокеты** - локальная коммуникация через файловую систему
-3. **Отказоустойчивость** - автоматическое восстановление при сбоях
-4. **Расширяемость** - поддержка любых типов устройств
+update_device_plugin() {
+    echo "=== Updating Device Plugin ==="
+    
+    # Update device plugin image
+    kubectl set image daemonset/custom-device-plugin -n device-plugin-system \
+        device-plugin=hashfoundry/custom-device-plugin:v1.1.0
+    
+    # Monitor rollout
+    kubectl rollout status daemonset/custom-device-plugin -n device-plugin-system
+    
+    # Verify update
+    kubectl get pods -n device-plugin-system -l app=custom-device-plugin \
+        -o jsonpath='{.items[*].spec.containers[0].image}'
+}
 
-**Практические применения:**
-- **NVIDIA GPU Plugin** - использование GPU для ML/AI нагрузок
-- **Intel FPGA Plugin** - программируемые логические устройства
-- **SR-IOV Plugin** - высокопроизводительные сетевые интерфейсы
-- **Custom Hardware** - специализированные устройства
+restart_device_plugin() {
+    echo "=== Restarting Device Plugin ==="
+    
+    # Restart device plugin pods
+    kubectl rollout restart daemonset/custom-device-plugin -n device-plugin-system
+    
+    # Wait for restart to complete
+    kubectl rollout status daemonset/custom-device-plugin -n device-plugin-system
+    
+    # Verify device resources are still available
+    kubectl get nodes -o json | jq '.items[].status.allocatable' | grep hashfoundry.com
+}
 
-Device Plugins обеспечивают гибкую и масштабируемую интеграцию аппаратных ресурсов в Kubernetes экосистему.
+cleanup_device_plugin() {
+    echo "=== Cleaning up Device Plugin ==="
+    
+    # Delete device plugin DaemonSet
+    kubectl delete daemonset custom-device-plugin -n device-plugin-system
+    
+    # Remove node labels
+    kubectl label nodes --all hashfoundry.com/custom-device-
+    
+    # Clean up device files on nodes
+    for node in $(kubectl get nodes -o jsonpath='{.items[*].metadata.name}'); do
+        kubectl debug node/$node -it --image=busybox -- \
+            rm -f /host/dev/hashfoundry-device-*
+    done
+    
+    # Verify cleanup
+    kubectl get nodes -o json | jq '.items[].status.allocatable' | grep hashfoundry.com || \
+        echo "✅ Device resources cleaned up successfully"
+}
+
+main() {
+    case "${1:-deploy}" in
+        deploy)
+            deploy_device_plugin
+            ;;
+        update)
+            update_device_plugin
+            ;;
+        restart)
+            restart_device_plugin
+            ;;
+        cleanup)
+            cleanup_device_plugin
+            ;;
+        *)
+            echo "Usage: $0 {deploy|update|restart|cleanup}"
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
+```
+
+## 🎯 **Архитектура Device Plugins в HA кластере:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              HA Cluster Device Plugins Architecture        │
+├─────────────────────────────────────────────────────────────┤
+│  Application Pods                                          │
+│  ├── ML Workloads (GPU requests)                           │
+│  ├── Network Functions (SR-IOV)                            │
+│  ├── Storage Accelerators (NVMe)                           │
+│  └── Custom Hardware (HashFoundry devices)                 │
+├─────────────────────────────────────────────────────────────┤
+│  Kubernetes API Server (HA)                               │
+│  ├── Extended Resource Advertisement                       │
+│  ├── Pod Scheduling with Device Constraints                │
+│  ├── Resource Quota Management                             │
+│  └── RBAC for Device Access                                │
+├─────────────────────────────────────────────────────────────┤
+│  Worker Nodes (Auto-scaling 3-6 nodes)                    │
+│  ├── Node 1                                                │
+│  │   ├── kubelet (Device Manager)                          │
+│  │   ├── Device Plugin DaemonSet                           │
+│  │   ├── Container Runtime (device mounting)               │
+│  │   └── Hardware Devices (/dev/*)                         │
+│  ├── Node 2                                                │
+│  │   ├── kubelet (Device Manager)                          │
+│  │   ├── Device Plugin DaemonSet                           │
+│  │   ├── Container Runtime (device mounting)               │
+│  │   └── Hardware Devices (/dev/*)                         │
+│  └── Node N...                                             │
+├─────────────────────────────────────────────────────────────┤
+│  Device Plugin Communication                               │
+│  ├── gRPC Registration (plugin → kubelet)                  │
+│  ├── Unix Socket (/var/lib/kubelet/device-plugins/)        │
+│  ├── ListAndWatch Stream (device health)                   │
+│  ├── Allocate Requests (device assignment)                 │
+│  └── Health Monitoring (device status)                     │
+├─────────────────────────────────────────────────────────────┤
+│  Monitoring & Observability                               │
+│  ├── Prometheus (device plugin metrics)                    │
+│  ├── Grafana (device utilization dashboards)              │
+│  ├── AlertManager (device failure alerts)                  │
+│  └── Logs (device plugin + kubelet)                        │
+├─────────────────────────────────────────────────────────────┤
+│  Hardware Layer                                           │
+│  ├── GPU Cards (NVIDIA/AMD)                                │
+│  ├── FPGA Accelerators                                     │
+│  ├── Network Devices (SR-IOV)                              │
+│  ├── Storage Devices (NVMe)                                │
+│  └── Custom Hardware (HashFoundry devices)                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 🎯 **Best Practices для Device Plugins:**
+
+### **1. Разработка Device Plugins:**
+- Реализуйте все обязательные gRPC методы (ListAndWatch, Allocate)
+- Используйте health monitoring для отслеживания состояния устройств
+- Поддерживайте NUMA topology awareness для оптимальной производительности
+- Реализуйте graceful shutdown и cleanup процедуры
+
+### **2. Deployment и Operations:**
+- Развертывайте device plugins как DaemonSet на всех узлах с устройствами
+- Используйте nodeSelector для ограничения deployment только на узлы с hardware
+- Настройте proper RBAC permissions для device plugin pods
+- Мониторьте device plugin health и registration status
+
+### **3. Безопасность:**
+- Используйте минимальные привилегии для device plugin containers
+- Ограничьте доступ к device files через proper permissions
+- Валидируйте device allocation requests
+- Логируйте все device operations для аудита
+
+### **4. Производительность и надежность:**
+- Оптимизируйте device discovery и health check intervals
+- Реализуйте efficient device allocation algorithms
+- Используйте device topology information для NUMA-aware scheduling
+- Настройте proper resource limits для device plugin pods
+
+### **5. Мониторинг и troubleshooting:**
+- Экспортируйте device plugin metrics в Prometheus
+- Настройте алерты для device failures и allocation issues
+- Логируйте device allocation и deallocation events
+- Мониторьте device utilization и performance metrics
+
+**Device Plugins — это мощный механизм для интеграции специализированного hardware в Kubernetes кластер с полной поддержкой scheduling, isolation и monitoring!**
